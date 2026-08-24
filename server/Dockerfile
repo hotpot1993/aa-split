@@ -8,6 +8,8 @@ FROM node:20-alpine AS deps
 WORKDIR /app
 COPY package*.json ./
 COPY prisma ./prisma
+# generate 需要检测 libssl 以选择正确的引擎（musl: openssl-3.0.x）
+RUN apk add --no-cache openssl libc6-compat
 RUN npm ci
 RUN npx prisma generate
 
@@ -22,6 +24,8 @@ RUN npm run build
 FROM node:20-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
+# Prisma query-engine（musl）需要 libssl；alpine 默认无 openssl
+RUN apk add --no-cache openssl libc6-compat
 # 仅拷贝运行时所需
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist

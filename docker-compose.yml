@@ -91,6 +91,8 @@ services:
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-aa_minio_dev_password}
       MINIO_BUCKET: ${MINIO_BUCKET:-aa-receipts}
       MINIO_USE_SSL: "false"
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+      SWAGGER_ENABLED: ${SWAGGER_ENABLED:-true}
     ports:
       - "3000:3000"
     # 正式迁移（prisma/migrations 随镜像）；建库需先 migrate deploy
