@@ -210,9 +210,10 @@ class AuthRepository {
     if (avatarUrl != null) body['avatarUrl'] = avatarUrl;
     final res = await ApiClient.instance.patch('/auth/me', body: body);
     final user = parseUser(res.data);
+    // 只刷新本地 user 缓存，不动认证 token（当前会话以 ApiClient 持有者为准；
+    // 避免从 prefs 取「可能是另一个会话」的 token 回填导致会话被切走）
     final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_kToken);
-    if (token != null) await _saveSession(token, user);
+    await prefs.setString(_kUser, jsonEncode(user.toJson()));
     return user;
   }
 

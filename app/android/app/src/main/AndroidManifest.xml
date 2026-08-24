@@ -1,8 +1,13 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 网络（release 包必需；debug/profile 模板自带） -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="aa_split_app"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:usesCleartextTraffic="true">
+        <!-- usesCleartextTraffic: Demo/联调后端使用 http（10.0.2.2 或 http://服务器IP:3000）；
+             生产接入 HTTPS 后应移除（配合 network security config） -->
         <activity
             android:name=".MainActivity"
             android:exported="true"

@@ -61,7 +61,12 @@ AA_API_BASE=http://103.11.77.228:3000/api/v1 node scripts/sse-check.mjs   # SSE 
 
 ## 五、待办 / 建议
 
-1. **接入域名与 HTTPS**：宝塔「反向代理」`api.<域名>` → `http://127.0.0.1:3000`（**SSE 需 `proxy_buffering off;`**），Cloudflare 全量代理；随后可 `ufw delete allow 3000`。当前 `hotpot1993.top` 在 Cloudflare 后、A 记录未指向本机（可从 BT 面板添加站点时配置）。
+1. **接入域名与 HTTPS**（前提：域名记录已就绪——`hotpot1993.top` 目前**无 A/AAAA 记录**，需先在 Cloudflare DNS 添加）：
+   - Cloudflare 添加：`api.hotpot1993.top A 103.11.77.228`（灰云=仅 DNS，或橙云=CDN 代理）
+   - 宝塔 nginx 反代配置**已预写好并通过 `nginx -t`**：`/www/server/nginx/conf/vhost/aa-split-api.conf`
+     （server_name api.hotpot1993.top → proxy_pass 127.0.0.1:3000，`proxy_buffering off` + 3600s 超时，SSE 友好）
+   - DNS 生效后 `curl -H "Host: api.hotpot1993.top" http://127.0.0.1` 本地验证；随后可 `ufw delete allow 3000`
 2. **备份**：`pgdata` 卷 + `.env`（每周建议快照）。
-3. **监控**：`docker compose ps` + 每周跑一次 smoke-api.mjs；后续可在 CI 里加。
+3. **监控**：`docker compose ps` + 每周跑一次 `node scripts/smoke-api.mjs`；CI（smoke.yml）已备好，推送远端后自动回归。
 4. **安全加固**：轮换 root 密码、改 SSH Key 登录、BT 面板 24381 仅白名单 IP。
+5. **客户端联调**：真机 APK 已用 `AA_USE_MOCK=false + AA_API_BASE=http://103.11.77.228:3000/api/v1` 构建安装；`test/live_api_test.dart` 可在任何机器对该地址跑全链路回归。
