@@ -134,7 +134,7 @@ class AuthRepository {
     }
   }
 
-  /// 忘记密码：安全问题（真实模式无查询端点，返回空串由用户自行输入）
+  /// 忘记密码：查询安全问题（P04）。真实模式 GET /auth/security-question。
   Future<String> securityQuestionOf(String accountName) async {
     if (AppConfig.useMock) {
       final q = MockStore.instance.currentUser.securityQuestion;
@@ -143,7 +143,12 @@ class AuthRepository {
     if (accountName.trim().isEmpty) {
       throw const AuthException('先输入账户名呀');
     }
-    return '';
+    final res = await ApiClient.instance.get(
+      '/auth/security-question',
+      query: {'accountName': accountName.trim()},
+    );
+    final data = res.data as Map? ?? const {};
+    return (data['question'] ?? '').toString();
   }
 
   /// 验证安全问题（true=通过）
@@ -181,6 +186,34 @@ class AuthRepository {
       'currentPassword': current,
       'newPassword': next,
     });
+  }
+
+  /// 更新个人资料（P50）：真实模式 PATCH /auth/me，成功后同步本地会话。
+  Future<User> updateProfile({
+    required String nickname,
+    required String bio,
+    String? avatarUrl,
+  }) async {
+    if (AppConfig.useMock) {
+      final updated = MockStore.instance.currentUser.copyWith(
+        nickname: nickname,
+        avatarUrl: avatarUrl,
+        bio: bio,
+      );
+      MockStore.instance.currentUser = updated;
+      return updated;
+    }
+    final body = <String, dynamic>{
+      'nickname': nickname,
+      'bio': bio,
+    };
+    if (avatarUrl != null) body['avatarUrl'] = avatarUrl;
+    final res = await ApiClient.instance.patch('/auth/me', body: body);
+    final user = parseUser(res.data);
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(_kToken);
+    if (token != null) await _saveSession(token, user);
+    return user;
   }
 
   /// 退出登录

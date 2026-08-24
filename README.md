@@ -7,10 +7,11 @@
 
 | 产物 | 状态 | 验收 |
 |---|---|---|
-| 服务端 `server/`（NestJS 10 + Prisma + PostgreSQL，全模块 + SSE + BullMQ + Swagger） | ✅ | `npm install` / `npx prisma generate` / `npm run build` / `npm test`（31/31）全通过 |
+| 服务端 `server/`（NestJS 10 + Prisma + PostgreSQL，全模块 + SSE + BullMQ + Swagger） | ✅ | `npm install` / `npx prisma generate` / `npm run build` / `npm test`（35/35）全通过 |
 | 客户端 `app/`（Flutter + Riverpod + go_router，31 页全量 + `aa_design` 手绘设计系统） | ✅ | `flutter analyze` 0 issues / `flutter test` 3/3 通过 |
 | 结算算法（`server/src/settlement/`，含"已付份额排除"修复） | ✅ | 13 个金标准单测全绿 |
 | 基础设施（docker-compose / Makefile / CI / 字体 asset） | ✅ | — |
+| **真实联调**（本机 PostgreSQL 16.12 便携实例 + API smoke + SSE） | ✅ | `node scripts/smoke-api.mjs` **22/22** · `node scripts/sse-check.mjs` SSE 实时事件 ✅ |
 
 **说明**：客户端默认 **Demo 模式**（`--dart-define=AA_USE_MOCK=false` 切真实后端，见
 [app/README.md](app/README.md) 联调清单）；服务端运行需要一个 PostgreSQL 实例
@@ -60,7 +61,10 @@ docker compose up -d postgres redis minio   # 或整体 docker compose up -d
 ```
 
 > 无 Docker 的机器可配置 `DATABASE_URL` 指向任意 PostgreSQL 16 实例，
-> 建表：`npx prisma db push`；演示数据：`npm run prisma:seed`。
+> 建表：`npm run prisma:migrate:deploy`（正式迁移，见 `server/prisma/migrations`）；
+> Windows 上也可以一键起便携 PostgreSQL：`powershell -ExecutionPolicy Bypass -File scripts\dev-db.ps1 init`。
+> 演示数据：`npm run prisma:seed`。
+> 联调自检：`node scripts/smoke-api.mjs`（22 步全链路）、`node scripts/sse-check.mjs`（SSE 实时推送）。
 
 ### 客户端
 

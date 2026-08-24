@@ -4,7 +4,9 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
@@ -17,6 +19,8 @@ import { LoginDto } from './dto/login.dto';
 import { ForgotVerifyDto } from './dto/forgot-verify.dto';
 import { ForgotResetDto } from './dto/forgot-reset.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
+import { SecurityQuestionQueryDto } from './dto/security-question.dto';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -44,6 +48,13 @@ export class AuthController {
     return this.authService.forgotVerify(dto);
   }
 
+  /** P04：忘记密码第一步 — 查询账户的安全问题（问题非机密） */
+  @Public()
+  @Get('security-question')
+  securityQuestion(@Query() query: SecurityQuestionQueryDto) {
+    return this.authService.getSecurityQuestion(query.accountName);
+  }
+
   @Public()
   @HttpCode(HttpStatus.OK)
   @Post('forgot/reset')
@@ -65,5 +76,13 @@ export class AuthController {
   @Get('me')
   me(@CurrentUser() user: JwtPayload) {
     return this.authService.me(user.sub);
+  }
+
+  /** P50：编辑个人资料（昵称 / 头像 / 个性签名） */
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @Patch('me')
+  updateProfile(@CurrentUser() user: JwtPayload, @Body() dto: UpdateProfileDto) {
+    return this.authService.updateProfile(user.sub, dto);
   }
 }

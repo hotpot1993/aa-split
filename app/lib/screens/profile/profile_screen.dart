@@ -106,13 +106,19 @@ class ProfileScreen extends ConsumerWidget {
       child: _EditProfileSheet(
         nickname: user.nickname,
         bio: user.bio,
-        onSave: (nickname, bio) {
-          ref.read(authProvider.notifier).updateProfile(
-                nickname: nickname,
-                bio: bio,
-                avatarUrl: user.avatarUrl,
-              );
-          showAaToast(context, '资料已更新');
+        onSave: (nickname, bio) async {
+          try {
+            await ref.read(authProvider.notifier).updateProfile(
+                  nickname: nickname,
+                  bio: bio,
+                  avatarUrl: user.avatarUrl,
+                );
+            if (!context.mounted) return;
+            showAaToast(context, '资料已更新');
+          } catch (e) {
+            if (!context.mounted) return;
+            showAaToast(context, '保存失败：$e');
+          }
         },
       ),
     );
@@ -179,7 +185,7 @@ class _EditProfileSheet extends StatefulWidget {
   });
   final String nickname;
   final String bio;
-  final void Function(String nickname, String bio) onSave;
+  final Future<void> Function(String nickname, String bio) onSave;
   @override
   State<_EditProfileSheet> createState() => _EditProfileSheetState();
 }
@@ -215,9 +221,9 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
           expand: true,
           onPressed: _nickname.text.trim().isEmpty
               ? null
-              : () {
-                  widget.onSave(_nickname.text.trim(), _bio.text.trim());
-                  Navigator.of(context).pop();
+              : () async {
+                  await widget.onSave(_nickname.text.trim(), _bio.text.trim());
+                  if (context.mounted) Navigator.of(context).pop();
                 },
         ),
         const SizedBox(height: 8),

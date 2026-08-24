@@ -1,7 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/config.dart';
-import '../data/mock/mock_store.dart';
 import '../models/user.dart';
 import 'repositories.dart';
 
@@ -69,19 +68,18 @@ class AuthController extends Notifier<AuthState> {
     state = const AuthState();
   }
 
-  /// 更新昵称/头像/签名（P50 即时生效；真实模式暂无服务端端点，仅本地演示）
-  void updateProfile({String? nickname, String? avatarUrl, String? bio}) {
+  /// 更新昵称/头像/签名（P50）：真实模式 PATCH /auth/me 走服务端，
+  /// 成功后本地态与服务端资料一致；失败抛异常由 UI 提示。
+  Future<User> updateProfile({String? nickname, String? avatarUrl, String? bio}) async {
     final user = state.user;
-    if (user == null) return;
-    final updated = user.copyWith(
-      nickname: nickname,
-      avatarUrl: avatarUrl,
-      bio: bio,
-    );
-    if (AppConfig.useMock) {
-      MockStore.instance.currentUser = updated;
-    }
+    if (user == null) throw StateError('未登录');
+    final updated = await ref.read(authRepositoryProvider).updateProfile(
+          nickname: nickname ?? user.nickname,
+          bio: bio ?? user.bio,
+          avatarUrl: avatarUrl ?? user.avatarUrl,
+        );
     state = AuthState(user: updated, token: state.token);
+    return updated;
   }
 
   /// 重置密码后强制登出（P05）

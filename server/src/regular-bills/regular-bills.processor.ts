@@ -21,12 +21,22 @@ export class RegularBillsProcessor extends WorkerHost implements OnModuleInit {
 
   async onModuleInit() {
     try {
-      await this.queue.add(
+      const task = this.queue.add(
         'process',
         {},
         { repeat: { pattern: '0 3 * * *' } }, // 每日 03:00
       );
-      this.logger.log('已注册定期账单每日扫描任务（03:00）');
+      // Redis 未运行时 ioredis(maxRetriesPerRequest=null) 会永久排队，
+      // 用 3s 超时兜底保证进程正常启动（惰性降级：Redis 就绪后重连并生效）。
+      const ok = await Promise.race([
+        task.then(() => true).catch(() => false),
+        new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 3000)),
+      ]);
+      if (ok) {
+        this.logger.log('已注册定期账单每日扫描任务（03:00）');
+      } else {
+        this.logger.warn('注册定期扫描任务超时（Redis 未运行？）：服务继续启动，Redis 就绪后重启生效');
+      }
     } catch (e: any) {
       this.logger.warn(`注册定期扫描任务失败（Redis 可能未运行）：${e?.message}`);
     }

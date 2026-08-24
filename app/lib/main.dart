@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:aa_design/aa_design.dart';
 
 import 'core/config.dart';
+import 'providers/notification_stream_provider.dart';
 import 'providers/settings_provider.dart';
 import 'router/app_router.dart';
 
@@ -25,6 +26,8 @@ class _AaSplitAppState extends ConsumerState<AaSplitApp> {
 
   @override
   Widget build(BuildContext context) {
+    // 保持实时通知流随登录态常驻（真实模式 SSE；Demo 模式空流）
+    ref.watch(notificationStreamProvider);
     return MaterialApp.router(
       title: AppConfig.appName,
       debugShowCheckedModeBanner: false,

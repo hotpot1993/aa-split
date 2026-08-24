@@ -304,4 +304,37 @@ describe('核心链路 e2e（注册→建群→记账→结算→催款→已付
       .expect(200);
     expect(relogin.body.data.user.accountName).toBe('bob');
   });
+
+  it('P04 安全问题查询 + P50 编辑资料（PATCH /auth/me）', async () => {
+    // 未登录访问 PATCH /auth/me → 401
+    await request(server()).patch('/api/v1/auth/me').send({ nickname: 'x' }).expect(401);
+
+    // 查询安全问题
+    const q = await request(server())
+      .get('/api/v1/auth/security-question?accountName=alice')
+      .expect(200);
+    expect(q.body.data.question).toBe('你最好的朋友？');
+
+    // 查询不存在的账户 → 400（与 forgot/verify 同文案，防探测）
+    await request(server())
+      .get('/api/v1/auth/security-question?accountName=ghost_1')
+      .expect(400);
+
+    // 编辑昵称 + 清空签名
+    const alice = (globalThis as any).__alice as { token: string };
+    const upd = await request(server())
+      .patch('/api/v1/auth/me')
+      .set('Authorization', `Bearer ${alice.token}`)
+      .send({ nickname: '爱丽丝2', bio: '' })
+      .expect(200);
+    expect(upd.body.data.nickname).toBe('爱丽丝2');
+    expect(upd.body.data.bio).toBeNull();
+
+    // 重新获取资料已生效
+    const me = await request(server())
+      .get('/api/v1/auth/me')
+      .set('Authorization', `Bearer ${alice.token}`)
+      .expect(200);
+    expect(me.body.data.nickname).toBe('爱丽丝2');
+  });
 });

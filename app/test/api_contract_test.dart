@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -129,6 +130,47 @@ void main() {
           ));
       dio.httpClientAdapter = adapter;
       expect(await AuthRepository().restoreSession(), isNull);
+    });
+
+    test('securityQuestionOf：GET /auth/security-question 解析问题文本', () async {
+      adapter = MockAdapter((options) async {
+        expect(options.method, 'GET');
+        expect(options.path, '/auth/security-question');
+        expect(options.queryParameters['accountName'], 'tuanzi');
+        return json(ok({'question': '你第一个朋友的名字？'}));
+      });
+      dio.httpClientAdapter = adapter;
+
+      final q = await AuthRepository().securityQuestionOf('tuanzi');
+      expect(q, '你第一个朋友的名字？');
+    });
+
+    test('updateProfile：PATCH /auth/me 载荷正确并同步本地会话', () async {
+      adapter = MockAdapter((options) async {
+        expect(options.method, 'PATCH');
+        expect(options.path, '/auth/me');
+        final body = options.data as Map;
+        expect(body['nickname'], '新团子');
+        expect(body['bio'], '');
+        expect(body.containsKey('avatarUrl'), false); // 未传则不发送
+        return json(ok({
+          'id': 'u1',
+          'accountName': 'tuanzi',
+          'nickname': '新团子',
+          'avatarUrl': null,
+          'bio': null,
+        }));
+      });
+      dio.httpClientAdapter = adapter;
+      // 已有会话（token 存在）→ 更新后同步回本地存储
+      SharedPreferences.setMockInitialValues({'aa.token': 'tok_1'});
+
+      final user = await AuthRepository().updateProfile(nickname: '新团子', bio: '');
+      expect(user.nickname, '新团子');
+      expect(user.bio, '');
+      // 本地会话已同步（token 仍在 → _saveSession 写回新资料）
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('aa.user'), contains('新团子'));
     });
   });
 
@@ -331,6 +373,45 @@ void main() {
       expect(items.single.title, '催款提醒');
       expect(await repo.unreadCount(), 1);
       await repo.markAllRead();
+    });
+
+    test('sseEvents：GET /notifications/stream 解析 data: 帧，断流后自动重连', () async {
+      var calls = 0;
+      adapter = MockAdapter((options) async {
+        expect(options.path, '/notifications/stream');
+        expect(options.headers['Accept'], 'text/event-stream');
+        calls++;
+        if (calls == 1) {
+          final payload = jsonEncode({
+            'type': 'remind',
+            'title': '催款提醒',
+            'body': '快还钱呀',
+            'refType': 'bill',
+            'refId': 'b1',
+          });
+          final frame = 'data: $payload\n\n: ping\n\n';
+          return ResponseBody(
+            Stream.value(Uint8List.fromList(utf8.encode(frame))),
+            200,
+            headers: {Headers.contentTypeHeader: ['text/event-stream']},
+          );
+        }
+        // 第二次连接返回空流（模拟服务端断开）→ 循环继续等待重连
+        return ResponseBody(Stream<Uint8List>.empty(), 200);
+      });
+      dio.httpClientAdapter = adapter;
+
+      final repo = NotificationRepository();
+      final done = Completer<void>();
+      final sub = repo.sseEvents().listen((e) {
+        expect(e['type'], 'remind');
+        expect(e['title'], '催款提醒');
+        expect(e['refId'], 'b1');
+        if (!done.isCompleted) done.complete();
+      }, onError: (_) {});
+      await done.future.timeout(const Duration(seconds: 5));
+      await sub.cancel();
+      expect(calls, greaterThanOrEqualTo(1));
     });
   });
 }

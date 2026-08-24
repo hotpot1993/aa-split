@@ -12,6 +12,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { JwtPayload } from '../common/types';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 
 const BCRYPT_ROUNDS = 12;
 const RESET_TOKEN_TTL_MS = 10 * 60 * 1000; // 10 分钟
@@ -172,5 +173,39 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new UnauthorizedException('用户不存在');
     return this.sanitizeUser(user);
+  }
+
+  /** P04：按账户名查询安全问题（仅返回问题文本，供忘记密码答题提示） */
+  async getSecurityQuestion(accountName: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { accountName },
+      select: { securityQuestion: true },
+    });
+    // 与 forgotVerify 保持同一提示，避免账户是否存在被探测
+    if (!user) throw new BadRequestException('账户不存在');
+    return { question: user.securityQuestion };
+  }
+
+  /** P50：更新当前用户资料（昵称/头像/签名），只更新传入字段 */
+  async updateProfile(userId: string, dto: UpdateProfileDto) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new UnauthorizedException('用户不存在');
+
+    const data: Record<string, string | null> = {};
+    if (dto.nickname !== undefined) {
+      data.nickname = dto.nickname.trim();
+    }
+    if (dto.bio !== undefined) {
+      data.bio = dto.bio.trim().length > 0 ? dto.bio.trim() : null;
+    }
+    if (dto.avatarUrl !== undefined) {
+      data.avatarUrl = dto.avatarUrl;
+    }
+
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data,
+    });
+    return this.sanitizeUser(updated);
   }
 }

@@ -54,21 +54,28 @@ cp .env.example .env
 
 ### 2.3 数据库（两种方式）
 
-**方式 A：有本地/远程 PostgreSQL**（推荐，需要 `npx prisma db push`）
+**方式 A：有本地/远程 PostgreSQL**（推荐；正式迁移）
 
 ```bash
-# 建表（仅首次）；也可用 docker compose 起一个 Postgres
-npx prisma db push
+# 首次建表：应用 prisma/migrations 下的正式迁移
+npm run prisma:migrate:deploy
+# 开发期改 schema 后生成新迁移：npm run prisma:migrate:dev -- --name xxx
 ```
 
 **方式 B：用 Docker Compose 起 Postgres**（本机装有 Docker）
 
 ```bash
 docker compose up -d postgres
-npx prisma db push
+npm run prisma:migrate:deploy
 ```
 
-> 注：仓库未附带 `docker-compose.yml`，可用任意 PostgreSQL 16 实例；若本机无 Docker 也无数据库，可先只跑构建/测试（见 §5）。
+**方式 C：本机无 Docker 无 PostgreSQL**（Windows，一键便携实例）
+
+```bash
+powershell -ExecutionPolicy Bypass -File scripts\dev-db.ps1 init   # 下载便携 PG 16 + initdb + 建 aa/aa_split
+powershell -ExecutionPolicy Bypass -File scripts\dev-db.ps1 start
+npm run prisma:migrate:deploy
+```
 
 ### 2.4 启动
 

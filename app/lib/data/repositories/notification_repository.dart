@@ -1,3 +1,8 @@
+import 'dart:async';
+import 'dart:convert';
+
+import 'package:dio/dio.dart';
+
 import '../../core/api/api_client.dart';
 import '../../core/api/codec.dart';
 import '../../core/config.dart';
@@ -113,6 +118,45 @@ class NotificationRepository {
         refId: draft.groupId,
       ));
       return;
+    }
+  }
+
+  /// 实时通知流（SSE，仅真实模式）。
+  ///
+  /// 连接服务端 `GET /notifications/stream`（靠 ApiClient 的 Bearer 拦截器带 token），
+  /// 逐行解析 `data:` 事件；断线/报错后 3s 退避自动重连，直到订阅方取消。
+  /// Demo 模式返回空流（UI 层通过 [notificationStreamProvider] 订阅）。
+  Stream<Map<String, dynamic>> sseEvents() async* {
+    if (AppConfig.useMock) return;
+    while (true) {
+      try {
+        final res = await ApiClient.instance.dio.get<ResponseBody>(
+          '/notifications/stream',
+          options: Options(
+            responseType: ResponseType.stream,
+            headers: {'Accept': 'text/event-stream'},
+            // SSE 是长连接，取消默认 15s 接收超时（服务端 25s 心跳）
+            receiveTimeout: Duration.zero,
+          ),
+        );
+        final body = res.data;
+        if (body == null) return;
+        await for (final line in utf8.decoder
+            .bind(body.stream)
+            .transform(const LineSplitter())) {
+          if (!line.startsWith('data:')) continue;
+          final payload = line.substring(5).trim();
+          if (payload.isEmpty) continue;
+          try {
+            yield (jsonDecode(payload) as Map).cast<String, dynamic>();
+          } catch (_) {
+            // 单帧解析失败忽略，不断流
+          }
+        }
+        // 服务端关闭连接（keep-alive 超时等）：继续循环重连
+      } catch (_) {
+        await Future<void>.delayed(const Duration(seconds: 3));
+      }
     }
   }
 }
