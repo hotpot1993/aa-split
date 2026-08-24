@@ -1,0 +1,25 @@
+name: aa_design
+description: AA分账App 手绘风设计系统（SketchyBorder / PaperCard / StampBadge / DoodleAnimations / 吉祥物团团）
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ">=3.5.0 <4.0.0"
+  flutter: ">=3.27.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  fonts:
+    - family: ZCOOLKuaiLe
+      fonts:
+        - asset: assets/fonts/ZCOOLKuaiLe-Regular.ttf
+    - family: LongCang
+      fonts:
+        - asset: assets/fonts/LongCang-Regular.ttf

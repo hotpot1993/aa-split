@@ -1,0 +1,35 @@
+# --- Node ---
+node_modules/
+dist/
+coverage/
+*.log
+.env
+.env.local
+.env.*.local
+
+# --- Prisma ---
+server/prisma/*.db
+server/prisma/migrations/dev.db*
+
+# --- Flutter / Dart ---
+app/.dart_tool/
+app/.packages
+app/build/
+app/.flutter-plugins*
+app/.pub-cache/
+app/.pub/
+app/ios/Pods/
+app/ios/.symlinks/
+app/android/.gradle/
+app/android/local.properties
+app/android/app/.cxx/
+*.iml
+.idea/
+
+# --- MinIO 本地数据 ---
+.data/
+
+# --- OS / IDE ---
+.DS_Store
+Thumbs.db
+.vscode/

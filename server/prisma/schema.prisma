@@ -1,0 +1,275 @@
+// =============================================================
+// AA分账App — Prisma schema（PostgreSQL 16）
+// 表名 / 列名使用 snake_case（通过 @@map / @map 映射），
+// Prisma 模型字段名使用 camelCase（业界惯例）。
+// 金额一律使用整数「分」（Int），不使用浮点。
+// 时间一律使用 timestamptz（@db.Timestamptz）。
+// =============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// -------- 枚举 --------
+
+// 分摊方式
+enum SplitType {
+  even // 均摊
+  custom // 自定义金额
+  ratio // 按比例
+}
+
+// 账单分类
+enum Category {
+  food // 餐饮
+  traffic // 交通
+  hotel // 住宿
+  shopping // 购物
+  fun // 娱乐
+  other // 其他
+}
+
+// 群成员状态
+enum MemberStatus {
+  active // 在群
+  left // 已退出（保留历史）
+}
+
+// 账单结算状态（服务端事务内维护）
+enum SettleStatus {
+  pending // 待结算（有未付）
+  partial // 部分已付
+  settled // 已结清（全员已付）
+}
+
+// 结算记录状态
+enum SettlementStatus {
+  pending // 待收款
+  paid // 已收款
+}
+
+// 定期账单周期
+enum BillCycle {
+  weekly // 每周
+  biweekly // 每两周
+  monthly // 每月
+}
+
+// 通知类型
+enum NotificationType {
+  new_bill // 新增账单
+  remind // 催款
+  invite // 群邀请
+  regular // 定期账单生成
+  settled // 结清
+}
+
+// -------- 用户 --------
+model User {
+  id                  String    @id @default(uuid()) @db.Uuid
+  accountName         String    @unique @map("account_name") @db.VarChar(32) // 登录账户名，唯一
+  nickname            String    @default("") @map("nickname") @db.VarChar(24) // 默认=账户名
+  avatarUrl           String?   @map("avatar_url") @db.Text
+  bio                 String?   @db.VarChar(50) // 个性签名
+  passwordHash        String    @map("password_hash") @db.VarChar(100) // bcrypt(12)
+  securityQuestion    String    @map("security_question") @db.VarChar(100)
+  securityAnswerHash  String    @map("security_answer_hash") @db.VarChar(100) // bcrypt
+  resetTokenHash      String?   @map("reset_token_hash") @db.VarChar(100) // 找回密码 token 哈希
+  resetTokenExpiresAt DateTime? @map("reset_token_expires_at") @db.Timestamptz
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt           DateTime? @map("deleted_at") @db.Timestamptz
+
+  memberships      GroupMember[]
+  ownedGroups      Group[]          @relation("GroupOwner")
+  createdBills     Bill[]           @relation("BillCreator")
+  paidBills        Bill[]           @relation("BillPayer")
+  participants     BillParticipant[]
+  notifications    Notification[]
+  regularBills     RegularBill[]
+  settlementsFrom  Settlement[]     @relation("SettlementFrom")
+  settlementsTo    Settlement[]     @relation("SettlementTo")
+
+  @@map("users")
+}
+
+// -------- 群组 --------
+model Group {
+  id               String    @id @default(uuid()) @db.Uuid
+  name             String    @db.VarChar(50)
+  avatarUrl        String?   @map("avatar_url") @db.Text
+  intro            String?   @db.VarChar(100)
+  ownerId          String    @map("owner_id") @db.Uuid // 群主
+  defaultSplitType SplitType @default(even) @map("default_split_type")
+  inviteCode       String    @unique @map("invite_code") @db.VarChar(12) // 12 位大写字母数字
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt        DateTime? @map("deleted_at") @db.Timestamptz // 软删除
+
+  owner        User        @relation("GroupOwner", fields: [ownerId], references: [id])
+  members      GroupMember[]
+  bills        Bill[]
+  regularBills RegularBill[]
+  settlements  Settlement[]
+
+  @@index([inviteCode])
+  @@map("groups")
+}
+
+// -------- 群成员 --------
+model GroupMember {
+  id       String       @id @default(uuid()) @db.Uuid
+  groupId  String       @map("group_id") @db.Uuid
+  userId   String       @map("user_id") @db.Uuid
+  status   MemberStatus @default(active)
+  joinedAt DateTime     @default(now()) @map("joined_at") @db.Timestamptz
+
+  group Group @relation(fields: [groupId], references: [id])
+  user  User  @relation(fields: [userId], references: [id])
+
+  @@unique([groupId, userId], map: "group_members_group_id_user_id_key")
+  @@index([userId])
+  @@map("group_members")
+}
+
+// -------- 账单 --------
+// 说明：sum(share_amount_cents) = amount_cents 的校验在服务端事务内完成
+//（schema 无法表达该聚合约束；见 bills.service.createBill）。免摊者 share=0。
+model Bill {
+  id           String       @id @default(uuid()) @db.Uuid
+  groupId      String       @map("group_id") @db.Uuid
+  creatorId    String       @map("creator_id") @db.Uuid
+  payerId      String       @map("payer_id") @db.Uuid // 垫付人
+  title        String       @db.VarChar(80)
+  location     String?      @db.VarChar(120)
+  amountCents  Int          @map("amount_cents") // 金额（分），CHECK(amount_cents >= 0) 通过服务端校验
+  billDate     DateTime     @map("bill_date") @db.Date
+  category     Category
+  splitType    SplitType    @map("split_type")
+  settleStatus SettleStatus @default(pending) @map("settle_status")
+  isRegular    Boolean      @default(false) @map("is_regular")
+  regularId    String?      @map("regular_id") @db.Uuid // 定期账单来源
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime     @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt    DateTime?    @map("deleted_at") @db.Timestamptz // 软删除
+
+  group        Group             @relation(fields: [groupId], references: [id])
+  creator      User              @relation("BillCreator", fields: [creatorId], references: [id])
+  payer        User              @relation("BillPayer", fields: [payerId], references: [id])
+  participants BillParticipant[]
+  receipts     Receipt[]
+
+  @@index([groupId, billDate(sort: Desc)]) // §3.3 群账单按日期倒序
+  @@index([creatorId])
+  @@index([payerId])
+  @@index([regularId])
+  @@map("bills")
+}
+
+// -------- 账单分摊明细 --------
+model BillParticipant {
+  id              String   @id @default(uuid()) @db.Uuid
+  billId          String   @map("bill_id") @db.Uuid
+  userId          String   @map("user_id") @db.Uuid
+  shareAmountCents Int     @map("share_amount_cents") // 应摊（分）；免摊者=0
+  exempt          Boolean  @default(false)
+  paid            Boolean  @default(false)
+  paidAt          DateTime? @map("paid_at") @db.Timestamptz
+  remindCount     Int      @default(0) @map("remind_count") // 已催次数
+
+  bill Bill @relation(fields: [billId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([billId, userId], map: "bill_participants_bill_id_user_id_key")
+  @@index([billId]) // §3.3
+  @@index([userId])
+  @@map("bill_participants")
+}
+
+// -------- 凭证（小票图片） --------
+model Receipt {
+  id        String   @id @default(uuid()) @db.Uuid
+  billId    String   @map("bill_id") @db.Uuid
+  objectKey String   @map("object_key") @db.Text // MinIO key 或本地相对路径
+  sort      Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  bill Bill @relation(fields: [billId], references: [id])
+
+  @@index([billId])
+  @@map("receipts")
+}
+
+// -------- 通知 --------
+model Notification {
+  id        String           @id @default(uuid()) @db.Uuid
+  userId    String           @map("user_id") @db.Uuid
+  type      NotificationType
+  title     String           @db.VarChar(100)
+  body      String           @db.VarChar(300)
+  refType   String?          @map("ref_type") @db.VarChar(32)
+  refId     String?          @map("ref_id") @db.Uuid
+  isRead    Boolean          @default(false) @map("is_read")
+  createdAt DateTime         @default(now()) @map("created_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, isRead]) // §3.3
+  @@index([userId])
+  @@map("notifications")
+}
+
+// -------- 定期账单模板 --------
+// participants 模板以 JSON 存储：[{ userId, shareAmountCents?, exempt? }]。
+// 到点生成账单时按模板创建副本（is_regular=true, regular_id=该行 id）。
+model RegularBill {
+  id              String    @id @default(uuid()) @db.Uuid
+  groupId         String    @map("group_id") @db.Uuid
+  creatorId       String    @map("creator_id") @db.Uuid
+  title           String    @db.VarChar(80)
+  amountCents     Int       @map("amount_cents")
+  category        Category
+  splitType       SplitType @map("split_type")
+  cycle           BillCycle
+  dayOfWeek       Int?      @map("day_of_week") // weekly/biweekly: 0(周日)-6
+  dayOfMonth      Int?      @map("day_of_month") // monthly: 1-31
+  participants    Json      @map("participants_template") // 模板
+  nextRunAt       DateTime  @map("next_run_at") @db.Timestamptz
+  active          Boolean   @default(true)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt       DateTime? @map("deleted_at") @db.Timestamptz
+
+  group   Group @relation(fields: [groupId], references: [id])
+  creator User  @relation(fields: [creatorId], references: [id])
+
+  @@index([nextRunAt])
+  @@index([groupId])
+  @@map("regular_bills")
+}
+
+// -------- 结算记录 --------
+// GET /groups/:id/settlement 时把本次方案 upsert 为若干 settlement 行（group 维度最新一条，status=pending）。
+// POST /settlements/:id/paid 置 status=paid。
+model Settlement {
+  id          String           @id @default(uuid()) @db.Uuid
+  groupId     String           @map("group_id") @db.Uuid
+  fromUserId  String           @map("from_user_id") @db.Uuid
+  toUserId    String           @map("to_user_id") @db.Uuid
+  amountCents Int              @map("amount_cents")
+  status      SettlementStatus @default(pending)
+  billIds     Json             @map("bill_ids") // 近似归属的账单 id 列表
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz
+
+  group    Group @relation(fields: [groupId], references: [id])
+  fromUser User  @relation("SettlementFrom", fields: [fromUserId], references: [id])
+  toUser   User  @relation("SettlementTo", fields: [toUserId], references: [id])
+
+  @@index([groupId])
+  @@map("settlements")
+}

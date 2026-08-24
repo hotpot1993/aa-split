@@ -1,0 +1,1294 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AA分账 · 手绘风UI原型 Demo（31页全量）</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&family=Long+Cang&family=Zhi+Mang+Xing&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#FBF3E4; --paper2:#F4E8D3; --ink:#443A32; --ink2:#8A7A68;
+  --tape:#FFD166; --coral:#FF8C69; --mint:#8FCE9F; --sky:#7EC4E8;
+  --grape:#B79CE0; --pink:#F49CB4; --marker:#FFE8A3;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:'ZCOOL KuaiLe','STKaiti','KaiTi',cursive,sans-serif;
+  color:var(--ink); min-height:100vh;
+  background:#E8DABD;
+  background-image:radial-gradient(rgba(68,58,50,.06) 1.2px, transparent 1.2px);
+  background-size:34px 34px;
+}
+.stage{display:flex;gap:36px;justify-content:center;align-items:flex-start;padding:32px 20px;flex-wrap:wrap}
+
+/* ---------- 左侧说明 ---------- */
+.side{width:300px;background:var(--paper);border:3px solid var(--ink);border-radius:20px 7px 22px 8px/8px 22px 7px 20px;padding:18px;box-shadow:6px 6px 0 rgba(68,58,50,.2);position:relative;max-height:90vh;overflow-y:auto}
+.side h1{font-size:23px;border-bottom:2.5px dashed var(--ink);padding-bottom:9px;margin-bottom:4px}
+.side .sub{font-size:12px;color:var(--ink2);margin-bottom:8px}
+.gh{margin:12px 0 4px;font-size:12px;color:var(--ink2);border-bottom:1.5px dashed rgba(68,58,50,.4);padding-bottom:3px;letter-spacing:1px}
+.side button{display:block;width:100%;text-align:left;font:inherit;font-size:14px;padding:8px 11px;margin:6px 0;
+  border:2.5px solid var(--ink);border-radius:14px 5px 13px 6px/6px 13px 5px 14px;background:#FFFDF6;
+  box-shadow:3px 3px 0 var(--ink);cursor:pointer;transition:transform .12s}
+.side button:hover{transform:translateY(-1px)}
+.side button.cur{background:var(--marker)}
+.side .tip{margin-top:12px;font-size:12px;color:var(--ink2);border:2px dashed var(--ink);border-radius:10px;padding:9px}
+
+/* ---------- 手机 ---------- */
+.phone{width:400px;height:830px;background:var(--paper);border:10px solid var(--ink);border-radius:46px;position:relative;
+  box-shadow:10px 10px 0 rgba(68,58,50,.25);overflow:hidden;flex-shrink:0}
+.phone:before{content:"";position:absolute;top:0;left:50%;transform:translateX(-50%);width:150px;height:24px;
+  background:var(--ink);border-radius:0 0 16px 16px;z-index:60}
+.screen{position:absolute;inset:0;padding:50px 16px 90px;overflow-y:auto;display:none;
+  background:radial-gradient(rgba(68,58,50,.05) 1px, transparent 1px) 0 0/22px 22px, var(--paper)}
+.screen.active{display:block;animation:pageIn .28s ease}
+@keyframes pageIn{from{transform:rotate(-1.2deg) translateX(14px);opacity:0}to{transform:none;opacity:1}}
+.nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.nav h2{font-size:22px}
+.nav .back{font-size:18px;cursor:pointer;padding:4px 8px 4px 0}
+.nav .ic{font-size:17px;cursor:pointer}
+
+/* ---------- 通用组件 ---------- */
+.card{position:relative;background:#FFFDF6;border:2.5px solid var(--ink);border-radius:16px 6px 14px 7px/7px 14px 6px 16px;
+  padding:16px 14px;box-shadow:3px 3px 0 rgba(68,58,50,.18);margin:16px 0}
+.card.tilt{transform:rotate(-.4deg)}
+.card.tap{cursor:pointer}
+.card.tap:active{transform:translate(2px,2px)}
+.tape{position:absolute;top:-12px;left:50%;width:92px;height:24px;transform:translateX(-50%) rotate(-3deg);
+  background:rgba(255,209,102,.85);border:1.5px solid rgba(68,58,50,.3);border-radius:2px}
+.tape.mint{background:rgba(143,206,159,.8)}
+.tape.sky{background:rgba(126,196,232,.8)}
+.tape.pink{background:rgba(244,156,180,.8)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;font:inherit;font-size:15px;padding:10px 18px;
+  border:2.5px solid var(--ink);border-radius:16px 6px 14px 7px/7px 14px 6px 16px;background:#FFFDF6;color:var(--ink);
+  box-shadow:3px 3px 0 var(--ink);cursor:pointer;transition:transform .12s,box-shadow .12s}
+.btn:active{transform:translate(2.5px,2.5px);box-shadow:1px 1px 0 var(--ink)}
+.btn.big{width:100%;padding:13px;font-size:18px}
+.btn.primary{background:var(--coral);color:#fff}
+.btn.mini{padding:6px 12px;font-size:13px}
+.btn.ghost{background:transparent;box-shadow:none;border:2.5px dashed var(--ink)}
+.btn.danger{background:var(--pink);color:#fff}
+.hl{background:linear-gradient(transparent 55%, var(--marker) 55%)}
+.hl.minty{background:linear-gradient(transparent 55%, rgba(143,206,159,.6) 55%)}
+.amount{font-family:'Long Cang','STKaiti','KaiTi',cursive;font-size:42px;line-height:1;letter-spacing:1px}
+.amount .yen{font-size:20px;vertical-align:6px;margin-right:2px}
+.amount.pos{color:#5FA876}
+.amount.neg{color:var(--coral)}
+.dim{color:var(--ink2)}
+.mini{font-size:12px}
+.chip{display:inline-flex;align-items:center;gap:4px;border:2px solid var(--ink);border-radius:999px;padding:3px 11px;font-size:12px;background:#fff;white-space:nowrap;cursor:pointer}
+.chip.g{background:#EDF7EE;color:#44795B}
+.chip.o{background:#FFF1EA;color:#D9592F}
+.chip.t{background:#F0F6FB;color:#3E7CA6}
+.chip.sel{background:var(--marker)}
+.stamp{display:inline-block;border:2px solid var(--ink);border-radius:50%;padding:4px 10px;font-size:11px;transform:rotate(-8deg);background:#FFFDF6}
+.stamp.done{color:#5FA876;border-color:#5FA876}
+.stamp.money{color:var(--pink);border-color:var(--pink)}
+.line{display:flex;justify-content:space-between;align-items:center;border-bottom:2.5px dashed var(--ink);padding:11px 2px;font-size:15px}
+.line b{font-weight:normal;color:var(--ink)}
+.line.tap{cursor:pointer}
+.arrow-r{font-size:15px;transform:rotate(-8deg)}
+.cbx{width:22px;height:22px;border:2.5px solid var(--ink);border-radius:7px 3px 8px 3px;display:inline-block;position:relative;background:#fff;cursor:pointer;vertical-align:middle;flex-shrink:0}
+.cbx.on:after{content:"✓";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:15px;color:var(--coral);transform:rotate(-6deg)}
+.swt{width:46px;height:26px;border:2.5px solid var(--ink);border-radius:999px;background:#fff;position:relative;cursor:pointer;flex-shrink:0}
+.swt:after{content:"";position:absolute;top:1.5px;left:3px;width:17px;height:17px;border-radius:50%;background:var(--ink2);border:2px solid var(--ink)}
+.swt.on{background:#EDF7EE}
+.swt.on:after{left:22px;background:var(--mint)}
+.doodle{position:absolute;opacity:.5;pointer-events:none;font-size:18px}
+.sect{font-size:13px;color:var(--ink2);display:flex;align-items:center;gap:8px;margin:16px 0 6px}
+.sect:before{content:"";flex:1;height:2px;background:repeating-linear-gradient(90deg,var(--ink2) 0 6px,transparent 6px 12px)}
+.sect span{padding:0 6px;white-space:nowrap;font-size:14px;color:var(--ink)}
+.sect em{font-style:normal}
+.ava{width:44px;height:44px;border:2.5px solid var(--ink);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;background:#fff;flex-shrink:0}
+.wob{animation:wob 2.4s ease-in-out infinite}
+@keyframes wob{0%,100%{transform:rotate(-3deg)}50%{transform:rotate(3deg)}}
+.opt{padding:11px 12px;font-size:14px;border:2.5px solid var(--ink);border-radius:14px 5px 13px 6px;background:#FFFDF6;margin:8px 0;display:flex;align-items:center;gap:10px;box-shadow:3px 3px 0 rgba(68,58,50,.15);cursor:pointer}
+.opt.sel{background:var(--marker)}
+.opt:active{transform:translate(2px,2px)}
+.toast{position:absolute;left:50%;bottom:104px;transform:translateX(-50%) translateY(8px);background:#443A32;color:#FBF3E4;font-size:13px;padding:9px 16px;border-radius:12px 5px 11px 6px;opacity:0;transition:all .25s;z-index:70;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ---------- 动效演示 ---------- */
+.mstage{position:relative;height:150px;border:2.5px dashed var(--ink);border-radius:12px 5px 11px 6px;background:#FFFDF6;display:flex;align-items:center;justify-content:center;overflow:hidden;margin:6px 0 10px}
+.mstage .lbl{position:absolute;left:8px;top:6px;font-size:11px;color:var(--ink2)}
+.draw path{stroke-dasharray:220;stroke-dashoffset:220}
+.go .draw path{animation:draw .7s ease-out forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+.bell{transform-origin:50% 22%}
+.go .bell{animation:bellShake .6s ease-in-out 2}
+@keyframes bellShake{0%,100%{transform:rotate(0)}25%{transform:rotate(15deg)}50%{transform:rotate(-11deg)}75%{transform:rotate(8deg)}}
+/* 手绘纸飞机：不均匀手绘关键帧 + 虚线笔触轨迹 */
+.go .pg{animation:flyP 1s cubic-bezier(.45,.05,.55,.95) forwards}
+@keyframes flyP{
+  0%{transform:translate(0,0) rotate(-5deg)}
+  24%{transform:translate(44px,-32px) rotate(7deg)}
+  46%{transform:translate(92px,-15px) rotate(-8deg)}
+  70%{transform:translate(138px,-40px) rotate(6deg)}
+  88%{transform:translate(166px,-64px) rotate(2deg)}
+  100%{transform:translate(172px,-78px) rotate(4deg)}
+}
+.ptr{stroke-dasharray:7 6;stroke-dashoffset:1100}
+.go .ptr{animation:drawTrail 1s ease-out forwards}
+@keyframes drawTrail{to{stroke-dashoffset:0}}
+/* 手绘金币：旋转撒入钱罐 + 笔画轨迹 */
+.cc{opacity:0}
+.go .c1{animation:coin1 .55s cubic-bezier(.5,.1,.5,.9) forwards}
+.go .c2{animation:coin2 .55s cubic-bezier(.5,.1,.5,.9) forwards;animation-delay:.2s}
+.go .c3{animation:coin3 .55s cubic-bezier(.5,.1,.5,.9) forwards;animation-delay:.38s}
+@keyframes coin1{0%{transform:translate(0,0) rotate(6deg);opacity:0}18%{opacity:1}42%{transform:translate(50px,-48px) rotate(-128deg)}70%{transform:translate(70px,-14px) rotate(-250deg)}100%{transform:translate(74px,6px) rotate(-360deg);opacity:1}}
+@keyframes coin2{0%{transform:translate(0,0) rotate(-5deg);opacity:0}18%{opacity:1}42%{transform:translate(56px,-44px) rotate(-142deg)}70%{transform:translate(82px,-10px) rotate(-268deg)}100%{transform:translate(88px,10px) rotate(-360deg);opacity:1}}
+@keyframes coin3{0%{transform:translate(0,0) rotate(8deg);opacity:0}18%{opacity:1}42%{transform:translate(61px,-40px) rotate(-152deg)}70%{transform:translate(92px,-8px) rotate(-276deg)}100%{transform:translate(100px,8px) rotate(-360deg);opacity:1}}
+.tr{stroke-dasharray:5 6;stroke-dashoffset:600}
+.go .tr{animation:drawTrail .5s ease-out forwards}
+.spark{opacity:.2}
+.go .spark{animation:sparkle .5s ease-in-out infinite}
+@keyframes sparkle{0%,100%{opacity:.15}50%{opacity:1}}
+.go .stamp-anim{animation:stampIn .45s cubic-bezier(.34,1.56,.64,1) forwards}
+@keyframes stampIn{0%{transform:rotate(-24deg) scale(2.2);opacity:0}100%{transform:rotate(-8deg) scale(1);opacity:1}}
+
+/* ---------- 空状态卡片 ---------- */
+.emptyc{position:relative;background:#FFFDF6;border:2.5px solid var(--ink);border-radius:16px 6px 14px 7px/7px 14px 6px 16px;padding:18px 14px 14px;box-shadow:3px 3px 0 rgba(68,58,50,.15);margin:12px 0;text-align:center}
+.emptyc .tag{position:absolute;top:-11px;left:10px;background:var(--paper);border:2px solid var(--ink);border-radius:999px;padding:2px 10px;font-size:11px;transform:rotate(-3deg)}
+.emptyc .art{font-size:38px;margin:6px 0}
+.emptyc h4{font-size:16px;font-weight:normal;margin-bottom:4px}
+.emptyc p{font-size:12px;color:var(--ink2);margin-bottom:10px}
+
+/* ---------- Tab栏 ---------- */
+.tabbar{position:absolute;left:0;right:0;bottom:0;height:78px;background:#FFFDF6;border-top:3px solid var(--ink);display:flex;z-index:40}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:none;border:none;font:inherit;font-size:11px;color:var(--ink2);cursor:pointer}
+.tab svg{width:25px;height:25px;stroke:currentColor;fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.tab.cur{color:var(--coral);animation:bounce .28s}
+@keyframes bounce{0%{transform:translateY(0)}45%{transform:translateY(-5px)}100%{transform:translateY(0)}}
+.tab.plus svg{width:34px;height:34px;background:var(--coral);border:2.5px solid var(--ink);border-radius:50%;padding:6px;color:#fff;box-shadow:3px 3px 0 var(--ink);margin-top:-20px}
+
+/* ---------- 吉祥物 ---------- */
+.panda{width:110px;height:110px;display:block;margin:0 auto}
+.panda.sm{width:56px;height:56px}
+
+/* ---------- 指南页 ---------- */
+.guide h3{font-size:17px;margin:18px 0 8px;border-left:5px solid var(--coral);padding-left:8px}
+.swrow{display:flex;gap:8px;flex-wrap:wrap}
+.sw{flex:1;min-width:70px;text-align:center}
+.sw i{display:block;height:42px;border:2.5px solid var(--ink);border-radius:14px 5px 13px 6px;margin-bottom:4px}
+.sw em{font-style:normal;font-size:11px}
+.iconrow{display:flex;gap:10px;flex-wrap:wrap}
+.iconrow svg{width:30px;height:30px;stroke:var(--ink);fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.fs{font-size:22px;border-bottom:2px dashed var(--ink);padding-bottom:4px;margin:6px 0}
+.fs.lc{font-family:'Long Cang','STKaiti','KaiTi',cursive;font-size:34px}
+
+/* ---------- 图表 ---------- */
+.bars{display:flex;align-items:flex-end;gap:10px;height:130px;padding:0 4px;margin-top:16px}
+.bcol{flex:1;display:flex;flex-direction:column;align-items:center}
+.bar{width:100%;border:2.5px solid var(--ink);border-radius:8px 3px 6px 4px/4px 6px 3px 8px;position:relative;
+  background:repeating-linear-gradient(0deg,rgba(68,58,50,.10) 0 4px,transparent 4px 9px), var(--paper2)}
+.bar i{position:absolute;top:-24px;left:50%;transform:translateX(-50%);font-style:normal;font-size:14px}
+.bar em{position:absolute;top:4px;left:50%;transform:translateX(-50%);font-style:normal;font-size:11px}
+.donut-wrap{display:flex;align-items:center;gap:14px}
+.qr{border:2.5px solid var(--ink);background:#fff;padding:12px;border-radius:10px 4px 12px 5px}
+.polaroid{background:#fff;border:2.5px solid var(--ink);padding:8px 8px 22px;border-radius:4px;transform:rotate(-2deg);position:relative;width:132px;box-shadow:3px 3px 0 rgba(68,58,50,.2)}
+.polaroid .img{height:92px;background:var(--paper2);border:2px dashed var(--ink2);display:flex;align-items:center;justify-content:center;font-size:40px}
+</style>
+</head>
+<body>
+<div class="stage">
+
+<!-- ============ 左侧导航 ============ -->
+<aside class="side">
+  <h1>🧸 AA分账 · 手绘风UI</h1>
+  <div class="sub">31页全量原型 · 可爱轻松 · 团团吉祥物</div>
+
+  <div class="gh">🎨 风格指南</div>
+  <button data-target="s-guide" onclick="go('s-guide')">00 · 风格指南（设计系统）</button>
+
+  <div class="gh">🎬 动效 · 空状态</div>
+  <button data-target="s-motion" onclick="go('s-motion')">🎬 动效实验室（可点触发）</button>
+  <button data-target="s-empty" onclick="go('s-empty')">🫧 空状态画廊</button>
+
+  <div class="gh">A 接入层</div>
+  <button data-target="s-p01" onclick="go('s-p01')">01 · 启动页 P01</button>
+  <button data-target="s-login" onclick="go('s-login')">02 · 登录页 P02</button>
+  <button data-target="s-p03" onclick="go('s-p03')">03 · 注册页 P03</button>
+  <button data-target="s-p04" onclick="go('s-p04')">04 · 忘记密码 P04</button>
+  <button data-target="s-p05" onclick="go('s-p05')">05 · 重设密码 P05</button>
+
+  <div class="gh">B 主框架（手机容器 + Tab栏，常驻）</div>
+
+  <div class="gh">C 总览模块</div>
+  <button data-target="s-home" onclick="go('s-home')">11 · 总览首页 P11</button>
+  <button data-target="s-p12" onclick="go('s-p12')">12 · 账单记录列表 P12</button>
+  <button data-target="s-p13" onclick="go('s-p13')">13 · 统计页 P13</button>
+  <button data-target="s-p14" onclick="go('s-p14')">14 · 账单详情 P14</button>
+
+  <div class="gh">D 群组模块</div>
+  <button data-target="s-p20" onclick="go('s-p20')">20 · 群组列表 P20</button>
+  <button data-target="s-p21" onclick="go('s-p21')">21 · 创建群组 P21</button>
+  <button data-target="s-p22" onclick="go('s-p22')">22 · 邀请成员 P22</button>
+  <button data-target="s-group" onclick="go('s-group')">23 · 群组详情 P23</button>
+  <button data-target="s-p24" onclick="go('s-p24')">24 · 成员管理 P24</button>
+  <button data-target="s-settle" onclick="go('s-settle')">25 · 智能结算 P25</button>
+  <button data-target="s-p26" onclick="go('s-p26')">26 · 催款页 P26</button>
+  <button data-target="s-p27" onclick="go('s-p27')">27 · 群组设置 P27</button>
+
+  <div class="gh">E 记账模块</div>
+  <button data-target="s-bill" onclick="go('s-bill')">30 · 记一笔 P30</button>
+  <button data-target="s-p31" onclick="go('s-p31')">31 · 分摊设置 P31</button>
+  <button data-target="s-p32" onclick="go('s-p32')">32 · 选择参与人 P32</button>
+  <button data-target="s-p33" onclick="go('s-p33')">33 · 凭证拍照 P33</button>
+  <button data-target="s-p34" onclick="go('s-p34')">34 · 定期账单 P34</button>
+
+  <div class="gh">F 消息模块</div>
+  <button data-target="s-msg" onclick="go('s-msg')">40 · 消息中心 P40</button>
+  <button data-target="s-p41" onclick="go('s-p41')">41 · 提醒设置 P41</button>
+
+  <div class="gh">G 我的模块</div>
+  <button data-target="s-me" onclick="go('s-me')">50 · 个人主页 P50</button>
+  <button data-target="s-p51" onclick="go('s-p51')">51 · 设置页 P51</button>
+  <button data-target="s-p52" onclick="go('s-p52')">52 · 账号安全 P52</button>
+  <button data-target="s-p53" onclick="go('s-p53')">53 · 数据导出 P53</button>
+  <button data-target="s-p54" onclick="go('s-p54')">54 · 关于页 P54</button>
+
+  <div class="gh">H 公共</div>
+  <button data-target="s-p60" onclick="go('s-p60')">60 · 全局搜索 P60</button>
+
+  <div class="tip">💡 页面内卡片/文字都可以点！是从原型流程连好的跳转。字体为在线手写体，断网自动回退楷体。</div>
+</aside>
+
+<!-- ============ 手机 ============ -->
+<div class="phone">
+
+<!-- 00 风格指南 -->
+<section class="screen active" id="s-guide">
+  <div class="guide">
+    <div class="nav"><h2>🎨 风格指南</h2><span class="ic">✂️</span></div>
+    <div class="card">
+      <div class="tape"></div>
+      <div style="text-align:center"><svg class="panda wob" viewBox="0 0 100 100">
+        <path d="M50 15 Q52 6 57 4" stroke="#443A32" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <path d="M31 26 Q21 9 37 11 Q36 19 31 26 Z" fill="#443A32" stroke="#443A32" stroke-width="2.5"/>
+        <path d="M69 26 Q79 9 63 11 Q64 19 69 26 Z" fill="#443A32" stroke="#443A32" stroke-width="2.5"/>
+        <circle cx="50" cy="45" r="26" fill="#fff" stroke="#443A32" stroke-width="3"/>
+        <path d="M35 41 Q40 33 47 40 Q46 48 40 49 Q35 47 35 41 Z" fill="#443A32"/>
+        <path d="M65 41 Q60 33 53 40 Q54 48 60 49 Q65 47 65 41 Z" fill="#443A32"/>
+        <circle cx="42" cy="43.5" r="2.6" fill="#FBF3E4"/><circle cx="58" cy="43.5" r="2.6" fill="#FBF3E4"/>
+        <path d="M47 57 Q50 60 53 57" stroke="#443A32" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <ellipse cx="33" cy="52" rx="4.5" ry="2.8" fill="#F49CB4" opacity=".75"/>
+        <ellipse cx="67" cy="52" rx="4.5" ry="2.8" fill="#F49CB4" opacity=".75"/>
+      </svg>
+      <div style="font-size:15px">吉祥物 · <span class="hl">团团🐼</span>（涂鸦小熊猫）</div></div>
+    </div>
+    <h3>🧪 色板（纸感糖果色）</h3>
+    <div class="swrow">
+      <div class="sw"><i style="background:#FBF3E4"></i><em>纸张米</em></div>
+      <div class="sw"><i style="background:#443A32"></i><em>墨色</em></div>
+      <div class="sw"><i style="background:#FF8C69"></i><em>珊瑚橙 主</em></div>
+      <div class="sw"><i style="background:#8FCE9F"></i><em>薄荷绿 应收</em></div>
+      <div class="sw"><i style="background:#FFD166"></i><em>胶带柠檬</em></div>
+      <div class="sw"><i style="background:#B79CE0"></i><em>藕芋紫</em></div>
+      <div class="sw"><i style="background:#F49CB4"></i><em>草莓粉</em></div>
+    </div>
+    <h3>✍️ 字体</h3>
+    <div class="fs lc">¥220.00（龙藏体 · 金额）</div>
+    <div class="fs">AA分账 一起吃饭轻松AA（站酷快乐体 · 标题）</div>
+    <h3>🧩 组件</h3>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">
+      <button class="btn primary mini">✨ 一键结算</button>
+      <button class="btn mini">💬 复制文案</button>
+      <button class="btn ghost mini">📱 收款卡片</button>
+      <span class="chip g">应收 +120</span><span class="chip o">应付 -50</span>
+      <span class="stamp done">✅已结清</span><span class="stamp money">📢已催2次</span>
+    </div>
+    <div class="card" style="margin-top:6px">
+      <div class="tape mint"></div>
+      <div style="font-size:13px">便签卡：纸胶带 + 手抖描边 + 涂鸦阴影</div>
+    </div>
+  </div>
+</section>
+
+<!-- 01 启动页 -->
+<section class="screen" id="s-p01" onclick="go('s-login')" style="cursor:pointer;text-align:center">
+  <div style="margin-top:150px">
+    <svg class="panda" style="width:150px;height:150px;margin-bottom:16px" viewBox="0 0 100 100">
+      <path d="M50 15 Q52 6 57 4" stroke="#443A32" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <path d="M31 26 Q21 9 37 11 Q36 19 31 26 Z" fill="#443A32" stroke="#443A32" stroke-width="2.5"/>
+      <path d="M69 26 Q79 9 63 11 Q64 19 69 26 Z" fill="#443A32" stroke="#443A32" stroke-width="2.5"/>
+      <circle cx="50" cy="45" r="26" fill="#fff" stroke="#443A32" stroke-width="3"/>
+      <path d="M35 41 Q40 33 47 40 Q46 48 40 49 Q35 47 35 41 Z" fill="#443A32"/>
+      <path d="M65 41 Q60 33 53 40 Q54 48 60 49 Q65 47 65 41 Z" fill="#443A32"/>
+      <circle cx="42" cy="43.5" r="2.6" fill="#FBF3E4"/><circle cx="58" cy="43.5" r="2.6" fill="#FBF3E4"/>
+      <path d="M47 57 Q50 60 53 57" stroke="#443A32" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <ellipse cx="33" cy="52" rx="4.5" ry="2.8" fill="#F49CB4" opacity=".75"/>
+      <ellipse cx="67" cy="52" rx="4.5" ry="2.8" fill="#F49CB4" opacity=".75"/>
+    </svg>
+    <div style="font-family:'Zhi Mang Xing','STKaiti','KaiTi',cursive;font-size:48px">AA分账</div>
+    <div class="mini dim" style="margin-top:6px">团团正在数钱…</div>
+    <div style="margin-top:24px;font-size:22px;letter-spacing:6px"><span class="dim">· · ·</span></div>
+  </div>
+  <span class="doodle" style="top:130px;left:36px">⭐</span>
+  <span class="doodle" style="top:230px;right:40px">💛</span>
+  <span class="doodle" style="top:400px;left:56px">💰</span>
+  <span class="doodle" style="top:470px;right:56px">✏️</span>
+  <div class="mini dim" style="margin-top:60px">（点击屏幕进入登录）</div>
+</section>
+
+<!-- 02 登录页 -->
+<section class="screen" id="s-login">
+  <span class="doodle" style="top:64px;right:26px">⭐</span>
+  <span class="doodle" style="top:150px;left:20px">💛</span>
+  <div style="text-align:center;margin-top:56px">
+    <svg class="panda" style="margin-bottom:8px" viewBox="0 0 100 100">
+      <path d="M50 15 Q52 6 57 4" stroke="#443A32" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <path d="M31 26 Q21 9 37 11 Q36 19 31 26 Z" fill="#443A32" stroke="#443A32" stroke-width="2.5"/>
+      <path d="M69 26 Q79 9 63 11 Q64 19 69 26 Z" fill="#443A32" stroke="#443A32" stroke-width="2.5"/>
+      <circle cx="50" cy="45" r="26" fill="#fff" stroke="#443A32" stroke-width="3"/>
+      <path d="M35 41 Q40 33 47 40 Q46 48 40 49 Q35 47 35 41 Z" fill="#443A32"/>
+      <path d="M65 41 Q60 33 53 40 Q54 48 60 49 Q65 47 65 41 Z" fill="#443A32"/>
+      <circle cx="42" cy="43.5" r="2.6" fill="#FBF3E4"/><circle cx="58" cy="43.5" r="2.6" fill="#FBF3E4"/>
+      <path d="M47 57 Q50 60 53 57" stroke="#443A32" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <ellipse cx="33" cy="52" rx="4.5" ry="2.8" fill="#F49CB4" opacity=".75"/>
+      <ellipse cx="67" cy="52" rx="4.5" ry="2.8" fill="#F49CB4" opacity=".75"/>
+    </svg>
+    <div style="font-family:'Zhi Mang Xing','STKaiti','KaiTi',cursive;font-size:44px">AA分账</div>
+    <div class="mini dim" style="margin-top:2px">一起吃饭，轻松AA～</div>
+  </div>
+  <div style="margin-top:44px">
+    <div class="line"><span class="dim">账户名</span><b>tuanzi_t</b></div>
+    <div class="line"><span class="dim">密码</span><b>••••••••</b></div>
+    <div style="display:flex;align-items:center;gap:8px;margin:14px 2px" onclick="this.querySelector('.cbx').classList.toggle('on')">
+      <span class="cbx on"></span><span class="mini">记住我</span>
+    </div>
+    <button class="btn primary big" style="margin-top:10px" onclick="go('s-home')">登 录🐾</button>
+    <div style="display:flex;justify-content:space-between;margin-top:16px;padding:0 6px">
+      <span class="mini dim" style="border-bottom:2px solid var(--marker);background:linear-gradient(transparent 55%, var(--marker) 55%);padding:1px 4px;cursor:pointer" onclick="go('s-p04')">忘记密码？</span>
+      <span class="mini" style="border-bottom:2px dashed var(--ink);padding:1px 4px;cursor:pointer" onclick="go('s-p03')">注册新账户 →</span>
+    </div>
+  </div>
+</section>
+
+<!-- 03 注册页 -->
+<section class="screen" id="s-p03">
+  <div class="nav"><span class="back" onclick="go('s-login')">‹ 返回</span><h2>✏️ 注册新账户</h2><span class="ic">🎨</span></div>
+  <span class="doodle" style="top:70px;right:20px">🐾</span>
+  <div class="card" style="padding:4px 14px">
+    <div class="line"><span class="dim">账户名</span><b>tuanzi_t <span class="chip g" style="padding:2px 8px">✅ 可用</span></b></div>
+    <div class="line"><span class="dim">昵称（选填）</span><b>团子酱</b></div>
+    <div class="line"><span class="dim">密码（≥6位）</span><b>••••••••</b></div>
+    <div class="line"><span class="dim">确认密码</span><b>••••••••</b></div>
+  </div>
+  <div class="card" style="padding:12px 14px">
+    <div class="mini dim" style="margin-bottom:6px">🔐 找回密码用（忘记手机号也不怕）</div>
+    <div class="line"><span class="dim">安全问题</span><b>你第一个朋友的名字？▾</b></div>
+    <div class="line" style="border-bottom:none"><span class="dim">答案</span><b>小虎</b></div>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;padding:4px 4px 10px" onclick="this.querySelector('.cbx').classList.toggle('on')">
+    <span class="cbx on"></span><span class="mini">已阅读并同意《用户协议》《隐私政策》</span>
+  </div>
+  <button class="btn primary big" onclick="toast('🎉 欢迎加入AA分账！');setTimeout(function(){go('s-home')},900)">注册并开始 🎉</button>
+</section>
+
+<!-- 04 忘记密码 -->
+<section class="screen" id="s-p04">
+  <div class="nav"><span class="back" onclick="go('s-login')">‹ 返回</span><h2>🔍 忘记密码</h2><span class="ic">🕵️</span></div>
+  <div class="card" style="text-align:center">
+    <div class="tape"></div>
+    <div style="font-size:44px">🕵️</div>
+    <div style="font-size:15px;margin-top:4px">团团侦探出马！<br><span class="mini dim">回答注册时的安全问题即可找回</span></div>
+  </div>
+  <div class="card" style="padding:4px 14px">
+    <div class="line"><span class="dim">账户名</span><b>tuanzi_t</b></div>
+  </div>
+  <div class="card" style="padding:12px 14px">
+    <div class="mini dim" style="margin-bottom:4px">📋 你的安全问题</div>
+    <div style="font-size:16px"><b>你第一个朋友的名字？</b></div>
+    <div class="line" style="border-bottom:none;margin-top:8px"><span class="dim">答案</span><b>小虎</b></div>
+  </div>
+  <button class="btn primary big" onclick="go('s-p05')">下一步：验证答案 →</button>
+</section>
+
+<!-- 05 重设密码 -->
+<section class="screen" id="s-p05">
+  <div class="nav"><span class="back" onclick="go('s-p04')">‹ 返回</span><h2>🔑 重设密码</h2><span class="ic">✔️</span></div>
+  <div class="card" style="padding:4px 14px">
+    <div class="line"><span class="dim">新密码</span><b>••••••••</b></div>
+    <div class="line" style="border-bottom:none"><span class="dim">确认新密码</span><b>••••••••</b></div>
+  </div>
+  <button class="btn primary big" onclick="toast('✅ 密码已重置，请重新登录');setTimeout(function(){go('s-login')},900)">重置密码并去登录 👍</button>
+  <div style="text-align:center;margin-top:14px" class="mini dim">💪 新密码要字母+数字哦</div>
+</section>
+
+<!-- 11 总览首页 -->
+<section class="screen" id="s-home">
+  <div class="nav"><h2>早上好，团子酱 👋</h2><span class="ic" onclick="go('s-p60')">🔍</span></div>
+  <div class="card tilt">
+    <div class="tape"></div>
+    <div style="font-size:13px" class="dim">我的净额</div>
+    <div class="amount neg"><span class="yen">¥</span>-86.50</div>
+    <div style="display:flex;gap:10px;margin:6px 0 10px">
+      <span class="chip g">应收 +¥120.00</span><span class="chip o">应付 -¥206.50</span>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn primary mini" onclick="go('s-settle')">去结算</button>
+      <button class="btn mini" onclick="go('s-p12')">查看明细</button>
+    </div>
+    <svg class="panda sm" style="position:absolute;right:6px;bottom:2px;width:64px;height:64px" viewBox="0 0 100 100">
+      <path d="M50 15 Q52 6 57 4" stroke="#443A32" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <path d="M31 26 Q21 9 37 11 Q36 19 31 26 Z" fill="#443A32" stroke="#443A32" stroke-width="2.5"/>
+      <path d="M69 26 Q79 9 63 11 Q64 19 69 26 Z" fill="#443A32" stroke="#443A32" stroke-width="2.5"/>
+      <circle cx="50" cy="45" r="26" fill="#fff" stroke="#443A32" stroke-width="3"/>
+      <path d="M35 41 Q40 33 47 40 Q46 48 40 49 Q35 47 35 41 Z" fill="#443A32"/>
+      <path d="M65 41 Q60 33 53 40 Q54 48 60 49 Q65 47 65 41 Z" fill="#443A32"/>
+      <circle cx="42" cy="43.5" r="2.6" fill="#FBF3E4"/><circle cx="58" cy="43.5" r="2.6" fill="#FBF3E4"/>
+      <path d="M47 57 Q50 60 53 57" stroke="#443A32" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <ellipse cx="33" cy="52" rx="4.5" ry="2.8" fill="#F49CB4" opacity=".75"/>
+      <ellipse cx="67" cy="52" rx="4.5" ry="2.8" fill="#F49CB4" opacity=".75"/>
+    </svg>
+  </div>
+  <div class="sect"><span>快捷入口</span><em>🔜</em></div>
+  <div style="display:flex;gap:10px">
+    <div style="flex:1;text-align:center;cursor:pointer" onclick="go('s-bill')">
+      <div style="width:56px;height:56px;margin:0 auto;border:2.5px solid var(--ink);border-radius:50% 46% 52% 48%;background:#FFFDF6;display:flex;align-items:center;justify-content:center;font-size:24px;box-shadow:3px 3px 0 rgba(68,58,50,.2)">✏️</div>
+      <div class="mini" style="margin-top:5px">记一笔</div>
+    </div>
+    <div style="flex:1;text-align:center;cursor:pointer" onclick="go('s-p22')">
+      <div style="width:56px;height:56px;margin:0 auto;border:2.5px solid var(--ink);border-radius:48% 52% 46% 54%;background:#FFFDF6;display:flex;align-items:center;justify-content:center;font-size:24px;box-shadow:3px 3px 0 rgba(68,58,50,.2)">👥</div>
+      <div class="mini" style="margin-top:5px">邀请朋友</div>
+    </div>
+    <div style="flex:1;text-align:center;cursor:pointer" onclick="go('s-p26')">
+      <div style="width:56px;height:56px;margin:0 auto;border:2.5px solid var(--ink);border-radius:52% 48% 54% 46%;background:#FFFDF6;display:flex;align-items:center;justify-content:center;font-size:24px;box-shadow:3px 3px 0 rgba(68,58,50,.2)">📢</div>
+      <div class="mini" style="margin-top:5px">催款</div>
+    </div>
+  </div>
+  <div class="sect"><span>最近账单</span><em>🍃</em></div>
+  <div class="card tap" style="padding:12px;display:flex;align-items:center;gap:10px" onclick="go('s-p14')">
+    <div class="ava">🍜</div>
+    <div style="flex:1"><div>今晚聚餐</div><div class="mini dim">饭友群 · 3人AA · 5天前</div></div>
+    <span class="amount" style="font-size:24px">¥55</span>
+    <span class="stamp money">待结算</span>
+  </div>
+  <div class="card tap" style="padding:12px;display:flex;align-items:center;gap:10px" onclick="go('s-p14')">
+    <div class="ava">✈️</div>
+    <div style="flex:1"><div>重庆旅行</div><div class="mini dim">旅行团 · 4人 · 2周前</div></div>
+    <span class="amount" style="font-size:24px">¥320</span>
+    <span class="stamp done">✅已结清</span>
+  </div>
+  <div style="text-align:center;cursor:pointer" class="mini dim" onclick="go('s-p12')">— 查看更多账单 →</div>
+</section>
+
+<!-- 12 账单记录列表 -->
+<section class="screen" id="s-p12">
+  <div class="nav"><span class="back" onclick="go('s-home')">‹ 返回</span><h2>📒 全部账单</h2><span class="ic" onclick="go('s-p13')">📊</span></div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px">
+    <span class="chip sel">全部</span><span class="chip">我付款的</span><span class="chip">摊给我的</span><span class="chip o">待结算</span>
+  </div>
+  <div class="sect"><span>6月</span><em>🌤</em></div>
+  <div class="card tap" style="padding:12px;display:flex;align-items:center;gap:10px" onclick="go('s-p14')">
+    <div class="ava">🍜</div>
+    <div style="flex:1"><div>今晚聚餐</div><div class="mini dim">饭友群 · 06-01</div></div>
+    <span class="amount" style="font-size:22px">¥220</span><span class="stamp money">待结算</span>
+  </div>
+  <div class="card tap" style="padding:12px;display:flex;align-items:center;gap:10px" onclick="go('s-p14')">
+    <div class="ava">🚕</div>
+    <div style="flex:1"><div>高铁站打车</div><div class="mini dim">旅行团 · 05-28</div></div>
+    <span class="amount" style="font-size:22px">¥38</span><span class="stamp done">已结清</span>
+  </div>
+  <div class="sect"><span>5月</span><em>🌸</em></div>
+  <div class="card tap" style="padding:12px;display:flex;align-items:center;gap:10px" onclick="go('s-p14')">
+    <div class="ava">🏠</div>
+    <div style="flex:1"><div>5月房租</div><div class="mini dim">合租小窝 · 定期</div></div>
+    <span class="amount" style="font-size:22px">¥1,500</span><span class="stamp done">已结清</span>
+  </div>
+  <div class="card tap" style="padding:12px;display:flex;align-items:center;gap:10px" onclick="go('s-p14')">
+    <div class="ava">🎬</div>
+    <div style="flex:1"><div>电影票×4</div><div class="mini dim">饭友群 · 05-20</div></div>
+    <span class="amount" style="font-size:22px">¥160</span><span class="stamp done">已结清</span>
+  </div>
+</section>
+
+<!-- 13 统计页 -->
+<section class="screen" id="s-p13">
+  <div class="nav"><span class="back" onclick="go('s-p12')">‹ 返回</span><h2>📊 统计</h2><span class="ic">🌗</span></div>
+  <div style="display:flex;gap:8px"><span class="chip">本季</span><span class="chip sel">本年</span></div>
+  <div class="card">
+    <div class="tape mint"></div>
+    <div style="font-size:14px">🗓 月度消费趋势</div>
+    <div class="bars">
+      <div class="bcol"><div class="bar" style="height:38%"><i>💛</i><em>380</em></div><span class="mini dim">1月</span></div>
+      <div class="bcol"><div class="bar" style="height:52%"><i>⭐</i><em>520</em></div><span class="mini dim">2月</span></div>
+      <div class="bcol"><div class="bar" style="height:44%"><i>💛</i><em>440</em></div><span class="mini dim">3月</span></div>
+      <div class="bcol"><div class="bar" style="height:66%"><i>⭐</i><em>660</em></div><span class="mini dim">4月</span></div>
+      <div class="bcol"><div class="bar" style="height:58%"><i>💛</i><em>580</em></div><span class="mini dim">5月</span></div>
+      <div class="bcol"><div class="bar" style="height:80%;background:repeating-linear-gradient(0deg,rgba(68,58,50,.1) 0 4px,transparent 4px 9px),#FFE8C2"><i>❤️</i><em>800</em></div><span class="mini dim">6月</span></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="tape sky"></div>
+    <div style="font-size:14px">🍩 分类占比（甜甜圈）</div>
+    <div class="donut-wrap" style="margin-top:10px">
+      <div style="width:132px;height:132px;border-radius:50%;border:2.5px solid var(--ink);background:conic-gradient(#FF8C69 0 34%, #FFD166 34% 52%, #8FCE9F 52% 74%, #7EC4E8 74% 88%, #B79CE0 88% 100%);position:relative;flex-shrink:0">
+        <div style="position:absolute;inset:27%;background:var(--paper);border-radius:50%;border:2.5px solid var(--ink);display:flex;align-items:center;justify-content:center;font-size:12px">¥3,420</div>
+      </div>
+      <div style="font-size:12px;line-height:2">
+        🍜 餐饮 34%　🚕 交通 18%<br>🏠 住宿 22%　🛍 购物 14%<br>🎮 娱乐 12%
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 14 账单详情 -->
+<section class="screen" id="s-p14">
+  <div class="nav"><span class="back" onclick="go('s-group')">‹ 返回</span><h2>🧾 账单详情</h2><span class="ic">✏️ 编辑</span></div>
+  <div class="card" style="text-align:center">
+    <div class="tape"></div>
+    <div style="font-size:22px">今晚聚餐 🍜</div>
+    <div class="amount neg" style="margin:6px 0"><span class="yen">¥</span>220.00</div>
+    <div class="mini dim">2025-06-01 · 饭友群 · 餐饮</div>
+  </div>
+  <div style="display:flex;justify-content:center;gap:14px;margin:14px 0">
+    <div class="polaroid"><div class="img">🍲</div><div class="mini dim" style="text-align:center;margin-top:4px">06-01 小票📷</div></div>
+    <div class="polaroid" style="transform:rotate(2deg)"><div class="img">🧾</div><div class="mini dim" style="text-align:center;margin-top:4px">结账单</div></div>
+  </div>
+  <div class="card" style="padding:4px 14px">
+    <div class="line"><span class="dim">垫付人</span><b>我 <span class="mini dim">（已垫付 ¥220）</span></b></div>
+    <div class="line"><span class="dim">分摊方式</span><b>均摊 ¥55.00 / 人</b></div>
+  </div>
+  <div class="card" style="padding:12px 14px">
+    <div style="font-size:14px;margin-bottom:6px">👥 谁还没付？</div>
+    <div class="line"><span>✓ 我（已付）</span><span class="chip g" style="padding:2px 8px">已付</span></div>
+    <div class="line"><span>○ 张三</span><span class="chip o" style="padding:2px 8px">未付 ¥55</span></div>
+    <div class="line"><span>○ 李四</span><span class="chip o" style="padding:2px 8px">未付 ¥55</span></div>
+    <div class="line" style="border-bottom:none"><span>○ 王五</span><span class="chip o" style="padding:2px 8px">未付 ¥55</span></div>
+  </div>
+  <div style="display:flex;gap:10px">
+    <button class="btn mini" style="flex:1" onclick="go('s-p26')">📢 催款</button>
+    <button class="btn primary mini" style="flex:1" onclick="toast('✅ 已标记张三已付');setTimeout(function(){go('s-group')},800)">✓ 标记已付</button>
+  </div>
+</section>
+
+<!-- 20 群组列表 -->
+<section class="screen" id="s-p20">
+  <div class="nav"><h2>👥 我的群组</h2><span class="ic" onclick="go('s-p60')">🔍</span></div>
+  <div class="card tap" style="padding:10px 12px;display:flex;align-items:center;gap:10px" onclick="go('s-p22')">
+    <div class="ava" style="background:#FFF1EA">📮</div>
+    <div style="flex:1"><b>邀请朋友来AA</b><div class="mini dim">发送邀请链接/二维码</div></div>
+    <span class="arrow-r">→</span>
+  </div>
+  <div class="sect"><span>最近</span><em>📔</em></div>
+  <div class="card tap" style="padding:12px;display:flex;align-items:center;gap:10px" onclick="go('s-group')">
+    <div class="ava" style="background:#EDF7EE">🍜</div>
+    <div style="flex:1"><div>饭友群</div><div class="mini dim">6个小伙伴 · 3笔待清</div></div>
+    <span class="stamp money">3笔待清</span>
+  </div>
+  <div class="card tap" style="padding:12px;display:flex;align-items:center;gap:10px" onclick="go('s-group')">
+    <div class="ava" style="background:#F0F6FB">✈️</div>
+    <div style="flex:1"><div>旅行团</div><div class="mini dim">4个小伙伴 · 已清账</div></div>
+    <span class="stamp done">✅已清</span>
+  </div>
+  <div class="card tap" style="padding:12px;display:flex;align-items:center;gap:10px" onclick="go('s-group')">
+    <div class="ava" style="background:#F7F0FB">🏠</div>
+    <div style="flex:1"><div>合租小窝</div><div class="mini dim">3个小伙伴 · 1笔待清</div></div>
+    <span class="stamp money">1笔待清</span>
+  </div>
+  <button class="btn primary big" style="margin-top:12px" onclick="go('s-p21')">＋ 创建群组</button>
+</section>
+
+<!-- 21 创建群组 -->
+<section class="screen" id="s-p21">
+  <div class="nav"><span class="back" onclick="go('s-p20')">‹ 返回</span><h2>🏕 创建群组</h2><span class="ic">🎨</span></div>
+  <div style="text-align:center;margin-top:6px">
+    <div class="mini dim" style="margin-bottom:6px">选一个队伍头像：</div>
+    <div style="display:flex;gap:10px;justify-content:center">
+      <div class="ava" style="background:var(--marker);font-size:26px">🐼</div>
+      <div class="ava" style="font-size:26px">🐶</div>
+      <div class="ava" style="font-size:26px">🐱</div>
+      <div class="ava" style="font-size:26px">🐰</div>
+      <div class="ava" style="font-size:26px">🦊</div>
+    </div>
+  </div>
+  <div class="card" style="padding:4px 14px;margin-top:14px">
+    <div class="line"><span class="dim">群组名称</span><b>饭友群</b></div>
+    <div class="line"><span class="dim">简介（选填）</span><b>干饭第一名！</b></div>
+    <div class="line" style="border-bottom:none"><span class="dim">默认分摊</span><b>均摊 ▾</b></div>
+  </div>
+  <button class="btn primary big" onclick="toast('🍡 群组创建成功！');setTimeout(function(){go('s-group')},900)">创建，拉上小伙伴 →</button>
+</section>
+
+<!-- 22 邀请成员 -->
+<section class="screen" id="s-p22">
+  <div class="nav"><span class="back" onclick="go('s-p20')">‹ 返回</span><h2>📮 邀请成员</h2><span class="ic">🎁</span></div>
+  <div class="card" style="text-align:center">
+    <div class="tape"></div>
+    <div style="font-size:14px;margin-bottom:10px">扫一扫 / 点链接 加入「饭友群」</div>
+    <div style="display:flex;justify-content:center">
+      <svg class="qr" viewBox="0 0 100 100" width="150" height="150">
+        <g stroke="#443A32" stroke-width="3" fill="none">
+          <rect x="4" y="4" width="26" height="26"/><rect x="70" y="4" width="26" height="26"/><rect x="4" y="70" width="26" height="26"/>
+        </g>
+        <g fill="#443A32">
+          <rect x="10" y="10" width="14" height="14"/><rect x="76" y="10" width="14" height="14"/><rect x="10" y="76" width="14" height="14"/>
+          <rect x="40" y="8" width="8" height="8"/><rect x="54" y="14" width="7" height="7"/><rect x="62" y="28" width="9" height="9"/>
+          <rect x="40" y="30" width="8" height="8"/><rect x="34" y="48" width="9" height="9"/><rect x="52" y="46" width="7" height="7"/>
+          <rect x="64" y="56" width="8" height="8"/><rect x="40" y="62" width="8" height="8"/><rect x="56" y="70" width="7" height="7"/>
+          <rect x="42" y="80" width="9" height="9"/><rect x="67" y="80" width="8" height="8"/><rect x="82" y="64" width="8" height="8"/>
+        </g>
+      </svg>
+    </div>
+    <div style="font-size:12px;margin-top:10px" class="dim">aafen://join/FFQ2025</div>
+    <div style="display:flex;gap:8px;justify-content:center;margin-top:10px">
+      <button class="btn mini" onclick="toast('📋 邀请链接已复制')">复制链接</button>
+      <button class="btn mini" onclick="toast('🖼 已保存到相册')">保存二维码</button>
+      <button class="btn mini" onclick="toast('📤 分享到微信')">分享</button>
+    </div>
+  </div>
+  <div class="card" style="padding:4px 14px">
+    <div class="line"><span class="dim">方式二：账户名直加</span><b>🔍 输入对方账户名</b></div>
+    <div class="line" style="border-bottom:none"><span class="dim">已添加</span><b>张三 ✓　李四 ✓</b></div>
+  </div>
+  <button class="btn primary big" onclick="go('s-group')">完成，进入群组 →</button>
+</section>
+
+<!-- 23 群组详情 -->
+<section class="screen" id="s-group">
+  <div class="nav"><span class="back" onclick="go('s-p20')">‹ 饭友群</span><span class="ic" onclick="go('s-p27')">⚙️</span></div>
+  <div class="card tilt">
+    <div class="tape"></div>
+    <div style="font-size:13px" class="dim">群总账</div>
+    <div style="display:flex;align-items:baseline;gap:8px">
+      <span class="amount" style="font-size:34px"><span class="yen">¥</span>3,420.00</span>
+      <span class="mini dim">人均 ¥855 / 4人</span>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">
+      <span class="chip t">我 · 已平 0</span><span class="chip g">小明 +120</span><span class="chip o">小红 -50</span><span class="chip o">阿强 -70</span>
+    </div>
+    <button class="btn primary big" onclick="go('s-settle')">✨ 一键智能结算</button>
+  </div>
+  <div class="sect"><span>成员</span><em>🐾</em></div>
+  <div style="display:flex;gap:10px;align-items:center">
+    <div class="ava" style="width:52px;height:52px;font-size:26px;background:#FFF1EA">🐼</div>
+    <div class="ava" style="width:52px;height:52px;font-size:26px;background:#EDF7EE">🐶</div>
+    <div class="ava" style="width:52px;height:52px;font-size:26px;background:#F0F6FB">🐱</div>
+    <div class="ava" style="width:52px;height:52px;font-size:26px;background:#F7F0FB">🐰</div>
+    <span class="mini dim" style="cursor:pointer" onclick="go('s-p24')">管理成员→</span>
+  </div>
+  <div class="sect"><span>账单流水</span><em>🧾</em></div>
+  <div class="card tap" style="padding:10px 12px;display:flex;align-items:center;gap:10px" onclick="go('s-p14')">
+    <div class="ava">🍜</div>
+    <div style="flex:1"><div>06-01 今晚聚餐</div><div class="mini dim">¥220 · 均摊¥55/人</div></div>
+    <span class="stamp done">已结清</span>
+  </div>
+  <div class="card tap" style="padding:10px 12px;display:flex;align-items:center;gap:10px" onclick="go('s-p14')">
+    <div class="ava">🚕</div>
+    <div style="flex:1"><div>05-28 打车</div><div class="mini dim">¥38 · 均摊</div></div>
+    <span class="stamp money">待结算</span>
+  </div>
+  <div class="card tap" style="padding:10px 12px;display:flex;align-items:center;gap:10px" onclick="go('s-p14')">
+    <div class="ava">🎂</div>
+    <div style="flex:1"><div>05-26 火锅</div><div class="mini dim">¥310 · 张三<span class="hl minty">请客全免</span></div></div>
+    <span class="stamp done">已结清</span>
+  </div>
+  <button class="btn big" style="margin-top:4px" onclick="go('s-bill')">✏️ + 记一笔</button>
+</section>
+
+<!-- 24 成员管理 -->
+<section class="screen" id="s-p24">
+  <div class="nav"><span class="back" onclick="go('s-group')">‹ 返回</span><h2>👑 成员管理</h2><span class="ic">➕</span></div>
+  <div class="card" style="padding:4px 14px">
+    <div class="line"><span>🐼 我 <span class="mini dim">@tuanzi_t</span></span><b>👑 群主</b></div>
+    <div class="line"><span>🐶 小明 <span class="mini dim">@xiaoming</span></span><span class="mini"><span class="chip t" style="padding:2px 8px">正常</span> 👑<span class="dim">转让</span></span></div>
+    <div class="line"><span>🐱 小红 <span class="mini dim">@xiaohong</span></span><span class="mini"><span class="chip t" style="padding:2px 8px">正常</span> ✗<span class="dim">移除</span></span></div>
+    <div class="line"><span>🐰 李四 <span class="mini dim">@lisi</span></span><span class="mini"><span class="chip t" style="padding:2px 8px">正常</span> ✗<span class="dim">移除</span></span></div>
+    <div class="line" style="border-bottom:none"><span>🐻 王五 <span class="mini dim">@wangwu</span></span><span class="mini"><span class="chip t" style="padding:2px 8px">正常</span> ✗<span class="dim">移除</span></span></div>
+  </div>
+  <button class="btn big" onclick="go('s-p22')">＋ 添加成员</button>
+  <button class="btn danger big" style="margin-top:10px" onclick="toast('👋 已退出「饭友群」');setTimeout(function(){go('s-p20')},900)">退出群组（账单仍保留）</button>
+</section>
+
+<!-- 25 智能结算 -->
+<section class="screen" id="s-settle">
+  <div class="nav"><span class="back" onclick="go('s-group')">‹ 返回</span><h2>✨ 一键智能结算</h2><span class="ic">🧮</span></div>
+  <div class="card" style="text-align:center;background:var(--marker)">
+    <div class="tape sky"></div>
+    <div style="font-size:26px">🎉 最少 <span class="amount neg" style="font-size:30px">3</span> 笔清账！</div>
+    <div class="mini dim" style="margin-top:4px">团团帮你算好了，按这个转就行</div>
+  </div>
+  <div class="card" style="display:flex;align-items:center;gap:10px">
+    <div class="ava" style="background:#F0F6FB">🐶</div>
+    <div style="flex:1">
+      <div class="mini dim">王五 → 我</div>
+      <div class="amount" style="font-size:30px"><span class="yen">¥</span>86.50</div>
+      <div class="mini dim">今晚聚餐 · 已催1次</div>
+    </div>
+    <svg viewBox="0 0 40 24" style="width:44px;height:26px;stroke:var(--ink);fill:none;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round"><path d="M3 14 Q16 4 30 11"/><path d="M24 8 L33 11.4 L26 16"/></svg>
+    <span class="chip o">待付</span>
+  </div>
+  <div class="card" style="display:flex;align-items:center;gap:10px">
+    <div class="ava" style="background:#EDF7EE">🐱</div>
+    <div style="flex:1">
+      <div class="mini dim">张三 → 我</div>
+      <div class="amount" style="font-size:30px"><span class="yen">¥</span>55.00</div>
+      <div class="mini dim">今晚聚餐</div>
+    </div>
+    <svg viewBox="0 0 40 24" style="width:44px;height:26px;stroke:var(--ink);fill:none;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round"><path d="M3 14 Q16 4 30 11"/><path d="M24 8 L33 11.4 L26 16"/></svg>
+    <span class="chip o">待付</span>
+  </div>
+  <div class="card" style="display:flex;align-items:center;gap:10px">
+    <div class="ava" style="background:#FFF1EA">🐼</div>
+    <div style="flex:1">
+      <div class="mini dim">我 → 李四</div>
+      <div class="amount" style="font-size:30px"><span class="yen">¥</span>120.00</div>
+      <div class="mini dim">重庆旅行 · 机票</div>
+    </div>
+    <svg viewBox="0 0 40 24" style="width:44px;height:26px;stroke:var(--ink);fill:none;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round"><path d="M3 14 Q16 4 30 11"/><path d="M24 8 L33 11.4 L26 16"/></svg>
+    <span class="chip g">我去付</span>
+  </div>
+  <div style="display:flex;gap:10px;margin:10px 0">
+    <button class="btn ghost mini" style="flex:1" onclick="toast('💬 转账文案已复制')">💬 复制转账文案</button>
+    <button class="btn ghost mini" style="flex:1" onclick="toast('📱 收款码卡片已生成')">📱 收款码卡片</button>
+  </div>
+  <button class="btn primary big" onclick="go('s-p26')">📢 开始催款</button>
+  <div style="text-align:center;margin-top:8px" class="mini dim">🔀 已选：最少笔数模式 · 切换到逐笔结算</div>
+</section>
+
+<!-- 26 催款页 -->
+<section class="screen" id="s-p26">
+  <div class="nav"><span class="back" onclick="go('s-settle')">‹ 返回</span><h2>📢 催款</h2><span class="ic">💌</span></div>
+  <div class="mini dim" style="margin:4px 0">选一选还没付的小伙伴（默认全选）：</div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin:8px 0">
+    <div class="chip sel" style="font-size:15px;padding:7px 14px">🐶 张三 💰</div>
+    <div class="chip sel" style="font-size:15px;padding:7px 14px">🐱 李四 💰</div>
+    <div class="chip" style="font-size:15px;padding:7px 14px">🐰 王五</div>
+  </div>
+  <div class="card" style="padding:12px 14px">
+    <div class="tape pink"></div>
+    <div class="mini dim" style="margin-bottom:6px">催款小纸条（可编辑）</div>
+    <div style="font-size:14px;line-height:1.7">
+      嗨～<b>张三</b>，上一笔AA（<b>今晚聚餐</b>）你还没付哦，<span class="hl">¥55.00</span>，记得转我一下 🙏<br>
+      <span class="mini dim">— 团子酱</span>
+    </div>
+  </div>
+  <button class="btn primary big" onclick="toast('✈️ 催款已发给张三·李四');setTimeout(function(){go('s-msg')},900)">发送催款 ✈️</button>
+  <div style="text-align:center;margin-top:10px" class="mini dim">已催过 1 次 · 发送后对方会收到🔔提醒</div>
+</section>
+
+<!-- 27 群组设置 -->
+<section class="screen" id="s-p27">
+  <div class="nav"><span class="back" onclick="go('s-group')">‹ 返回</span><h2>⚙️ 群组设置</h2><span class="ic">🛠</span></div>
+  <div class="card" style="padding:4px 14px">
+    <div class="line"><span class="dim">群组信息</span><b>✏️ 头像/名称/简介</b></div>
+    <div class="line"><span class="dim">默认分摊方式</span><b>均摊 ▾</b></div>
+    <div class="line"><span class="dim">新账单@全部成员</span><span class="swt on" onclick="this.classList.toggle('on')"></span></div>
+    <div class="line"><span class="dim">免分摊人员默认</span><b>无 ▾</b></div>
+  </div>
+  <button class="btn big" onclick="toast('💾 已保存设置');setTimeout(function(){go('s-group')},800)">保存设置</button>
+  <button class="btn danger big" style="margin-top:10px" onclick="toast('⚠️ 解散需输入群组名确认（示例）')">🔥 解散群组</button>
+</section>
+
+<!-- 30 记一笔 -->
+<section class="screen" id="s-bill">
+  <div class="nav"><h2>✏️ 记一笔</h2><span class="ic" onclick="go('s-p33')">📷</span></div>
+  <span class="doodle" style="top:70px;right:10px">💰</span>
+  <div style="text-align:center;margin:18px 0 6px">
+    <span style="font-family:'Zhi Mang Xing','STKaiti','KaiTi',cursive;font-size:40px;margin-right:6px">¥</span>
+    <span class="amount" style="font-size:58px">220</span><span class="amount" style="font-size:58px">.00</span>
+    <div style="width:60%;height:3px;margin:2px auto 10px;background:repeating-linear-gradient(90deg,var(--ink) 0 10px,transparent 10px 15px);border-radius:2px"></div>
+    <span class="chip o" style="font-size:13px">4人 × <span class="hl">¥55.00</span> 均摊</span>
+  </div>
+  <div class="card" style="padding:4px 14px;margin-top:16px">
+    <div class="line"><span class="dim">标题</span><b>今晚聚餐</b></div>
+    <div class="line"><span class="dim">日期</span><b>6月1日 ▾</b></div>
+    <div class="line"><span class="dim">群组</span><b>饭友群 ▾</b></div>
+    <div class="line"><span class="dim">分类</span><b>🍜 餐饮 ▾</b></div>
+    <div class="line"><span class="dim">垫付人</span><b>我 ▾</b></div>
+    <div class="line tap" onclick="go('s-p32')"><span class="dim">参与者</span><b>4人 ▾</b></div>
+    <div class="line tap" onclick="go('s-p31')"><span class="dim">分摊方式</span><b>均摊 ¥55/人 ▾</b></div>
+    <div style="display:flex;align-items:center;gap:8px;padding:12px 2px;cursor:pointer" onclick="this.querySelector('.cbx').classList.toggle('on');go('s-p34')">
+      <span class="cbx"></span><span class="mini">⏰ 设为定期账单（每月自动生成）</span>
+    </div>
+  </div>
+  <button class="btn primary big" style="margin-top:8px" onclick="toast('🧾 已保存，等TA们摊钱咯~');setTimeout(function(){go('s-group')},900)">收下这张小票！✓</button>
+  <div style="text-align:center;margin-top:10px" class="mini dim">📷 拍照凭证 · 只要30秒就记好啦</div>
+</section>
+
+<!-- 31 分摊设置 -->
+<section class="screen" id="s-p31">
+  <div class="nav"><span class="back" onclick="go('s-bill')">‹ 返回</span><h2>🍕 分摊方式</h2><span class="ic">🧮</span></div>
+  <div class="opt sel" onclick="document.querySelectorAll('.opt').forEach(function(o){o.classList.remove('sel')});this.classList.add('sel')">
+    <span style="font-size:26px">🍕</span>
+    <div style="flex:1"><div>均摊（最常用）</div><div class="mini dim">每人 ¥<span class="hl">55.00</span> · 4人平分成4块披萨</div></div>
+    <span class="chip g">推荐</span>
+  </div>
+  <div class="opt" onclick="document.querySelectorAll('.opt').forEach(function(o){o.classList.remove('sel')});this.classList.add('sel')">
+    <span style="font-size:26px">✍️</span>
+    <div style="flex:1"><div>自定义金额</div><div class="mini dim">每人不同，如酒店各住不同天数</div></div>
+  </div>
+  <div class="opt" onclick="document.querySelectorAll('.opt').forEach(function(o){o.classList.remove('sel')});this.classList.add('sel')">
+    <span style="font-size:26px">🧈</span>
+    <div style="flex:1"><div>按比例分摊</div><div class="mini dim">按天数/里程占比自动算</div></div>
+  </div>
+  <div class="opt" onclick="document.querySelectorAll('.opt').forEach(function(o){o.classList.remove('sel')});this.classList.add('sel')">
+    <span style="font-size:26px">🏅</span>
+    <div style="flex:1"><div>免分摊人员</div><div class="mini dim">请客的人/司机不参与，剩余人重新算</div></div>
+    <span class="chip t">张三 · 全免</span>
+  </div>
+  <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 4px 10px">
+    <span class="mini dim">合计 ¥220.00 · 差额 <b>¥0</b></span>
+    <span class="chip g">✅ 校验通过</span>
+  </div>
+  <button class="btn primary big" onclick="go('s-bill')">生效，回到记账 🍕</button>
+</section>
+
+<!-- 32 选择参与人 -->
+<section class="screen" id="s-p32">
+  <div class="nav"><span class="back" onclick="go('s-bill')">‹ 返回</span><h2>👥 选择参与人</h2><span class="ic">🪄</span></div>
+  <div style="display:flex;gap:8px;margin-bottom:4px">
+    <span class="chip sel">全选</span><span class="chip">反选</span><span class="chip">仅我</span>
+  </div>
+  <div class="card" style="padding:4px 14px">
+    <div class="line"><span style="display:flex;align-items:center;gap:10px"><span class="ava" style="width:34px;height:34px;font-size:17px;background:#FFF1EA">🐼</span>我</span><span class="cbx on" onclick="this.classList.toggle('on')"></span></div>
+    <div class="line"><span style="display:flex;align-items:center;gap:10px"><span class="ava" style="width:34px;height:34px;font-size:17px;background:#EDF7EE">🐶</span>小明</span><span class="cbx on" onclick="this.classList.toggle('on')"></span></div>
+    <div class="line"><span style="display:flex;align-items:center;gap:10px"><span class="ava" style="width:34px;height:34px;font-size:17px;background:#F0F6FB">🐱</span>小红</span><span class="cbx on" onclick="this.classList.toggle('on')"></span></div>
+    <div class="line"><span style="display:flex;align-items:center;gap:10px"><span class="ava" style="width:34px;height:34px;font-size:17px;background:#F7F0FB">🐰</span>李四</span><span class="cbx on" onclick="this.classList.toggle('on')"></span></div>
+    <div class="line" style="border-bottom:none"><span class="dim" style="display:flex;align-items:center;gap:10px"><span class="ava" style="width:34px;height:34px;font-size:17px;background:#F4E8D3;opacity:.5">🐻</span>王五</span><span class="cbx" onclick="this.classList.toggle('on')"></span></div>
+  </div>
+  <div style="padding:4px 4px 10px" class="mini dim">已选 <b>4人</b> · 王五有事不参与</div>
+  <button class="btn primary big" onclick="go('s-bill')">确定（4人参加）✓</button>
+</section>
+
+<!-- 33 凭证拍照 -->
+<section class="screen" id="s-p33">
+  <div class="nav"><span class="back" onclick="go('s-bill')">‹ 返回</span><h2>📷 凭证拍照</h2><span class="ic">💡</span></div>
+  <div class="card" style="padding:14px;text-align:center">
+    <div style="height:210px;border:2.5px dashed var(--ink2);border-radius:10px 4px 9px 5px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;background:var(--paper2)">
+      <div style="font-size:56px">📷</div>
+      <div style="font-size:15px">对准小票/截图</div>
+      <div class="mini dim">4:3 · 支持9张 · 自动压缩</div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:center;margin-top:10px">
+      <button class="btn mini">💡 闪光灯</button>
+      <button class="btn mini">🖼 从相册选</button>
+      <button class="btn primary mini">📸 拍一张</button>
+    </div>
+  </div>
+  <div class="mini dim" style="margin:4px 0">已拍 2 张：</div>
+  <div style="display:flex;gap:10px">
+    <div class="polaroid" style="width:110px"><div class="img" style="height:70px;font-size:26px">🍲</div></div>
+    <div class="polaroid" style="width:110px;transform:rotate(2deg)"><div class="img" style="height:70px;font-size:26px">🧾</div></div>
+  </div>
+  <button class="btn big" style="margin-top:12px" onclick="go('s-bill')">完成，回记账页 ✓</button>
+</section>
+
+<!-- 34 定期账单 -->
+<section class="screen" id="s-p34">
+  <div class="nav"><span class="back" onclick="go('s-bill')">‹ 返回</span><h2>⏰ 定期账单</h2><span class="ic">📅</span></div>
+  <div class="card" style="text-align:center">
+    <div class="tape"></div>
+    <div style="font-size:40px">📅</div>
+    <div style="font-size:16px">房租水电，每月一次记好多遍？<br><span class="hl">交给团团记着！</span></div>
+  </div>
+  <div class="mini dim" style="margin:4px 0">周期：</div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <span class="chip">每周</span><span class="chip">每两周</span><span class="chip sel">每月</span><span class="chip">自定义（每月5号）</span>
+  </div>
+  <div class="card" style="padding:4px 14px;margin-top:10px">
+    <div class="line"><span class="dim">固定金额</span><b>¥1,500.00</b></div>
+    <div class="line"><span class="dim">规则</span><b>饭友群 · 全员均摊</b></div>
+    <div class="line"><span class="dim">自动生成后通知</span><span class="swt on" onclick="this.classList.toggle('on')"></span></div>
+  </div>
+  <button class="btn primary big" onclick="toast('⏰ 已开启！每月5号自动生成');setTimeout(function(){go('s-bill')},900)">开启自动记账 ⏰</button>
+</section>
+
+<!-- 40 消息中心 -->
+<section class="screen" id="s-msg">
+  <div class="nav"><h2>消息中心 🔔</h2><span class="ic" onclick="go('s-p41')">⚙️</span></div>
+  <div class="sect"><span>今天</span><em>☀️</em></div>
+  <div class="card" style="border-color:var(--pink);background:#FFF6F8">
+    <div style="display:flex;align-items:center;gap:8px">
+      <span class="stamp money" style="padding:3px 8px">催款</span>
+      <div class="mini"><b>张三</b> 催你付 AA ¥55.00</div>
+    </div>
+    <div class="mini dim" style="margin-top:6px">来自：今晚聚餐 · 2小时前</div>
+    <button class="btn primary mini" style="margin-top:8px" onclick="go('s-p14')">去处理 ✓</button>
+  </div>
+  <div class="card tap" style="padding:12px;display:flex;align-items:center;gap:10px" onclick="go('s-p14')">
+    <span style="font-size:20px">🧾</span>
+    <div style="flex:1"><div>群「旅行团」新增账单</div><div class="mini dim">重庆机票 ¥1,200 · 昨天</div></div>
+    <span class="chip t">4人AA</span>
+  </div>
+  <div class="sect"><span>更早</span><em>🌙</em></div>
+  <div class="card" style="padding:12px">
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:20px">📥</span>
+      <div><b>小明</b> 邀请你加入「饭友群」</div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button class="btn mini" style="background:var(--mint)" onclick="toast('🎉 已加入饭友群');setTimeout(function(){go('s-group')},800)">接受 ✓</button>
+      <button class="btn mini">拒绝 ✗</button>
+    </div>
+  </div>
+  <div class="card" style="padding:12px;display:flex;align-items:center;gap:10px">
+    <span style="font-size:20px">🔔</span>
+    <div style="flex:1"><div>7月房租已生成</div><div class="mini dim">¥1,500 · 定期账单 · 全员均摊</div></div>
+  </div>
+</section>
+
+<!-- 41 提醒设置 -->
+<section class="screen" id="s-p41">
+  <div class="nav"><span class="back" onclick="go('s-msg')">‹ 返回</span><h2>🔔 提醒设置</h2><span class="ic">🌙</span></div>
+  <div class="card" style="padding:4px 14px">
+    <div class="line"><span>🧾 新账单提醒</span><span class="swt on" onclick="this.classList.toggle('on')"></span></div>
+    <div class="line"><span>📢 催款提醒</span><span class="swt on" onclick="this.classList.toggle('on')"></span></div>
+    <div class="line"><span>⏰ 定期账单提醒</span><span class="swt on" onclick="this.classList.toggle('on')"></span></div>
+    <div class="line"><span>👥 群组动态@我</span><span class="swt" onclick="this.classList.toggle('on')"></span></div>
+    <div class="line" style="border-bottom:none"><span>🌙 免打扰时段</span><b>22:00 - 08:00 ▾</b></div>
+  </div>
+  <button class="btn primary big" onclick="toast('💾 提醒设置已保存');setTimeout(function(){go('s-msg')},800)">保存设置</button>
+</section>
+
+<!-- 50 我的 -->
+<section class="screen" id="s-me">
+  <div class="nav"><h2>我的</h2><span class="ic">✏️</span></div>
+  <div style="text-align:center;margin-top:14px">
+    <div style="position:relative;width:86px;margin:0 auto">
+      <div class="ava wob" style="width:86px;height:86px;font-size:44px;background:#FFF1EA">🐼</div>
+      <span style="position:absolute;right:-6px;bottom:-2px;font-size:18px">📷</span>
+    </div>
+    <div style="font-size:22px;margin-top:8px">团子酱</div>
+    <div class="mini dim">@tuanzi_t</div>
+  </div>
+  <div class="card" style="display:flex;text-align:center;padding:12px">
+    <div style="flex:1"><div class="amount" style="font-size:26px">3</div><div class="mini dim">群组</div></div>
+    <div style="flex:1;border-left:2px dashed var(--ink);border-right:2px dashed var(--ink)"><div class="amount" style="font-size:26px">42</div><div class="mini dim">账单</div></div>
+    <div style="flex:1"><div class="amount" style="font-size:22px;padding-top:2px"><span class="yen">¥</span>8,530</div><div class="mini dim">累计AA</div></div>
+  </div>
+  <div class="card" style="padding:2px 14px">
+    <div class="line tap" onclick="go('s-p53')"><span>📤 数据导出</span><span class="arrow-r">→</span></div>
+    <div class="line tap" onclick="go('s-p52')"><span>🔒 账号安全</span><span class="arrow-r">→</span></div>
+    <div class="line tap" onclick="go('s-p51')"><span>⚙️ 设置</span><span class="arrow-r">→</span></div>
+    <div class="line tap" style="border-bottom:none" onclick="go('s-p54')"><span>💌 关于我们</span><span class="arrow-r">→</span></div>
+  </div>
+  <button class="btn danger big" style="margin-top:10px" onclick="toast('👋 下次再来玩呀');setTimeout(function(){go('s-login')},900)">退出登录「下次再来玩呀」</button>
+</section>
+
+<!-- 51 设置页 -->
+<section class="screen" id="s-p51">
+  <div class="nav"><span class="back" onclick="go('s-me')">‹ 返回</span><h2>⚙️ 设置</h2><span class="ic">🌗</span></div>
+  <div class="card" style="padding:4px 14px">
+    <div class="line tap" onclick="go('s-p41')"><span>🔔 通知设置</span><span class="arrow-r">→</span></div>
+    <div class="line"><span>🌗 深色模式</span><b>跟随系统 ▾</b></div>
+    <div class="line"><span>🔒 隐私设置</span><b>账单仅参与者可见 ▾</b></div>
+    <div class="line tap" onclick="go('s-p52')"><span>🔑 账号安全</span><span class="arrow-r">→</span></div>
+    <div class="line tap" onclick="go('s-p53')"><span>📤 数据导出</span><span class="arrow-r">→</span></div>
+    <div class="line tap" style="border-bottom:none" onclick="go('s-p54')"><span>💌 关于我们</span><span class="arrow-r">→</span></div>
+  </div>
+  <button class="btn danger big" style="margin-top:8px" onclick="go('s-login')">退出登录</button>
+</section>
+
+<!-- 52 账号安全 -->
+<section class="screen" id="s-p52">
+  <div class="nav"><span class="back" onclick="go('s-p51')">‹ 返回</span><h2>🔒 账号安全</h2><span class="ic">🛡</span></div>
+  <div class="card" style="padding:4px 14px">
+    <div class="mini dim" style="margin:4px 0">🔑 修改密码</div>
+    <div class="line"><span class="dim">当前密码</span><b>••••••••</b></div>
+    <div class="line"><span class="dim">新密码</span><b>••••••••</b></div>
+    <div class="line" style="border-bottom:none"><span class="dim">确认新密码</span><b>••••••••</b></div>
+  </div>
+  <div class="card" style="padding:4px 14px">
+    <div class="line"><span class="dim">修改安全问题</span><b>你第一个朋友的名字？ ▾</b></div>
+  </div>
+  <div class="card" style="padding:12px 14px">
+    <div class="mini dim" style="margin-bottom:4px">📱 登录设备</div>
+    <div class="line"><span>📱 iPhone 15 · 本机</span><span class="chip g">当前</span></div>
+    <div class="line" style="border-bottom:none"><span>💻 Mac Safari · 昨晚</span><span class="mini"><span class="chip o" style="padding:2px 8px">删除</span></span></div>
+  </div>
+  <button class="btn primary big" onclick="toast('🛡 已保存，记得保管好新密码哦');setTimeout(function(){go('s-p51')},800)">保存修改</button>
+</section>
+
+<!-- 53 数据导出 -->
+<section class="screen" id="s-p53">
+  <div class="nav"><span class="back" onclick="go('s-me')">‹ 返回</span><h2>📦 数据导出</h2><span class="ic">📤</span></div>
+  <div class="mini dim" style="margin:4px 0">导出范围：</div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <span class="chip">全部</span><span class="chip">按群组</span><span class="chip sel">按月份</span>
+  </div>
+  <div class="mini dim" style="margin:12px 0 4px">文件格式：</div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <span class="chip sel">Excel</span><span class="chip">CSV</span><span class="chip">PDF</span>
+  </div>
+  <div class="card" style="text-align:center;margin-top:16px">
+    <div class="tape mint"></div>
+    <div style="font-size:44px">🎒</div>
+    <div class="mini dim" style="margin-top:4px">团团正在打包你的账本…</div>
+    <div style="height:14px;border:2.5px solid var(--ink);border-radius:999px;background:#fff;margin:10px 0;overflow:hidden">
+      <div style="width:72%;height:100%;background:repeating-linear-gradient(90deg,var(--coral) 0 12px,transparent 12px 18px);border-right:2px solid var(--ink)"></div>
+    </div>
+  </div>
+  <button class="btn primary big" onclick="toast('📦 打包好啦！请查收')">开始导出 ✈️</button>
+  <div class="mini dim" style="margin:12px 0 4px">历史记录：</div>
+  <div class="card" style="padding:10px 12px;display:flex;justify-content:space-between;align-items:center">
+    <div class="mini">6月账单.xlsx · 6月1日</div><span class="chip g">已生成</span>
+  </div>
+</section>
+
+<!-- 54 关于页 -->
+<section class="screen" id="s-p54">
+  <div class="nav"><span class="back" onclick="go('s-me')">‹ 返回</span><h2>💌 关于我们</h2><span class="ic">🏷</span></div>
+  <div style="text-align:center;margin-top:26px">
+    <svg class="panda" style="width:110px;height:110px" viewBox="0 0 100 100">
+      <path d="M50 15 Q52 6 57 4" stroke="#443A32" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <path d="M31 26 Q21 9 37 11 Q36 19 31 26 Z" fill="#443A32" stroke="#443A32" stroke-width="2.5"/>
+      <path d="M69 26 Q79 9 63 11 Q64 19 69 26 Z" fill="#443A32" stroke="#443A32" stroke-width="2.5"/>
+      <circle cx="50" cy="45" r="26" fill="#fff" stroke="#443A32" stroke-width="3"/>
+      <path d="M35 41 Q40 33 47 40 Q46 48 40 49 Q35 47 35 41 Z" fill="#443A32"/>
+      <path d="M65 41 Q60 33 53 40 Q54 48 60 49 Q65 47 65 41 Z" fill="#443A32"/>
+      <circle cx="42" cy="43.5" r="2.6" fill="#FBF3E4"/><circle cx="58" cy="43.5" r="2.6" fill="#FBF3E4"/>
+      <path d="M47 57 Q50 60 53 57" stroke="#443A32" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <ellipse cx="33" cy="52" rx="4.5" ry="2.8" fill="#F49CB4" opacity=".75"/>
+      <ellipse cx="67" cy="52" rx="4.5" ry="2.8" fill="#F49CB4" opacity=".75"/>
+    </svg>
+    <div style="font-size:24px;margin-top:6px">AA分账</div>
+    <div class="mini dim">v1.0.0 · 由团团和程序员们一起做 💕</div>
+  </div>
+  <div class="card" style="padding:4px 14px;margin-top:20px">
+    <div class="line tap"><span>📜 用户协议</span><span class="arrow-r">→</span></div>
+    <div class="line tap"><span>🔐 隐私政策</span><span class="arrow-r">→</span></div>
+    <div class="line tap"><span>🧾 开源声明</span><span class="arrow-r">→</span></div>
+    <div class="line tap" style="border-bottom:none"><span>📮 联系我们</span><b>hi@aafen.app</b></div>
+  </div>
+  <div style="text-align:center;margin-top:6px" class="mini dim">© 2025 AA分账 · 手绘风小团队</div>
+</section>
+
+<!-- 60 全局搜索 -->
+<section class="screen" id="s-p60">
+  <div class="nav"><span class="back" onclick="go('s-home')">‹ 返回</span><h2>🔍 搜索</h2><span class="ic">✨</span></div>
+  <div class="line" style="border-bottom:2.5px dashed var(--ink);padding:12px 4px"><span class="dim">🔍</span><b>聚</b></div>
+  <div style="display:flex;gap:8px;margin-top:10px"><span class="chip">群组</span><span class="chip sel">账单</span><span class="chip">成员</span></div>
+  <div class="sect"><span>结果 3 条</span><em>🍃</em></div>
+  <div class="card tap" style="padding:12px;display:flex;align-items:center;gap:10px" onclick="go('s-p14')">
+    <div class="ava">🍜</div>
+    <div style="flex:1"><div>今晚<span class="hl">聚</span>餐</div><div class="mini dim">饭友群 · ¥220 · 均摊</div></div>
+    <span class="stamp money">待结算</span>
+  </div>
+  <div class="card tap" style="padding:12px;display:flex;align-items:center;gap:10px" onclick="go('s-p14')">
+    <div class="ava">🎂</div>
+    <div style="flex:1"><div>生日<span class="hl">聚</span>会</div><div class="mini dim">饭友群 · ¥310 · 请客全免</div></div>
+    <span class="stamp done">已结清</span>
+  </div>
+  <div class="card tap" style="padding:12px;display:flex;align-items:center;gap:10px" onclick="go('s-group')">
+    <div class="ava" style="background:#EDF7EE">🎤</div>
+    <div style="flex:1"><div>K歌<span class="hl">聚</span>会组</div><div class="mini dim">群组 · 5个小伙伴 · 1笔待清</div></div>
+    <span class="stamp money">1笔待清</span>
+  </div>
+</section>
+
+<!-- 动效实验室 -->
+<section class="screen" id="s-motion">
+  <div class="nav"><span class="back" onclick="go('s-guide')">‹ 返回</span><h2>🎬 动效实验室</h2><span class="ic">⚡</span></div>
+  <div class="mini dim" style="margin:2px 0">点按钮触发正式动效（参数见设计规范 §8.1）：</div>
+
+  <div class="card">
+    <div class="tape"></div>
+    <div class="mstage" id="stA">
+      <span class="lbl">✓ 保存成功 · 600ms</span>
+      <svg viewBox="0 0 100 100" width="110" height="110" class="draw">
+        <path d="M16 55 L42 78 L86 24" stroke="#5FA876" stroke-width="9" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <button class="btn primary mini" onclick="replay('#stA')">✓ 再画一遍对勾</button>
+  </div>
+
+  <div class="card">
+    <div class="tape mint"></div>
+    <div class="mstage" id="stB">
+      <span class="lbl">✍️ 结算箭头 · 500ms/条</span>
+      <svg viewBox="0 0 100 60" width="190" height="110" class="draw">
+        <path d="M6 34 Q38 10 66 26" stroke="#443A32" stroke-width="5" fill="none" stroke-linecap="round"/>
+        <path d="M58 20 L72 27.5 L58 35" stroke="#443A32" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <button class="btn primary mini" onclick="replay('#stB')">✍️ 重画转账箭头</button>
+  </div>
+
+  <div class="card">
+    <div class="tape sky"></div>
+    <div class="mstage" id="stC">
+      <span class="lbl">🔔 通知到达 · 600ms</span>
+      <svg viewBox="0 0 100 100" width="90" height="90" class="bell">
+        <path d="M50 18 Q66 24 66 46 V58 L80 70 H20 L34 58 V46 Q34 24 50 18 Z M50 18 V12" stroke="#443A32" stroke-width="5" fill="none" stroke-linecap="round"/>
+        <circle cx="50" cy="78" r="5" fill="#F49CB4" stroke="#443A32" stroke-width="3.5"/>
+      </svg>
+    </div>
+    <button class="btn primary mini" onclick="replay('#stC')">🔔 摇铃铛</button>
+  </div>
+
+  <div class="card">
+    <div class="tape pink"></div>
+    <div class="mstage" id="stD">
+      <span class="lbl">✈️ 手绘纸飞机 · 1s</span>
+      <svg viewBox="0 0 230 140" style="width:100%;height:135px">
+        <path class="ptr" d="M20 116 Q58 62 98 80 Q142 100 196 36" stroke="#443A32" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        <g class="pg">
+          <path d="M34 114 L9 109 L16 117 M34 114 L10 126 L16 117 M34 114 L16 117" stroke="#443A32" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M38 118 L46 122 M40 112 L48 115" stroke="#443A32" stroke-width="2" fill="none" stroke-linecap="round" opacity=".5"/>
+        </g>
+        <text x="118" y="34" font-size="14" fill="#D9592F" opacity=".85">哗～</text>
+      </svg>
+    </div>
+    <button class="btn primary mini" onclick="replay('#stD')">✈️ 放飞纸飞机</button>
+  </div>
+
+  <div class="card">
+    <div class="tape"></div>
+    <div class="mstage" id="stE">
+      <span class="lbl">🪙 手绘金币入罐 · 3枚交错撒</span>
+      <svg viewBox="0 0 250 150" style="width:100%;height:145px">
+        <!-- 手绘钱袋 -->
+        <g stroke="#443A32" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M62 124 Q58 110 70 104 Q88 98 100 104 Q112 110 108 124 Q86 130 64 124 Z" fill="#FFE8A3"/>
+          <path d="M76 104 Q90 94 104 104"/>
+        </g>
+        <text x="82" y="120" font-size="12" fill="#443A32">¥</text>
+        <!-- 3条手绘抛掷轨迹 -->
+        <path class="tr" style="animation-delay:.05s" d="M96 102 Q134 44 166 102" stroke="#443A32" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+        <path class="tr" style="animation-delay:.2s" d="M96 102 Q142 48 180 104" stroke="#443A32" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+        <path class="tr" style="animation-delay:.38s" d="M96 102 Q150 52 192 106" stroke="#443A32" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+        <!-- 手绘钱罐 -->
+        <g stroke="#443A32" stroke-width="2.5" fill="none" stroke-linecap="round">
+          <path d="M172 92 Q182 84 192 92"/>
+          <path d="M170 126 Q164 104 176 96 Q188 90 198 96 Q210 104 204 126 Q188 132 172 126 Z" fill="#FFFDF6"/>
+          <circle cx="187" cy="112" r="1.6" fill="#443A32" stroke="none"/>
+          <circle cx="180" cy="118" r="1.3" fill="#443A32" stroke="none"/>
+        </g>
+        <!-- 手绘金币 x3 -->
+        <g class="c1 cc"><circle cx="96" cy="100" r="8" fill="#FFD166" stroke="#443A32" stroke-width="2.5"/><path d="M92 96 L96 101 L100 96 M96 101 V105 M93.5 100 H98.5" stroke="#443A32" stroke-width="2" fill="none" stroke-linecap="round"/></g>
+        <g class="c2 cc"><circle cx="96" cy="100" r="8" fill="#FFD166" stroke="#443A32" stroke-width="2.5"/><path d="M92 96 L96 101 L100 96 M96 101 V105 M93.5 100 H98.5" stroke="#443A32" stroke-width="2" fill="none" stroke-linecap="round"/></g>
+        <g class="c3 cc"><circle cx="96" cy="100" r="8" fill="#FFD166" stroke="#443A32" stroke-width="2.5"/><path d="M92 96 L96 101 L100 96 M96 101 V105 M93.5 100 H98.5" stroke="#443A32" stroke-width="2" fill="none" stroke-linecap="round"/></g>
+        <text class="spark" x="128" y="58" font-size="14" fill="#FFB84D">✦</text>
+        <text class="spark" x="152" y="40" font-size="11" fill="#FFB84D">✦</text>
+      </svg>
+    </div>
+    <button class="btn primary mini" onclick="replay('#stE')">🪙 撒金币入罐</button>
+  </div>
+
+  <div class="card">
+    <div class="tape mint"></div>
+    <div class="mstage" id="stF">
+      <span class="lbl">🔖 印章落下 · 450ms</span>
+      <span class="stamp money stamp-anim" style="font-size:14px">✅ 已结清</span>
+    </div>
+    <button class="btn primary mini" onclick="replay('#stF')">🔖 盖个章</button>
+  </div>
+
+  <button class="btn ghost mini" onclick="toast('🪶 这是手绘横幅Toast，2秒后像纸条飘走')">🧾 演示 Toast 飘走</button>
+</section>
+
+<!-- 空状态画廊 -->
+<section class="screen" id="s-empty">
+  <div class="nav"><span class="back" onclick="go('s-guide')">‹ 返回</span><h2>🫧 空状态画廊</h2><span class="ic">🧸</span></div>
+  <div class="mini dim" style="margin:2px 0">六大空状态 + 下方异常态规则（规范见 §9）：</div>
+
+  <div class="emptyc">
+    <span class="tag">P20 群组列表</span>
+    <div class="art">🎒🪙</div>
+    <h4>还没有群组，拉上小伙伴<span class="hl">开个AA局</span>吧～</h4>
+    <p>团团这里只有硬币，快来人多才热闹</p>
+    <button class="btn primary mini">＋ 创建群组</button>
+  </div>
+
+  <div class="emptyc">
+    <span class="tag">P11/P12 账单列表</span>
+    <div class="art">📒😴</div>
+    <h4>账本空空如也，<span class="hl">记一笔</span>吧！</h4>
+    <p>30秒搞定，以后回头翻账可开心了</p>
+    <button class="btn primary mini">✏️ 记一笔</button>
+  </div>
+
+  <div class="emptyc">
+    <span class="tag">P60 搜索</span>
+    <div class="art">🔍🔍</div>
+    <h4>翻来覆去<span class="hl">没找到</span>…换个关键词？</h4>
+    <p>团团找得眼睛都大了</p>
+    <button class="btn ghost mini">清空关键词</button>
+  </div>
+
+  <div class="emptyc">
+    <span class="tag">P40 消息中心</span>
+    <div class="art">🌙🎧</div>
+    <h4>安静的一天～ <span class="hl">没有新消息</span></h4>
+    <p>团团戴着耳机打瞌睡，你不找它它不醒</p>
+    <button class="btn ghost mini">去记一笔</button>
+  </div>
+
+  <div class="emptyc" style="background:#FFF9E8">
+    <span class="tag">P23/P25 已清账 🎉</span>
+    <div class="art">🎉🌸</div>
+    <h4>本群已清账！<span class="hl">两不相欠啦</span> 🎉</h4>
+    <p>团团撒花中——钱的事清了，咱们还是好朋友</p>
+    <button class="btn primary mini">再来一笔 💪</button>
+  </div>
+
+  <div class="emptyc">
+    <span class="tag">全局 · 网络/服务器</span>
+    <div class="art">📡🥺</div>
+    <h4>网络开小差了…<span class="hl">检查一下</span>再试试</h4>
+    <p>团团头顶的WiFi都断了，它也急</p>
+    <button class="btn primary mini">🔄 重试</button>
+  </div>
+
+  <div class="sect"><span>异常态规则速览</span><em>⚠️</em></div>
+  <div class="card" style="padding:4px 14px">
+    <div class="line"><span>表单校验</span><b class="dim mini">置灰+红章，不弹窗打断</b></div>
+    <div class="line"><span>权限不足</span><b class="dim mini">Toast「只有群主可以这么做哦」</b></div>
+    <div class="line"><span>破坏性操作</span><b class="dim mini">手绘纸片二次确认弹窗</b></div>
+    <div class="line" style="border-bottom:none"><span>内容已删除</span><b class="dim mini">「这张小票已经烧掉了🔥」</b></div>
+  </div>
+</section>
+
+<div id="toast" class="toast"></div>
+
+<!-- ============ Tab栏 ============ -->
+<nav class="tabbar">
+  <button class="tab" data-target="s-home" onclick="go('s-home')">
+    <svg viewBox="0 0 24 24"><path d="M4.6 11.8 Q8.5 8 12 4.9 Q15.6 8 19.4 11.6 M7 10.6 V18 H17 V10.6 M10.2 18 V13.6 H13.8 V18"/></svg>
+    总览
+  </button>
+  <button class="tab" data-target="s-group" onclick="go('s-group')">
+    <svg viewBox="0 0 24 24"><circle cx="8.8" cy="7" r="2.5"/><path d="M4.8 14.6 Q8.8 10.6 12.8 14.6 M12.6 14.2 Q15.4 11.4 18.4 14.2"/><circle cx="15.8" cy="8.4" r="2.1"/></svg>
+    群组
+  </button>
+  <button class="tab plus" data-target="s-bill" onclick="go('s-bill')">
+    <svg viewBox="0 0 24 24"><path d="M5 19 L5 15.4 L15.4 5 L19 8.6 L8.6 19 Z M13.2 7.2 L16.8 10.8"/></svg>
+  </button>
+  <button class="tab" data-target="s-msg" onclick="go('s-msg')">
+    <svg viewBox="0 0 24 24"><path d="M12 4.4 Q15.8 6.2 15.8 11.4 V14 L18 16.4 H6 L8.2 14 V11.4 Q8.2 6.2 12 4.4 Z M12 4.4 V3.2"/><circle cx="12" cy="18.4" r="1.3"/></svg>
+    消息
+  </button>
+  <button class="tab" data-target="s-me" onclick="go('s-me')">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="7.4" r="3.1"/><path d="M5.8 18.2 Q6.2 12.4 12 12.4 Q17.8 12.4 18.2 18.2"/></svg>
+    我的
+  </button>
+</nav>
+
+</div><!-- /phone -->
+</div><!-- /stage -->
+
+<script>
+function go(id){
+  document.querySelectorAll('.screen').forEach(function(s){s.classList.toggle('active', s.id===id)});
+  document.querySelectorAll('.tab').forEach(function(t){t.classList.toggle('cur', t.dataset.target===id)});
+  document.querySelectorAll('.side button').forEach(function(b){b.classList.toggle('cur', b.dataset.target===id)});
+  var el=document.getElementById(id); if(el){el.scrollTop=0;}
+}
+function replay(sel){
+  var el=document.querySelector(sel);
+  el.classList.remove('go');
+  void el.offsetWidth;
+  el.classList.add('go');
+}
+var toastTimer=null;
+function toast(msg){
+  var t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(function(){t.classList.remove('show')},1600);
+}
+</script>
+</body>
+</html>
