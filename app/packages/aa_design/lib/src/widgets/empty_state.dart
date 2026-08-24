@@ -64,15 +64,22 @@ class EmptyState extends StatelessWidget {
     );
 
     if (compact) return Center(child: card);
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 320),
-        child: FractionallySizedBox(
-          heightFactor: 0.6,
-          widthFactor: 1,
-          child: Center(child: card),
-        ),
-      ),
+    // 无界高度（如 ListView 内）时不能按高度比例撑起，退化为让内容居中；
+    // 有界高度时按 60% 屏高撑起（UI 规范 §9）
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (!constraints.hasBoundedHeight) return Center(child: card);
+        return Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 320),
+            child: FractionallySizedBox(
+              heightFactor: 0.6,
+              widthFactor: 1,
+              child: Center(child: card),
+            ),
+          ),
+        );
+      },
     );
   }
 }

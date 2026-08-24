@@ -6,7 +6,7 @@
 #   make app-analyze     客户端静态检查
 #   make app-run         启动客户端（需已连模拟器/设备）
 
-.PHONY: help server-install server-dev server-build server-test app-pub app-analyze app-test app-run infra-up infra-down
+.PHONY: help server-install server-dev server-build server-test app-pub app-analyze app-test app-run app-shots app-release infra-up infra-down
 
 help:
 	@echo "AA分账App"
@@ -18,6 +18,9 @@ help:
 	@echo "  make app-analyze      客户端静态检查"
 	@echo "  make app-test         客户端测试"
 	@echo "  make app-run          客户端运行"
+	@echo "  make app-shots        生成商店截图 (docs/store/screenshots/)"
+	@echo "  make app-shots-brand  合成品牌化截图 (需先 make app-shots)"
+	@echo "  make app-release      构建上架包 (AAB+APK, dist/release/, 需 key.properties)"
 	@echo "  make infra-up         启动 postgres+redis+minio (docker compose)"
 	@echo "  make infra-down      停止基础设施"
 
@@ -44,6 +47,16 @@ app-test:
 
 app-run:
 	cd app && flutter run
+
+app-shots:
+	cd app && flutter test --update-goldens test/store_screenshots_test.dart
+	powershell -NoProfile -ExecutionPolicy Bypass -File scripts\compose-store-screenshots.ps1
+
+app-shots-brand:
+	powershell -NoProfile -ExecutionPolicy Bypass -File scripts\compose-store-screenshots.ps1
+
+app-release:
+	powershell -NoProfile -ExecutionPolicy Bypass -File scripts\build-release.ps1
 
 infra-up:
 	docker compose up -d postgres redis minio

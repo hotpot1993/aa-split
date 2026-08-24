@@ -1,4 +1,5 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <!-- 网络（release 包必需；debug/profile 模板自带） -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <!-- 极光推送：通知（Android 13+ 运行时权限）/ 离线送达相关 -->
@@ -6,13 +7,21 @@
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <uses-permission android:name="android.permission.VIBRATE"/>
+    <!-- 上架合规：移除极光 SDK 声明的敏感权限（本 App 为记账工具，
+         不收集定位/设备标识/应用列表，也不写外部存储） -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" tools:node="remove"/>
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" tools:node="remove"/>
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" tools:node="remove"/>
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" tools:node="remove"/>
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" tools:node="remove"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" tools:node="remove"/>
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" tools:node="remove"/>
+    <!-- 上架配置：主 manifest 禁止明文 HTTP（release 只连 HTTPS）；
+         debug 变体 manifest 开启 cleartext 供本地联调（10.0.2.2 / 局域网 IP） -->
     <application
-        android:label="aa_split_app"
+        android:label="AA分账"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher"
-        android:usesCleartextTraffic="true">
-        <!-- usesCleartextTraffic: Demo/联调后端使用 http（10.0.2.2 或 http://服务器IP:3000）；
-             生产接入 HTTPS 后应移除（配合 network security config） -->
+        android:icon="@mipmap/ic_launcher">
         <activity
             android:name=".MainActivity"
             android:exported="true"

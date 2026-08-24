@@ -31,9 +31,9 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
   final _titleCtrl = TextEditingController();
   int _amountCents = 0;
   DateTime _date = DateTime.now();
-  late String _groupId;
+  late String _groupId = '';
   BillCategory _category = BillCategory.food;
-  late String _payerId;
+  late String _payerId = '';
   late Set<String> _selectedIds = {};
   SplitResult? _split;
   List<Receipt> _receipts = [];
@@ -291,13 +291,14 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
   bool get _canSave =>
       _amountCents > 0 && _groupId.isNotEmpty && _selectedIds.isNotEmpty && _payerInParticipants;
 
-  bool get _payerInParticipants => _selectedIds.isEmpty || _selectedIds.contains(_payerId);
+  bool get _payerInParticipants =>
+      _payerId.isEmpty || _selectedIds.isEmpty || _selectedIds.contains(_payerId);
 
   Widget _payerChooser(List<GroupMember> members) {
     if (members.isEmpty) return const Text('—');
     return DropdownButtonHideUnderline(
       child: DropdownButton<String>(
-        value: _payerId,
+        value: _payerId.isEmpty ? null : _payerId,
         isExpanded: true,
         items: members.map((m) => DropdownMenuItem(value: m.userId, child: Text(m.nickname))).toList(),
         onChanged: (v) => setState(() {

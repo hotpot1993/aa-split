@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -84,5 +85,16 @@ export class AuthController {
   @Patch('me')
   updateProfile(@CurrentUser() user: JwtPayload, @Body() dto: UpdateProfileDto) {
     return this.authService.updateProfile(user.sub, dto);
+  }
+
+  /**
+   * 注销账号（商店合规：应用内删除账号）。
+   * 软删除 + 匿名化，群主身份自动转移，旧 token 立即失效。
+   */
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @Delete('me')
+  deleteAccount(@CurrentUser() user: JwtPayload) {
+    return this.authService.deleteAccount(user.sub);
   }
 }

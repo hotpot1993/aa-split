@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:aa_design/aa_design.dart';
 
 import '../../data/repositories/auth_repository.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/repositories.dart';
 import '../../widgets/common.dart';
 import '../../widgets/sheet.dart';
@@ -34,6 +36,47 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
       _newPwd.clear();
     } on AuthException catch (e) {
       showAaToast(context, e.message);
+    }
+  }
+
+  /// 注销账号（应用商店合规：应用内删除账号）。二次确认后删除并回到登录页。
+  Future<void> _deleteAccount() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('注销账号', style: TextStyle(fontFamily: 'ZCOOLKuaiLe')),
+        content: Text(
+          '确定要注销账号吗？\n\n删除后将无法再用该账号登录；'
+          '您的昵称/头像/签名等个人资料会被清空，'
+          '所在群组您会退出（群主身份自动转移），历史账单留给群内其他成员。\n\n此操作不可恢复。',
+          style: Theme.of(ctx).textTheme.bodyMedium,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('再想想', style: TextStyle(fontFamily: 'ZCOOLKuaiLe')),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('确认注销',
+                style: TextStyle(color: AAColors.berry, fontFamily: 'ZCOOLKuaiLe')),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await ref.read(authRepositoryProvider).deleteAccount();
+      // 清除推送 alias 并重置登录态 → 回登录页
+      await ref.read(authProvider.notifier).logout();
+      if (mounted) {
+        showAaToast(context, '账号已注销');
+        context.go('/login');
+      }
+    } on AuthException catch (e) {
+      if (mounted) showAaToast(context, e.message);
+    } catch (_) {
+      if (mounted) showAaToast(context, '注销失败，请稍后再试');
     }
   }
 
@@ -90,6 +133,26 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
               onPressed: () => showAaToast(context, '已清除其他设备登录态'),
               child: const Text('退出其他设备',
                   style: TextStyle(color: AAColors.berry, fontFamily: 'ZCOOLKuaiLe', fontSize: 13)),
+            ),
+          ),
+          SectionTitle('注销账号'),
+          PaperCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  '删除账号：个人资料清空、退出全部群组（群主自动转移）、'
+                  '其他成员的群账单历史保留，此操作不可恢复。',
+                  style: text.bodySmall,
+                ),
+                const SizedBox(height: 12),
+                DoodleButton(
+                  label: '注销账号',
+                  type: DoodleButtonType.secondary,
+                  expand: true,
+                  onPressed: _deleteAccount,
+                ),
+              ],
             ),
           ),
         ],

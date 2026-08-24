@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -98,8 +99,12 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({
       where: { accountName: dto.accountName },
     });
-    // 账户名不存在与密码错误统一提示，防探测
-    if (!user || !(await bcrypt.compare(dto.password, user.passwordHash))) {
+    // 账户名不存在、已注销与密码错误统一提示，防探测
+    if (
+      !user ||
+      user.deletedAt ||
+      !(await bcrypt.compare(dto.password, user.passwordHash))
+    ) {
       throw new UnauthorizedException('账户名或密码错误');
     }
     const tokens = await this.signTokens(user);
@@ -207,5 +212,69 @@ export class AuthService {
       data,
     });
     return this.sanitizeUser(updated);
+  }
+
+  /**
+   * 注销账号（应用商店合规要求：账号删除）。
+   * 采用「软删除 + 匿名化」：用户行保留（群组/账单历史引用不悬空），
+   * 但登录名/密码/安全问题全部失效、个人信息清空；成员关系保留历史（left）；
+   * 群主身份转给群内最早加入的活跃成员，无成员则软删该群；个人通知删除。
+   */
+  async deleteAccount(userId: string) {
+    return this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.findUnique({ where: { id: userId } });
+      if (!user) throw new NotFoundException('账号不存在');
+      if (user.deletedAt) throw new BadRequestException('账号已注销');
+
+      // 1. 群主身份转移（无其他成员则软删群）
+      const ownedGroups = await tx.group.findMany({
+        where: { ownerId: userId, deletedAt: null },
+      });
+      for (const g of ownedGroups) {
+        const nextOwner = await tx.groupMember.findFirst({
+          where: { groupId: g.id, status: 'active', userId: { not: userId } },
+          orderBy: { joinedAt: 'asc' },
+        });
+        if (nextOwner) {
+          await tx.group.update({
+            where: { id: g.id },
+            data: { ownerId: nextOwner.userId },
+          });
+        } else {
+          await tx.group.update({
+            where: { id: g.id },
+            data: { deletedAt: new Date() },
+          });
+        }
+      }
+
+      // 2. 成员关系保留历史但退出（不再出现在活跃成员中）
+      await tx.groupMember.updateMany({
+        where: { userId },
+        data: { status: 'left' },
+      });
+
+      // 3. 个人通知删除（其余群组/账单数据属于群，保留）
+      await tx.notification.deleteMany({ where: { userId } });
+
+      // 4. 匿名化 + 标记注销；旧 token 由 JwtAuthGuard 的 deletedAt 校验立即失效
+      const suffix = randomBytes(6).toString('hex');
+      await tx.user.update({
+        where: { id: userId },
+        data: {
+          deletedAt: new Date(),
+          accountName: `del_${suffix}`,
+          nickname: '已注销',
+          avatarUrl: null,
+          bio: null,
+          passwordHash: '!',
+          securityQuestion: '账号已注销',
+          securityAnswerHash: '!',
+          resetTokenHash: null,
+          resetTokenExpiresAt: null,
+        },
+      });
+      return { success: true };
+    });
   }
 }

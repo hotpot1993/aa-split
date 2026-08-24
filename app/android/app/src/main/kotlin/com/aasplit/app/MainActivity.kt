@@ -1,4 +1,4 @@
-package com.aasplit.aa_split_app
+package com.aasplit.app
 
 import io.flutter.embedding.android.FlutterActivity
 

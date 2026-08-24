@@ -58,7 +58,7 @@ describe('JpushService', () => {
     const body = JSON.parse(init.body);
     expect(body.audience).toEqual({ alias: ['u1'] });
     expect(body.notification.android.extras).toEqual({ refType: 'bill', refId: 'b1' });
-    expect(body.notification.title).toBe('催款提醒');
+    expect(body.notification.android.title).toBe('催款提醒');
 
     // 失败不抛（fire-and-forget 语义）
     const failMock = jest.fn().mockResolvedValue({ ok: false, status: 429, text: async () => 'limit' });

@@ -225,6 +225,18 @@ class AuthRepository {
     await _clearSession();
   }
 
+  /// 注销账号（商店合规：应用内删除账号）。
+  /// 服务端软删除 + 匿名化；成功后清空本地会话（旧 token 服务端已失效）。
+  Future<void> deleteAccount() async {
+    if (AppConfig.useMock) {
+      await logout();
+      return;
+    }
+    await ApiClient.instance.delete('/auth/me');
+    ApiClient.instance.setToken(null);
+    await _clearSession();
+  }
+
   Future<void> _saveSession(String token, User user) async {
     ApiClient.instance.setToken(token);
     final prefs = await SharedPreferences.getInstance();

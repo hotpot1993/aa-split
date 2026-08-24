@@ -94,6 +94,10 @@ flutter test                 # 组件/单元测试
 - 🎨 [UI 设计规范](docs/AA分账App-UI设计规范.md)
 - ⚙️ [技术方案（数据库/API/算法/排期）](docs/AA分账App-技术方案.md)
 - 🖥️ [手绘风高保真 Demo（浏览器打开）](docs/ui-demo/index.html)
+- 🏪 [商店上架准备（素材/文案/法务/手册）](docs/store/上架手册.md)
+  - 上架包：`make app-release` → `dist/release/`（AAB + 多 ABI APK + SHA256 + 签名指纹）
+  - 素材：商店图标（`docs/store/icons/`）、截图（`docs/store/screenshots/`）
+  - 法务：隐私政策 <https://api.hotpot1993.top/privacy.html> · 用户协议 <https://api.hotpot1993.top/agreement.html>
 
 ## 合规声明
 

@@ -337,4 +337,45 @@ describe('核心链路 e2e（注册→建群→记账→结算→催款→已付
       .expect(200);
     expect(me.body.data.nickname).toBe('爱丽丝2');
   });
+
+  it('注销账号链路（DELETE /auth/me → 旧 token 失效 + 登录拒绝）', async () => {
+    // 新用户 charlie：注册 → 加入群 → 注销
+    const reg = await request(server())
+      .post('/api/v1/auth/register')
+      .send({
+        accountName: 'charlie',
+        password: 'ghi789GHI',
+        nickname: '查理',
+        securityQuestion: '你喜欢的颜色？',
+        securityAnswer: '蓝',
+      })
+      .expect(201);
+    const token = reg.body.data.accessToken as string;
+
+    const group = (globalThis as any).__group as { id: string; inviteCode: string };
+    await request(server())
+      .post('/api/v1/groups/join')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ inviteCode: group.inviteCode })
+      .expect(201);
+
+    // 注销成功
+    const del = await request(server())
+      .delete('/api/v1/auth/me')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+    expect(del.body.data.success).toBe(true);
+
+    // 旧 token 立即失效（guard 校验 deletedAt）
+    await request(server())
+      .get('/api/v1/auth/me')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(401);
+
+    // 原账户名不可再登录
+    await request(server())
+      .post('/api/v1/auth/login')
+      .send({ accountName: 'charlie', password: 'ghi789GHI' })
+      .expect(401);
+  });
 });

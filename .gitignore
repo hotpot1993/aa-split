@@ -21,6 +21,7 @@ app/.pub/
 app/ios/Pods/
 app/ios/.symlinks/
 app/android/.gradle/
+app/android/build/
 app/android/local.properties
 app/android/app/.cxx/
 *.iml
@@ -32,6 +33,14 @@ app/android/app/.cxx/
 # --- 本地部署凭据等敏感信息（勿提交） ---
 docs/vps.txt
 *.secrets.txt
+
+# --- Android 发布签名（上传商店的私钥，绝不提交） ---
+app/android/key.properties
+app/android/keystore/
+
+# --- 商店上架产物（可在本地重新生成） ---
+docs/store/screenshots/raw/
+dist/
 
 # --- OS / IDE ---
 .DS_Store
