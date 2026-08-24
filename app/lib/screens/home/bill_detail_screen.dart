@@ -69,7 +69,19 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(bill.title, style: text.headlineSmall),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(bill.title, style: text.headlineSmall, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    ),
+                    // P33 拍凭证入口
+                    IconButton(
+                      onPressed: () => context.push('/bills/${bill.id}/receipt'),
+                      tooltip: '拍凭证',
+                      icon: const Icon(Icons.photo_camera, color: AAColors.ink, size: 22),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 8),
                 HandAmount(amountCents: bill.amountCents, color: AAColors.ink, size: 34),
                 const SizedBox(height: 6),
@@ -219,16 +231,39 @@ class _ReceiptTile extends StatelessWidget {
   final String url;
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 72,
-      height: 72,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: AAColors.cardWhite,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: AAColors.ink, width: 1.5),
+    // Demo 模式为 emoji 占位；真实模式展示上传后的凭证图片
+    if (url.startsWith('🧾') || url.isEmpty) {
+      return Container(
+        width: 72,
+        height: 72,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: AAColors.cardWhite,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: AAColors.ink, width: 1.5),
+        ),
+        child: Text(url, style: const TextStyle(fontSize: 30)),
+      );
+    }
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(6),
+      child: Image.network(
+        absReceiptUrl(url),
+        width: 72,
+        height: 72,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => Container(
+          width: 72,
+          height: 72,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: AAColors.cardWhite,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: AAColors.ink, width: 1.5),
+          ),
+          child: const Icon(Icons.broken_image, color: AAColors.inkSoft, size: 24),
+        ),
       ),
-      child: Text(url, style: const TextStyle(fontSize: 30)),
     );
   }
 }

@@ -187,6 +187,13 @@ class Model {
             return pp;
           });
       }
+      if (include.receipts) {
+        out.receipts = this.db
+          .rowsOf('receipt')
+          .filter((r) => r.billId === row.id)
+          .slice()
+          .sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0));
+      }
     }
     return out;
   }

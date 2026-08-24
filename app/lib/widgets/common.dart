@@ -2,6 +2,16 @@ import 'package:flutter/material.dart';
 
 import 'package:aa_design/aa_design.dart';
 
+import '../core/config.dart';
+
+/// 相对路径（/uploads/xxx）→ 完整 URL；Demo 占位 emoji 原样返回。
+/// 凭证 URL 存相对路径以兼容域名变更；展示时拼接当前 API origin。
+String absReceiptUrl(String url) {
+  if (url.isEmpty || url.startsWith('http') || url.startsWith('🧾')) return url;
+  final origin = AppConfig.baseUrl.replaceFirst(RegExp(r'/api/v1$'), '');
+  return '$origin$url';
+}
+
 /// 页面骨架：速写纸背景 + 可选顶部涂鸦导航栏
 class AaScaffold extends StatelessWidget {
   const AaScaffold({

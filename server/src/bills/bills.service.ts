@@ -20,6 +20,7 @@ const billInclude = {
   participants: {
     include: { user: { select: { id: true, accountName: true, nickname: true, avatarUrl: true } } },
   },
+  receipts: { orderBy: { sort: 'asc' } },
 } satisfies Prisma.BillInclude;
 
 type BillWithRelations = Prisma.BillGetPayload<{ include: typeof billInclude }>;
@@ -75,6 +76,11 @@ export class BillsService {
         paidAt: p.paidAt,
         remindCount: p.remindCount,
         user: p.user,
+      })),
+      receipts: bill.receipts.map((r) => ({
+        id: r.id,
+        billId: r.billId,
+        url: this.storageService.publicUrl(r.objectKey),
       })),
       createdAt: bill.createdAt,
     };
