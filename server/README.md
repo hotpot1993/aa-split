@@ -110,8 +110,10 @@ npx prisma db seed
 ```bash
 cd server
 npm run build     # tsc 编译，无错
-npm test          # jest 全绿
+npm test          # jest 单测全绿（4 套件 31 用例）
 ```
+
+npm run test:e2e  # 核心链路 e2e（supertest + 内存 FakePrisma，无需数据库）：注册→建群→记账→结算→催款→已付→找回密码
 
 测试覆盖：
 

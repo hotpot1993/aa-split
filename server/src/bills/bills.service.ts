@@ -104,6 +104,9 @@ export class BillsService {
     await this.assertGroupMemberIds(groupId, [payerId, ...participants.map((p) => p.userId)]);
 
     const shares = resolveShares(dto.splitType, dto.amountCents, participants);
+    // 垫付人已自付其份额（现款在后，份额视为已结清）
+    const payerShare = shares.find((s) => s.userId === payerId);
+    if (payerShare) payerShare.paid = true;
     const settleStatus = computeSettleStatus(shares);
 
     const bill = await this.prisma.$transaction(async (tx) => {
