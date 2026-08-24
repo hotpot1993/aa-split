@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { NotificationType, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationSseService } from './notification-sse.service';
+import { JpushService } from './jpush.service';
 import { paginate } from '../common/dto/pagination.dto';
 
 export interface CreateNotificationInput {
@@ -17,9 +18,10 @@ export class NotificationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly sse: NotificationSseService,
+    private readonly jpush: JpushService,
   ) {}
 
-  /** 写库 + SSE 推送（单条） */
+  /** 写库 + SSE 推送 + 极光离线推送（fire-and-forget，不阻塞） */
   async create(userId: string, input: CreateNotificationInput) {
     const n = await this.prisma.notification.create({
       data: {
@@ -38,6 +40,13 @@ export class NotificationsService {
       refType: n.refType,
       refId: n.refId,
       createdAt: n.createdAt.toISOString(),
+    });
+    // 离线推送（alias=userId）：失败仅告警
+    void this.jpush.notify(userId, {
+      title: n.title,
+      alert: n.body,
+      refType: n.refType,
+      refId: n.refId,
     });
     return n;
   }

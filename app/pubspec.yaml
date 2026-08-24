@@ -43,6 +43,8 @@ dependencies:
   qr_flutter: ^4.1.0
   intl: ^0.20.3
   image_picker: ^1.1.2
+  jpush_flutter: ^3.5.5
+  permission_handler: ^13.0.1
 
 dev_dependencies:
   flutter_test:

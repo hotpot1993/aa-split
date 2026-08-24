@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'package:aa_design/aa_design.dart';
 
 import 'core/config.dart';
+import 'core/jpush/jpush_bridge.dart';
+import 'providers/auth_provider.dart';
 import 'providers/notification_stream_provider.dart';
 import 'providers/settings_provider.dart';
 import 'router/app_router.dart';
@@ -23,6 +25,24 @@ class AaSplitApp extends ConsumerStatefulWidget {
 
 class _AaSplitAppState extends ConsumerState<AaSplitApp> {
   late final GoRouter _router = buildRouter();
+
+  @override
+  void initState() {
+    super.initState();
+    // 极光通知点击 → 跳转对应业务页（等首帧后路由就绪；未登录忽略）
+    JpushBridge.setOpenHandler(open: (refType, refId) {
+      Future<void>.delayed(const Duration(milliseconds: 800), () {
+        if (!mounted || refId.isEmpty) return;
+        if (!ref.read(authProvider).isLoggedIn && !AppConfig.useMock) return;
+        switch (refType) {
+          case 'bill':
+            _router.push('/bills/$refId');
+          case 'group':
+            _router.push('/groups/$refId');
+        }
+      });
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

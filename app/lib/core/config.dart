@@ -41,6 +41,12 @@ abstract final class AppConfig {
   /// App 名称
   static const String appName = 'AA分账';
 
+  /// 极光推送 AppKey（客户端公开值；测试包可 --dart-define=AA_JPUSH_APP_KEY= 覆盖）
+  static const String jpushAppKey = String.fromEnvironment(
+    'AA_JPUSH_APP_KEY',
+    defaultValue: 'aadc425dd712362a851cf69a',
+  );
+
   /// 邀请链接前缀（P22 深链：`aafen://join/群码`）
   static const String inviteScheme = 'aafen://join/';
 }

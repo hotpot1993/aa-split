@@ -6,7 +6,8 @@ plugins {
 
 android {
     namespace = "com.aasplit.aa_split_app"
-    compileSdk = flutter.compileSdkVersion
+    // permission_handler_android 等新插件要求 37
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -23,6 +24,9 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        // 极光推送占位符（jpush_flutter 插件 manifest 合并需要）
+        manifestPlaceholders["JPUSH_APPKEY"] = "aadc425dd712362a851cf69a"
+        manifestPlaceholders["JPUSH_CHANNEL"] = "default"
     }
 
     buildTypes {

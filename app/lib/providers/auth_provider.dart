@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/config.dart';
+import '../core/jpush/jpush_bridge.dart';
 import '../models/user.dart';
 import 'repositories.dart';
 
@@ -37,6 +40,7 @@ class AuthController extends Notifier<AuthState> {
     final user = await ref.read(authRepositoryProvider).restoreSession();
     if (user != null) {
       state = AuthState(user: user, token: 'restored');
+      _registerPushAlias(user.id);
     }
   }
 
@@ -44,6 +48,7 @@ class AuthController extends Notifier<AuthState> {
     final user =
         await ref.read(authRepositoryProvider).login(accountName, password);
     state = AuthState(user: user, token: AppConfig.useMock ? 'mock-token' : 'jwt');
+    _registerPushAlias(user.id);
   }
 
   Future<void> register({
@@ -61,11 +66,20 @@ class AuthController extends Notifier<AuthState> {
           securityAnswer: securityAnswer,
         );
     state = AuthState(user: user, token: AppConfig.useMock ? 'mock-token' : 'jwt');
+    _registerPushAlias(user.id);
   }
 
   Future<void> logout() async {
     await ref.read(authRepositoryProvider).logout();
+    // 极光：清除 alias，避免服务端按 alias 命中已登出设备
+    unawaited(JpushBridge.clearAlias());
     state = const AuthState();
+  }
+
+  /// 极光推送：alias=userId（真实模式有效；Demo 模式不初始化）
+  void _registerPushAlias(String userId) {
+    if (AppConfig.useMock) return;
+    unawaited(JpushBridge.init(appKey: AppConfig.jpushAppKey, userId: userId));
   }
 
   /// 更新昵称/头像/签名（P50）：真实模式 PATCH /auth/me 走服务端，

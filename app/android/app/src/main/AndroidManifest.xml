@@ -1,6 +1,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- 网络（release 包必需；debug/profile 模板自带） -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- 极光推送：通知（Android 13+ 运行时权限）/ 离线送达相关 -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <uses-permission android:name="android.permission.VIBRATE"/>
     <application
         android:label="aa_split_app"
         android:name="${applicationName}"

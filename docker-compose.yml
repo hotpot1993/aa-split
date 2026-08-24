@@ -91,6 +91,9 @@ services:
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-aa_minio_dev_password}
       MINIO_BUCKET: ${MINIO_BUCKET:-aa-receipts}
       MINIO_USE_SSL: "false"
+      JPUSH_APP_KEY: ${JPUSH_APP_KEY:-}
+      JPUSH_MASTER_SECRET: ${JPUSH_MASTER_SECRET:-}
+      JPUSH_ENABLED: ${JPUSH_ENABLED:-true}
       CORS_ORIGINS: ${CORS_ORIGINS:-*}
       SWAGGER_ENABLED: ${SWAGGER_ENABLED:-true}
     ports:
