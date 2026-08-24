@@ -25,7 +25,7 @@ class BillDetailScreen extends ConsumerStatefulWidget {
 
 class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
   Bill? get _bill {
-    final all = ref.read(billsProvider).value ?? const <Bill>[];
+    final all = ref.watch(billsProvider).value ?? const <Bill>[];
     for (final b in all) {
       if (b.id == widget.billId) return b;
     }
@@ -34,9 +34,17 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final billsAsync = ref.watch(billsProvider);
     final bill = _bill;
     final text = Theme.of(context).textTheme;
     final me = ref.watch(currentUserProvider)?.id ?? 'me';
+    // 深链/通知点击进入时数据可能仍在加载：等待而非误报"账单不存在"
+    if (bill == null && billsAsync.isLoading) {
+      return const AaScaffold(
+        appBar: null,
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
     if (bill == null) {
       return const AaScaffold(
         appBar: null,

@@ -49,20 +49,26 @@ class JpushBridge {
     );
   }
 
+  static Map<String, dynamic> _asMap(dynamic v) => v is Map
+      ? v.cast<String, dynamic>()
+      : const <String, dynamic>{};
+
   static void _handle(
     Map<String, dynamic> event,
     void Function(String, String) open,
   ) {
-    // 3.5.x 事件 map 的 extras 字段名在不同平台/版本间可能是 extra/extras/android.extras
-    final direct = event['extra'] ?? event['extras'];
-    final android = event['android'];
-    final extras = (direct is Map)
-        ? direct.cast<String, dynamic>()
-        : (android is Map && (android['extras'] is Map))
-            ? (android['extras'] as Map).cast<String, dynamic>()
-            : const <String, dynamic>{};
-    final refType = (extras['refType'] ?? '').toString();
-    final refId = (extras['refId'] ?? '').toString();
+    // 极光 Android 事件 map：extras 里含 cn.jpush.android.EXTRA 嵌套（refType/refId）
+    var extras = event['extra'] ?? event['extras'];
+    if (extras is Map) {
+      final inner = _asMap(extras)['cn.jpush.android.EXTRA'];
+      if (inner is Map) extras = inner;
+    } else {
+      final android = event['android'];
+      extras = _asMap(android)['extras'];
+    }
+    final map = _asMap(extras);
+    final refType = (map['refType'] ?? '').toString();
+    final refId = (map['refId'] ?? '').toString();
     if (refType.isNotEmpty && refId.isNotEmpty) {
       open(refType, refId);
     }
