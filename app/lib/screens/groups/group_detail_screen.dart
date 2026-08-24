@@ -77,7 +77,7 @@ class GroupDetailScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 12),
                 SizedBox(
-                  height: 84,
+                  height: 96, // 手写体行高偏大；84 会溢出约 10px
                   child: members.isEmpty
                       ? const Center(child: Text('还没有成员'))
                       : ListView.separated(
@@ -119,7 +119,7 @@ class GroupDetailScreen extends ConsumerWidget {
             ),
           ),
           SizedBox(
-            height: 54,
+            height: 66, // 头像42 + 名称行高(手写体约16) + 间距2；54 会溢出约 11px
             child: members.isEmpty
                 ? const SizedBox()
                 : ListView(

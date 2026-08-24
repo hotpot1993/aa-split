@@ -49,8 +49,9 @@ class AuthRepository {
         final user = parseUser(res.data);
         await _saveSession(token, user);
         return user;
-      } catch (_) {
-        await _clearSession();
+      } catch (e) {
+        // 仅 token 无效(401)时清除本地会话；网络异常保留，避免弱网误清
+        if (e is ApiException && e.code == 401) await _clearSession();
         return null;
       }
     } catch (_) {

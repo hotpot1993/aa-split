@@ -26,6 +26,10 @@ class GroupsScreen extends ConsumerWidget {
         title: const Text('群组'),
         actions: [
           IconButton(
+            onPressed: () => context.push('/groups/create'),
+            icon: const Icon(Icons.add, color: AAColors.ink, size: 26),
+          ),
+          IconButton(
             onPressed: () => context.push('/search'),
             icon: const Icon(Icons.search, color: AAColors.ink, size: 24),
           ),

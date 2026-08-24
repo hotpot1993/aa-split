@@ -6,10 +6,12 @@ import 'package:go_router/go_router.dart';
 
 import 'package:aa_design/aa_design.dart';
 
+import '../../core/config.dart';
 import '../../providers/auth_provider.dart';
 
 /// P01 启动页：深纸米底 + 大号手写标题 + 团团 + 散落星星/硬币。
 /// 2s 后按登录态跳转（未登录 → /login，已登录 → /home）。
+/// 真实模式：先尝试从本地存储恢复会话（/auth/me 校验），再决定跳转。。
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
   @override
@@ -38,8 +40,13 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     super.dispose();
   }
 
-  void _go() {
+  Future<void> _go() async {
     if (!mounted) return;
+    // 真实模式：先恢复本地会话（token + /auth/me 校验），避免每次都掉回登录页
+    if (!AppConfig.useMock && !ref.read(authProvider).isLoggedIn) {
+      await ref.read(authProvider.notifier).restore();
+      if (!mounted) return;
+    }
     final loggedIn = ref.read(authProvider).isLoggedIn;
     context.go(loggedIn ? '/home' : '/login');
   }
