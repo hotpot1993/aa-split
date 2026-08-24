@@ -1,19 +1,21 @@
 import 'dart:math';
 
+import '../../core/api/api_client.dart';
+import '../../core/api/codec.dart';
 import '../../core/config.dart';
 import '../../models/bill.dart';
 import '../../models/transfer.dart';
 import '../mock/mock_store.dart';
 
-/// 结算仓库（Demo 模式走 MockStore）
-///
-/// 非 Demo 模式：应改为 async 并调用 ApiClient 的 `/groups/:id/settlement`
-/// （技术方案 §4.4 / §5 最小化转账算法）。
+/// 结算仓库。
+/// Demo 模式本地按技术方案 §5 贪心计算（与服务端算法一致）；
+/// 真实模式调用 GET /groups/:id/settlement（服务端 summarizeBalances +
+/// computeSettlement），transfer 的姓名用成员表补充。
 class SettlementRepository {
   SettlementRepository();
 
   /// 最少转账笔数方案（技术方案 §5 贪心算法）
-  SettlementPlan compute(String groupId) {
+  Future<SettlementPlan> compute(String groupId) async {
     if (AppConfig.useMock) {
       final store = MockStore.instance;
       final members = store.activeMembersOf(groupId);
@@ -50,11 +52,31 @@ class SettlementRepository {
       transfers.sort((a, b) => b.amountCents.compareTo(a.amountCents));
       return SettlementPlan(transferCount: transfers.length, transfers: transfers);
     }
-    throw UnsupportedError('useMock=false：compute 需 async + ApiClient');
+
+    final res = await ApiClient.instance.get('/groups/$groupId/settlement');
+    final j = (res.data as Map?)?.cast<String, dynamic>() ?? const {};
+    final members = await _memberNames(groupId);
+    final raw = (j['transfers'] is List) ? j['transfers'] as List : const [];
+    final transfers = raw.map((e) {
+      final t = parseTransfer(e);
+      return Transfer(
+        fromUserId: t.fromUserId,
+        fromName: members[t.fromUserId] ?? t.fromUserId,
+        toUserId: t.toUserId,
+        toName: members[t.toUserId] ?? t.toUserId,
+        amountCents: t.amountCents,
+        billIds: t.billIds,
+      );
+    }).toList()
+      ..sort((a, b) => b.amountCents.compareTo(a.amountCents));
+    return SettlementPlan(
+      transferCount: (j['transferCount'] as num?)?.toInt() ?? transfers.length,
+      transfers: transfers,
+    );
   }
 
   /// 逐笔结算方案（P25 切到"逐笔结算"模式）
-  List<Transfer> perBill(String groupId) {
+  Future<List<Transfer>> perBill(String groupId) async {
     if (AppConfig.useMock) {
       final store = MockStore.instance;
       final out = <Transfer>[];
@@ -75,7 +97,30 @@ class SettlementRepository {
       }
       return out;
     }
-    throw UnsupportedError('useMock=false：perBill 需 async + ApiClient');
+
+    final res = await ApiClient.instance.get('/groups/$groupId/bills',
+        query: {'page': 1, 'pageSize': 100});
+    final j = (res.data as Map?)?.cast<String, dynamic>() ?? const {};
+    final members = await _memberNames(groupId);
+    final list = (j['list'] is List) ? j['list'] as List : const [];
+    final out = <Transfer>[];
+    for (final e in list) {
+      final b = parseBill(e);
+      if (b.fullySettled) continue;
+      for (final p in b.participants) {
+        if (p.exempt || p.userId == b.payerId || p.paid) continue;
+        if (p.shareAmountCents <= 0) continue;
+        out.add(Transfer(
+          fromUserId: p.userId,
+          fromName: members[p.userId] ?? p.nickname,
+          toUserId: b.payerId,
+          toName: members[b.payerId] ?? b.payerName,
+          amountCents: p.shareAmountCents,
+          billIds: [b.id],
+        ));
+      }
+    }
+    return out;
   }
 
   Map<String, int> _net(MockStore store, String groupId, Set<String> memberIds) {
@@ -123,5 +168,19 @@ class SettlementRepository {
       amountCents: amount,
       billIds: billIds,
     );
+  }
+
+  Future<Map<String, String>> _memberNames(String groupId) async {
+    try {
+      final res = await ApiClient.instance.get('/groups/$groupId');
+      final j = (res.data as Map?)?.cast<String, dynamic>() ?? const {};
+      final raw = (j['members'] is List) ? j['members'] as List : const [];
+      return {
+        for (final e in raw)
+          parseGroupMember(e).userId: parseGroupMember(e).nickname,
+      };
+    } catch (_) {
+      return const {};
+    }
   }
 }

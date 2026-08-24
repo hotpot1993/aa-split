@@ -1,3 +1,9 @@
+import 'dart:convert';
+
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../core/api/api_client.dart';
+import '../../core/api/codec.dart';
 import '../../core/config.dart';
 import '../../models/user.dart';
 import '../mock/mock_store.dart';
@@ -10,21 +16,50 @@ class AuthException implements Exception {
   String toString() => message;
 }
 
-/// 认证/账户仓库（Demo 模式走 MockStore）。
-///
-/// 非 Demo 模式：各方法应改为 `async` 并通过 `ApiClient`（lib/core/api/api_client.dart）
-/// 调用 `/auth/*` 接口（见技术方案 §4.1）。此处演示骨架直接抛未实现。
+/// 认证/账户仓库。
+/// Demo 模式走 MockStore；真实模式（AA_USE_MOCK=false）调用服务端 /auth/*，
+/// token 与用户信息持久化到 SharedPreferences（app 重启后仍登录）。
 class AuthRepository {
   AuthRepository();
 
-  /// 恢复登录态（启动页判断用）。Demo 模式返回当前演示用户。
-  User? restoreSession() {
+  static const _kToken = 'aa.token';
+  static const _kUser = 'aa.user';
+
+  /// 注册后由 forgot/verify 存入的 resetToken（内存态，10 分钟有效由服务端把关）
+  String? _resetToken;
+
+  /// 恢复登录态（启动页判断用）。
+  User? restoreSessionSync() {
     if (AppConfig.useMock) return MockStore.instance.currentUser;
-    throw UnsupportedError('useMock=false：restoreSession 需 async + ApiClient');
+    return null; // 真实模式需 async：restoreSession()
+  }
+
+  /// 真实模式：从本地存储恢复。已登录返回 User，否则 null。
+  Future<User?> restoreSession() async {
+    if (AppConfig.useMock) return MockStore.instance.currentUser;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString(_kToken);
+      final userJson = prefs.getString(_kUser);
+      if (token == null || userJson == null) return null;
+      ApiClient.instance.setToken(token);
+      // 以服务端资料为准；失败（401 等）则清除本地态
+      try {
+        final res = await ApiClient.instance.get('/auth/me');
+        final user = parseUser(res.data);
+        await _saveSession(token, user);
+        return user;
+      } catch (_) {
+        await _clearSession();
+        return null;
+      }
+    } catch (_) {
+      return null;
+    }
   }
 
   /// 登录
-  User login(String accountName, String password) {
+  Future<User> login(String accountName, String password) async {
     if (AppConfig.useMock) {
       final name = accountName.trim();
       if (name.isEmpty) throw const AuthException('先输入账户名呀');
@@ -34,17 +69,26 @@ class AuthRepository {
       }
       return MockStore.instance.currentUser;
     }
-    throw UnsupportedError('useMock=false：login 需 async + ApiClient');
+    final res = await ApiClient.instance.post('/auth/login', body: {
+      'accountName': accountName.trim(),
+      'password': password,
+    });
+    final data = res.data as Map? ?? const {};
+    final token = (data['accessToken'] ?? '').toString();
+    final user = parseUser(data['user']);
+    ApiClient.instance.setToken(token);
+    await _saveSession(token, user);
+    return user;
   }
 
   /// 注册
-  User register({
+  Future<User> register({
     required String accountName,
     required String password,
     required String nickname,
     required String securityQuestion,
     required String securityAnswer,
-  }) {
+  }) async {
     if (AppConfig.useMock) {
       final name = accountName.trim();
       if (name.isEmpty) throw const AuthException('账户名不能为空');
@@ -62,44 +106,101 @@ class AuthRepository {
       MockStore.instance.currentUser = user;
       return user;
     }
-    throw UnsupportedError('useMock=false：register 需 async + ApiClient');
+    final res = await ApiClient.instance.post('/auth/register', body: {
+      'accountName': accountName.trim(),
+      'password': password,
+      if (nickname.isNotEmpty) 'nickname': nickname,
+      'securityQuestion': securityQuestion,
+      'securityAnswer': securityAnswer,
+    });
+    final data = res.data as Map? ?? const {};
+    final token = (data['accessToken'] ?? '').toString();
+    final user = parseUser(data['user']);
+    ApiClient.instance.setToken(token);
+    await _saveSession(token, user);
+    return user;
   }
 
-  /// 账户名唯一性校验（注册实时）。返回 true 表示可用。
-  bool isAccountAvailable(String accountName) => !_accountExists(accountName);
+  /// 账户名唯一性校验（注册实时）。
+  Future<bool> isAccountAvailable(String accountName) async {
+    if (AppConfig.useMock) return !_accountExists(accountName);
+    try {
+      final res = await ApiClient.instance
+          .get('/users/search', query: {'accountName': accountName.trim()});
+      final list = res.data is List ? res.data as List : const [];
+      return list.isEmpty;
+    } catch (_) {
+      return true; // 搜索不可用时放行，提交时服务端兜底校验
+    }
+  }
 
-  /// 忘记密码：安全问题
-  String securityQuestionOf(String accountName) {
+  /// 忘记密码：安全问题（真实模式无查询端点，返回空串由用户自行输入）
+  Future<String> securityQuestionOf(String accountName) async {
     if (AppConfig.useMock) {
       final q = MockStore.instance.currentUser.securityQuestion;
       return q.isEmpty ? '你第一个朋友的名字？' : q;
     }
-    throw UnsupportedError('useMock=false：securityQuestionOf 需 async + ApiClient');
+    if (accountName.trim().isEmpty) {
+      throw const AuthException('先输入账户名呀');
+    }
+    return '';
   }
 
   /// 验证安全问题（true=通过）
-  bool verifySecurityQuestion(String accountName, String answer) =>
-      answer.trim().isNotEmpty;
+  Future<bool> verifySecurityQuestion(String accountName, String answer) async {
+    if (AppConfig.useMock) return answer.trim().isNotEmpty;
+    final res = await ApiClient.instance.post('/auth/forgot/verify', body: {
+      'accountName': accountName.trim(),
+      'securityAnswer': answer.trim(),
+    });
+    final data = res.data as Map? ?? const {};
+    _resetToken = (data['resetToken'] ?? '').toString();
+    return _resetToken!.isNotEmpty;
+  }
 
-  /// 重置密码（P05）
-  void resetPassword(String accountName, String newPassword) {
+  /// 重置密码（P05；真实模式使用 verify 阶段取得的 resetToken）
+  Future<void> resetPassword(String accountName, String newPassword) async {
     if (AppConfig.useMock) return;
-    throw UnsupportedError('useMock=false：resetPassword 需 async + ApiClient');
+    if (_resetToken == null || _resetToken!.isEmpty) {
+      throw const AuthException('安全验证已过期，请重新验证');
+    }
+    await ApiClient.instance.post('/auth/forgot/reset', body: {
+      'resetToken': _resetToken,
+      'newPassword': newPassword,
+    });
+    _resetToken = null;
   }
 
   /// 修改密码（P52）
-  void changePassword(String current, String next) {
+  Future<void> changePassword(String current, String next) async {
     if (AppConfig.useMock) {
       if (current.isEmpty) throw const AuthException('请输入当前密码');
       return;
     }
-    throw UnsupportedError('useMock=false：changePassword 需 async + ApiClient');
+    await ApiClient.instance.post('/auth/change-password', body: {
+      'currentPassword': current,
+      'newPassword': next,
+    });
   }
 
   /// 退出登录
-  void logout() {
+  Future<void> logout() async {
     if (AppConfig.useMock) return;
-    throw UnsupportedError('useMock=false：logout 需 async + ApiClient');
+    ApiClient.instance.setToken(null);
+    await _clearSession();
+  }
+
+  Future<void> _saveSession(String token, User user) async {
+    ApiClient.instance.setToken(token);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_kToken, token);
+    await prefs.setString(_kUser, jsonEncode(user.toJson()));
+  }
+
+  Future<void> _clearSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_kToken);
+    await prefs.remove(_kUser);
   }
 
   bool _accountExists(String name) {

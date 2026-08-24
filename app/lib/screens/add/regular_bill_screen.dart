@@ -5,6 +5,7 @@ import 'package:aa_design/aa_design.dart';
 
 import '../../core/utils/format.dart';
 import '../../models/bill.dart';
+import '../../models/group.dart';
 import '../../models/regular_bill.dart';
 import '../../providers/data_providers.dart';
 import '../../providers/repositories.dart';
@@ -22,7 +23,7 @@ class RegularBillScreen extends ConsumerStatefulWidget {
 class _RegularBillScreenState extends ConsumerState<RegularBillScreen> {
   @override
   Widget build(BuildContext context) {
-    final regulars = ref.watch(regularBillsProvider);
+    final regulars = ref.watch(regularBillsProvider).value ?? const <RegularBill>[];
 
     return AaScaffold(
       appBar: AppBar(
@@ -276,7 +277,7 @@ class _CreateRegularSheetState extends ConsumerState<_CreateRegularSheet> {
   }
 
   void _open() {
-    final groups = ref.read(groupsProvider);
+    final groups = ref.read(groupsProvider).value ?? const <Group>[];
     final groupId = groups.isEmpty ? '' : groups.first.id;
     final groupName = groups.isEmpty ? '' : groups.first.name;
     final cents = (double.tryParse(_amount.text) ?? 0) * 100;

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:aa_design/aa_design.dart';
 
+import '../../models/bill.dart';
 import '../../providers/data_providers.dart';
 import '../../widgets/common.dart';
 import '../../widgets/sheet.dart';
@@ -27,7 +28,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
-    final bills = ref.watch(billsProvider);
+    final bills = ref.watch(billsProvider).value ?? const <Bill>[];
 
     return AaScaffold(
       appBar: AppBar(title: const Text('数据导出')),

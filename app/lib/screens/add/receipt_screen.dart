@@ -23,7 +23,7 @@ class ReceiptScreen extends ConsumerStatefulWidget {
 class _ReceiptScreenState extends ConsumerState<ReceiptScreen> {
   @override
   Widget build(BuildContext context) {
-    final all = ref.watch(billsProvider);
+    final all = ref.watch(billsProvider).value ?? const <Bill>[];
     Bill? bill;
     for (final b in all) {
       if (b.id == widget.billId) {

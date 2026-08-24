@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:aa_design/aa_design.dart';
 
 import '../../core/utils/format.dart';
+import '../../models/bill.dart';
 import '../../providers/data_providers.dart';
 import '../../providers/repositories.dart';
 import '../../providers/refresh_provider.dart';
@@ -34,7 +35,9 @@ class _RemindScreenState extends ConsumerState<RemindScreen> {
   }
 
   List<_Target> _unpaidTargets() {
-    final bills = ref.read(billsProvider).where((b) => b.groupId == widget.groupId).toList();
+    final bills = (ref.read(billsProvider).value ?? const <Bill>[])
+        .where((b) => b.groupId == widget.groupId)
+        .toList();
     final set = <String, _Target>{};
     for (final b in bills) {
       if (b.fullySettled) continue;
@@ -118,13 +121,15 @@ class _RemindScreenState extends ConsumerState<RemindScreen> {
     );
   }
 
-  void _send() {
-    final bills = ref.read(billsProvider).where((b) => b.groupId == widget.groupId).toList();
+  Future<void> _send() async {
+    final bills = (ref.read(billsProvider).value ?? const <Bill>[])
+        .where((b) => b.groupId == widget.groupId)
+        .toList();
     final firstBill = bills.firstWhere((b) => b.hasUnpaid, orElse: () => bills.first);
-    ref.read(billRepositoryProvider).remind(firstBill.id, _selected.toList(), _message.text);
+    await ref.read(billRepositoryProvider).remind(firstBill.id, _selected.toList(), _message.text);
     for (final t in _unpaidTargets()) {
       if (_selected.contains(t.userId)) {
-        ref.read(notificationRepositoryProvider).sendRemind(
+        await ref.read(notificationRepositoryProvider).sendRemind(
               billId: firstBill.id,
               billTitle: t.billTitle,
               userIds: [t.userId],
@@ -132,6 +137,7 @@ class _RemindScreenState extends ConsumerState<RemindScreen> {
             );
       }
     }
+    if (!mounted) return;
     ref.read(refreshProvider.notifier).bump();
     showAaToast(context, '已催款，等TA们自觉');
   }

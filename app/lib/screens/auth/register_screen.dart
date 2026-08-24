@@ -37,11 +37,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   bool _agree = false;
   bool _obscure = true;
 
-  bool get _accountTaken {
-    final name = _account.text.trim();
-    if (name.isEmpty) return false;
-    return !ref.read(authRepositoryProvider).isAccountAvailable(name);
-  }
+  bool? _available;
+
+  bool get _accountTaken => _available == false;
 
   bool get _canSubmit {
     return _account.text.trim().isNotEmpty &&
@@ -52,10 +50,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         _agree;
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     if (!_canSubmit) return;
+    await _checkAccount();
+    if (!mounted) return;
+    if (_accountTaken) {
+      setState(() => _accountErr = '这个名字被占用啦，换一个试试');
+      return;
+    }
     try {
-      ref.read(authProvider.notifier).register(
+      await ref.read(authProvider.notifier).register(
             accountName: _account.text.trim(),
             password: _password.text,
             nickname: _nickname.text.trim(),
@@ -65,6 +69,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       if (mounted) context.go('/home');
     } on AuthException catch (e) {
       setState(() => _accountErr = e.message);
+    } catch (e) {
+      setState(() => _accountErr = e.toString());
     }
   }
 
@@ -206,11 +212,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     );
   }
 
-  void _checkAccount() {
-    if (_account.text.trim().isEmpty) return;
-    if (_accountTaken) {
-      _accountErr = '已被占用，试试 ${_account.text.trim()}_123';
+  Future<void> _checkAccount() async {
+    final name = _account.text.trim();
+    if (name.isEmpty) {
+      if (_available != null && mounted) setState(() => _available = null);
+      return;
     }
+    final ok = await ref.read(authRepositoryProvider).isAccountAvailable(name);
+    if (mounted) setState(() => _available = ok);
   }
 
   bool _hasLetterAndDigit(String s) =>

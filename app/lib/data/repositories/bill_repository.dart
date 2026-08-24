@@ -1,53 +1,88 @@
+import 'dart:io' show File;
+
+import '../../core/api/api_client.dart';
+import '../../core/api/codec.dart';
 import '../../core/config.dart';
 import '../../models/bill.dart';
 import '../../models/bill_participant.dart';
+import '../../models/group.dart';
 import '../../models/regular_bill.dart';
 import '../mock/mock_store.dart';
 
-/// 账单仓库（Demo 模式走 MockStore）
-///
-/// 非 Demo 模式：应改为 async 并调用 ApiClient 的 `/bills` 接口（技术方案 §4.3）。
+/// 账单仓库。
+/// Demo 模式走 MockStore；真实模式调用 /bills 与 /groups/:id/bills、
+/// /regular-bills 等接口（技术方案 §4.3）。
 class BillRepository {
   BillRepository();
 
-  List<Bill> listAll() {
+  static const _pageSize = 100;
+
+  /// 全部账单（跨群按日期倒序）。真实模式：逐群拉取第一页合并。
+  Future<List<Bill>> listAll() async {
     if (AppConfig.useMock) {
       return List.of(MockStore.instance.bills)
         ..sort((a, b) => b.billDate.compareTo(a.billDate));
     }
-    throw UnsupportedError('useMock=false：BillRepository.listAll 需 async + ApiClient');
+    final groups = await _groups();
+    final out = <Bill>[];
+    for (final g in groups) {
+      out.addAll(await listByGroup(g.id, groupName: g.name));
+    }
+    out.sort((a, b) => b.billDate.compareTo(a.billDate));
+    return out;
   }
 
   /// 结算状态筛选（P12）
-  List<Bill> listFiltered({BillSettleStatus? status, bool minePayer = false}) {
+  Future<List<Bill>> listFiltered({
+    BillSettleStatus? status,
+    bool minePayer = false,
+  }) async {
     if (AppConfig.useMock) {
       final me = MockStore.instance.currentUser.id;
-      return listAll().where((b) {
+      final all = await listAll();
+      return all.where((b) {
         if (status != null && b.settleStatus != status) return false;
         if (minePayer && b.payerId != me) return false;
         return true;
       }).toList();
     }
-    throw UnsupportedError('useMock=false：BillRepository.listFiltered 需 async + ApiClient');
+    final all = await listAll();
+    final me = await _meId();
+    return all.where((b) {
+      if (status != null && b.settleStatus != status) return false;
+      if (minePayer && b.payerId != me) return false;
+      return true;
+    }).toList();
   }
 
-  List<Bill> listByGroup(String groupId) {
+  Future<List<Bill>> listByGroup(String groupId, {String groupName = ''}) async {
     if (AppConfig.useMock) {
       return List.of(MockStore.instance.billsForGroup(groupId));
     }
-    throw UnsupportedError('useMock=false：BillRepository.listByGroup 需 async + ApiClient');
+    final res = await ApiClient.instance.get('/groups/$groupId/bills',
+        query: {'page': 1, 'pageSize': _pageSize});
+    final j = (res.data as Map?)?.cast<String, dynamic>() ?? const {};
+    final list = (j['list'] is List) ? j['list'] as List : const [];
+    return list
+        .map((e) => parseBill(e, groupName: groupName))
+        .toList();
   }
 
-  Bill get(String id) {
+  Future<Bill> get(String id, {String groupName = ''}) async {
     if (AppConfig.useMock) {
       final b = MockStore.instance.billById(id);
       if (b == null) throw UnsupportedError('账单不存在');
       return b;
     }
-    throw UnsupportedError('useMock=false：BillRepository.get 需 async + ApiClient');
+    final res = await ApiClient.instance.get('/bills/$id');
+    final data = (res.data is Map) ? res.data : null;
+    // 服务端详情可能返回 {bill, ...} 包装
+    final billData =
+        (data is Map && data.containsKey('bill')) ? data['bill'] : data;
+    return parseBill(billData, groupName: groupName);
   }
 
-  Bill create({
+  Future<Bill> create({
     required String groupId,
     required String groupName,
     required String title,
@@ -61,7 +96,7 @@ class BillRepository {
     SplitType splitType = SplitType.even,
     List<Receipt> receipts = const [],
     bool isRegular = false,
-  }) {
+  }) async {
     if (AppConfig.useMock) {
       final store = MockStore.instance;
       final bill = Bill(
@@ -86,10 +121,37 @@ class BillRepository {
       store.refreshGroup(groupId);
       return bill;
     }
-    throw UnsupportedError('useMock=false：BillRepository.create 需 async + ApiClient');
+    if (participants.isEmpty) {
+      // 服务端要求显式参与人；这里按全群成员均摊由服务端处理不了（服务端校验 sum），
+      // 故至少把垫付人带上（服务端 even 模式自动均摊）。
+      throw UnsupportedError(
+          '真实模式创建账单需提供 participants（服务端事务校验分摊合计）');
+    }
+    final res = await ApiClient.instance.post('/bills', body: {
+      'groupId': groupId,
+      'title': title,
+      'location': location,
+      'amountCents': amountCents,
+      'billDate': _dateStr(billDate),
+      'category': category.name,
+      'splitType': splitType.name,
+      'payerId': payerId,
+      'participants': [
+        for (final p in participants)
+          {
+            'userId': p.userId,
+            'shareAmountCents': p.shareAmountCents,
+            'exempt': p.exempt,
+          },
+      ],
+    });
+    final data = (res.data is Map) ? res.data : null;
+    final billData =
+        (data is Map && data.containsKey('bill')) ? data['bill'] : data;
+    return parseBill(billData, groupName: groupName);
   }
 
-  void delete(String id) {
+  Future<void> delete(String id) async {
     if (AppConfig.useMock) {
       final store = MockStore.instance;
       final b = store.billById(id);
@@ -97,11 +159,12 @@ class BillRepository {
       if (b != null) store.refreshGroup(b.groupId);
       return;
     }
-    throw UnsupportedError('useMock=false：BillRepository.delete 需 async + ApiClient');
+    await ApiClient.instance.delete('/bills/$id');
   }
 
   /// 编辑账单（标题/金额/日期/备注）—— P14 编辑
-  void update(String id, {String? title, int? amountCents, DateTime? date, String? location}) {
+  Future<void> update(String id,
+      {String? title, int? amountCents, DateTime? date, String? location}) async {
     if (AppConfig.useMock) {
       final store = MockStore.instance;
       final idx = store.bills.indexWhere((b) => b.id == id);
@@ -128,11 +191,16 @@ class BillRepository {
       store.refreshGroup(b.groupId);
       return;
     }
-    throw UnsupportedError('useMock=false：BillRepository.update 需 async + ApiClient');
+    await ApiClient.instance.patch('/bills/$id', body: {
+      'title': ?title,
+      'amountCents': ?amountCents,
+      'billDate': ?(date == null ? null : _dateStr(date)),
+      'location': ?location,
+    });
   }
 
   /// 替换分摊明细（P31 编辑分摊）
-  void replaceParticipants(String id, List<BillParticipant> participants) {
+  Future<void> replaceParticipants(String id, List<BillParticipant> participants) async {
     if (AppConfig.useMock) {
       final store = MockStore.instance;
       final idx = store.bills.indexWhere((b) => b.id == id);
@@ -159,10 +227,19 @@ class BillRepository {
       store.refreshGroup(b.groupId);
       return;
     }
-    throw UnsupportedError('useMock=false：BillRepository.replaceParticipants 需 async + ApiClient');
+    await ApiClient.instance.patch('/bills/$id', body: {
+      'participants': [
+        for (final p in participants)
+          {
+            'userId': p.userId,
+            'shareAmountCents': p.shareAmountCents,
+            'exempt': p.exempt,
+          },
+      ],
+    });
   }
 
-  void markPaid(String billId, String userId, bool paid) {
+  Future<void> markPaid(String billId, String userId, bool paid) async {
     if (AppConfig.useMock) {
       final store = MockStore.instance;
       final idx = store.bills.indexWhere((b) => b.id == billId);
@@ -194,15 +271,18 @@ class BillRepository {
       store.refreshGroup(bill.groupId);
       return;
     }
-    throw UnsupportedError('useMock=false：BillRepository.markPaid 需 async + ApiClient');
+    await ApiClient.instance.post('/bills/$billId/mark-paid', body: {
+      'userId': userId,
+      'paid': paid,
+    });
   }
 
-  /// 添加凭证照片（P33/P30）
-  void addReceipt(String id, Receipt receipt) {
+  /// 添加凭证照片（P33/P30；真实模式为 multipart 上传）
+  Future<Receipt> addReceipt(String id, Receipt receipt) async {
     if (AppConfig.useMock) {
       final store = MockStore.instance;
       final idx = store.bills.indexWhere((b) => b.id == id);
-      if (idx < 0) return;
+      if (idx < 0) return receipt;
       final b = store.bills[idx];
       final real = Receipt(id: receipt.id, billId: id, url: receipt.url);
       store.bills[idx] = Bill(
@@ -223,12 +303,25 @@ class BillRepository {
         settleStatus: b.settleStatus,
         createdAt: b.createdAt,
       );
-      return;
+      return real;
     }
-    throw UnsupportedError('useMock=false：BillRepository.addReceipt 需 async + ApiClient');
+    // 真实模式：receipt 需携带本地文件路径/字节（由 P33 拍照后填充）
+    if (receipt.url.isEmpty) {
+      throw UnsupportedError('真实模式凭证上传需先拍照，或在 Demo 模式下使用');
+    }
+    final file = File(receipt.url);
+    if (!file.existsSync()) {
+      throw UnsupportedError('凭证文件不存在');
+    }
+    final res = await ApiClient.instance.upload(
+      '/bills/$id/receipts',
+      file.path,
+      field: 'file',
+    );
+    return parseReceipt(res.data);
   }
 
-  void remind(String billId, List<String> userIds, String message) {
+  Future<void> remind(String billId, List<String> userIds, String message) async {
     if (AppConfig.useMock) {
       final store = MockStore.instance;
       final bill = store.billById(billId);
@@ -261,7 +354,10 @@ class BillRepository {
       );
       return;
     }
-    throw UnsupportedError('useMock=false：BillRepository.remind 需 async + ApiClient');
+    await ApiClient.instance.post('/bills/$billId/remind', body: {
+      'userIds': userIds,
+      if (message.isNotEmpty) 'message': message,
+    });
   }
 
   /// 派生结算状态（服务端也如此维护）
@@ -277,12 +373,22 @@ class BillRepository {
 
   // ---- 定期账单 ----
 
-  List<RegularBill> listRegular() {
-    if (AppConfig.useMock) return List.of(MockStore.instance.regularBills);
-    throw UnsupportedError('useMock=false：listRegular 需 async + ApiClient');
+  Future<List<RegularBill>> listRegular() async {
+    if (AppConfig.useMock) {
+      return List.of(MockStore.instance.regularBills);
+    }
+    final res = await ApiClient.instance.get('/regular-bills');
+    final raw = res.data is List ? res.data as List : const [];
+    final groups = await _groups();
+    final names = {for (final g in groups) g.id: g.name};
+    return raw.map((e) {
+      final j = (e as Map).cast<String, dynamic>();
+      final gid = j['groupId']?.toString() ?? '';
+      return parseRegularBill(e, groupName: names[gid] ?? '');
+    }).toList();
   }
 
-  void createRegular({
+  Future<void> createRegular({
     required String groupId,
     required String groupName,
     required String title,
@@ -290,7 +396,7 @@ class BillRepository {
     required BillCategory category,
     RegularCycle cycle = RegularCycle.monthly,
     int dayOfMonth = 1,
-  }) {
+  }) async {
     if (AppConfig.useMock) {
       MockStore.instance.regularBills.add(RegularBill(
         id: 'rb${DateTime.now().millisecondsSinceEpoch}',
@@ -305,10 +411,19 @@ class BillRepository {
       ));
       return;
     }
-    throw UnsupportedError('useMock=false：createRegular 需 async + ApiClient');
+    await ApiClient.instance.post('/regular-bills', body: {
+      'groupId': groupId,
+      'title': title,
+      'amountCents': amountCents,
+      'category': category.name,
+      'splitType': 'even',
+      'cycle': cycle.name,
+      if (cycle == RegularCycle.monthly) 'dayOfMonth': dayOfMonth,
+      'participants': <Map<String, dynamic>>[],
+    });
   }
 
-  void toggleRegular(String id, bool active) {
+  Future<void> toggleRegular(String id, bool active) async {
     if (AppConfig.useMock) {
       final idx = MockStore.instance.regularBills.indexWhere((r) => r.id == id);
       if (idx < 0) return;
@@ -327,6 +442,26 @@ class BillRepository {
       );
       return;
     }
-    throw UnsupportedError('useMock=false：toggleRegular 需 async + ApiClient');
+    await ApiClient.instance.patch('/regular-bills/$id', body: {'active': active});
+  }
+
+  // ---- 内部工具 ----
+
+  static String _dateStr(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+  Future<List<Group>> _groups() async {
+    final res = await ApiClient.instance.get('/groups');
+    final raw = res.data is List ? res.data as List : const [];
+    return raw.map(parseGroup).toList();
+  }
+
+  Future<String> _meId() async {
+    try {
+      final res = await ApiClient.instance.get('/auth/me');
+      return parseUser(res.data).id;
+    } catch (_) {
+      return '';
+    }
   }
 }

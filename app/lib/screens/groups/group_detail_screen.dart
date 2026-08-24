@@ -19,7 +19,7 @@ class GroupDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final groups = ref.watch(groupsProvider);
+    final groups = ref.watch(groupsProvider).value ?? const <Group>[];
     Group? group;
     for (final g in groups) {
       if (g.id == groupId) {
@@ -33,9 +33,9 @@ class GroupDetailScreen extends ConsumerWidget {
         body: Center(child: EmptyState(title: '这个群组找不到啦')),
       );
     }
-    final allBills = ref.watch(billsProvider);
+    final allBills = ref.watch(billsProvider).value ?? const <Bill>[];
     final bills = allBills.where((b) => b.groupId == groupId).toList();
-    final members = ref.watch(groupMembersProvider)[groupId] ?? [];
+    final members = (ref.watch(groupMembersProvider).value ?? const {})[groupId] ?? [];
     final me = ref.watch(currentUserProvider)?.id ?? 'me';
 
     final total = bills.fold<int>(0, (s, b) => s + b.amountCents);

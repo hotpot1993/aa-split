@@ -18,7 +18,7 @@ class MessagesScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final items = ref.watch(notificationsProvider);
+    final items = ref.watch(notificationsProvider).value ?? const <NotificationItem>[];
     final today = items.where((n) => n.isToday).toList();
     final earlier = items.where((n) => !n.isToday).toList();
 

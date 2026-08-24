@@ -26,7 +26,7 @@ class ParticipantsScreen extends ConsumerStatefulWidget {
 class _ParticipantsScreenState extends ConsumerState<ParticipantsScreen> {
   @override
   Widget build(BuildContext context) {
-    final all = ref.watch(billsProvider);
+    final all = ref.watch(billsProvider).value ?? const <Bill>[];
     Bill? bill;
     for (final b in all) {
       if (b.id == widget.billId) {
@@ -55,9 +55,9 @@ class _ParticipantsScreenState extends ConsumerState<ParticipantsScreen> {
     );
   }
 
-  void _save(Set<String> selected) {
+  Future<void> _save(Set<String> selected) async {
     Bill? bill;
-    for (final b in ref.read(billsProvider)) {
+    for (final b in ref.read(billsProvider).value ?? const <Bill>[]) {
       if (b.id == widget.billId) {
         bill = b;
         break;
@@ -84,7 +84,8 @@ class _ParticipantsScreenState extends ConsumerState<ParticipantsScreen> {
         exempt: l.exempt,
       );
     }).toList();
-    ref.read(billRepositoryProvider).replaceParticipants(widget.billId, participants);
+    await ref.read(billRepositoryProvider).replaceParticipants(widget.billId, participants);
+    if (!mounted) return;
     ref.read(refreshProvider.notifier).bump();
     showAaToast(context, '参与人已更新');
     if (mounted) context.pop();

@@ -34,18 +34,23 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
 
   bool get _canSubmit => _name.text.trim().isNotEmpty && _name.text.length <= 20;
 
-  void _create() {
+  Future<void> _create() async {
     if (!_canSubmit) return;
-    final group = ref.read(groupRepositoryProvider).create(
-          name: _name.text.trim(),
-          intro: _intro.text.trim(),
-          avatar: _avatar,
-          defaultSplit: _split,
-        );
-    ref.read(refreshProvider.notifier).bump();
-    showAaToast(context, '创建成功，拉上小伙伴吧');
-    // 引导邀请
-    context.pushReplacement('/groups/${group.id}/invite');
+    try {
+      final group = await ref.read(groupRepositoryProvider).create(
+            name: _name.text.trim(),
+            intro: _intro.text.trim(),
+            avatar: _avatar,
+            defaultSplit: _split,
+          );
+      ref.read(refreshProvider.notifier).bump();
+      if (!mounted) return;
+      showAaToast(context, '创建成功，拉上小伙伴吧');
+      // 引导邀请
+      if (mounted) context.pushReplacement('/groups/${group.id}/invite');
+    } catch (e) {
+      showAaToast(context, '创建失败：$e');
+    }
   }
 
   @override

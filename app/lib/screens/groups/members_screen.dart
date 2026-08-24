@@ -19,7 +19,7 @@ class MembersScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final members = ref.watch(groupMembersProvider)[groupId] ?? [];
+    final members = (ref.watch(groupMembersProvider).value ?? const {})[groupId] ?? [];
     final me = ref.watch(currentUserProvider)?.id ?? 'me';
 
     return AaScaffold(
@@ -64,14 +64,15 @@ class MembersScreen extends ConsumerWidget {
     );
     if (ok == true) {
       if (!context.mounted) return;
-      ref.read(groupRepositoryProvider).removeMember(groupId, m.userId);
+      await ref.read(groupRepositoryProvider).removeMember(groupId, m.userId);
+      if (!context.mounted) return;
       ref.read(refreshProvider.notifier).bump();
       showAaToast(context, '已移除 ${m.nickname}');
     }
   }
 
   Future<void> _leave(WidgetRef ref, BuildContext context, String me) async {
-    final members = ref.read(groupMembersProvider)[groupId] ?? [];
+    final members = (ref.read(groupMembersProvider).value ?? const {})[groupId] ?? [];
     final isOwner = members.any((x) => x.isOwner && x.userId == me);
     if (isOwner) {
       showAaToast(context, '你是群主，先转让群主或解散群组');
@@ -85,7 +86,8 @@ class MembersScreen extends ConsumerWidget {
     );
     if (ok == true) {
       if (!context.mounted) return;
-      ref.read(groupRepositoryProvider).removeMember(groupId, me);
+      await ref.read(groupRepositoryProvider).removeMember(groupId, me);
+      if (!context.mounted) return;
       ref.read(refreshProvider.notifier).bump();
       showAaToast(context, '已退出群组');
       if (context.mounted) context.pop();

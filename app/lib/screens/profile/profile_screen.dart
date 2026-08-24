@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'package:aa_design/aa_design.dart';
 
 import '../../core/utils/format.dart';
+import '../../models/bill.dart';
+import '../../models/group.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/data_providers.dart';
 import '../../widgets/common.dart';
@@ -20,8 +22,8 @@ class ProfileScreen extends ConsumerWidget {
     if (user == null) {
       return const AaScaffold(appBar: null, body: Center(child: EmptyState(title: '还没登录哦')));
     }
-    final groups = ref.watch(groupsProvider);
-    final bills = ref.watch(billsProvider);
+    final groups = ref.watch(groupsProvider).value ?? const <Group>[];
+    final bills = ref.watch(billsProvider).value ?? const <Bill>[];
     final totalAA = bills.fold<int>(0, (s, b) => s + b.amountCents);
     final text = Theme.of(context).textTheme;
 

@@ -9,7 +9,6 @@ import 'package:aa_design/aa_design.dart';
 
 import '../../models/transfer.dart';
 import '../../providers/data_providers.dart';
-import '../../providers/repositories.dart';
 import '../../widgets/avatar.dart';
 import '../../widgets/common.dart';
 import '../../widgets/sheet.dart';
@@ -27,14 +26,15 @@ class _SettlementScreenState extends ConsumerState<SettlementScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final repo = ref.read(settlementRepositoryProvider);
-    final plan = repo.compute(widget.groupId);
-    final perBillTransfers = repo.perBill(widget.groupId);
+    final plan = ref.watch(settlementPlanProvider(widget.groupId)).value;
+    final perBillTransfers =
+        ref.watch(perBillTransfersProvider(widget.groupId)).value ??
+            const <Transfer>[];
     final text = Theme.of(context).textTheme;
 
-    final transfers = _perBill ? perBillTransfers : plan.transfers;
-    final title = _perBill ? '逐笔结算' : '最少 ${plan.transferCount} 笔清账！';
-    final members = ref.watch(groupMembersProvider)[widget.groupId] ?? [];
+    final transfers = _perBill ? perBillTransfers : (plan?.transfers ?? const <Transfer>[]);
+    final title = _perBill ? '逐笔结算' : '最少 ${plan?.transferCount ?? 0} 笔清账！';
+    final members = (ref.watch(groupMembersProvider).value ?? const {})[widget.groupId] ?? [];
 
     return AaScaffold(
       appBar: AppBar(title: const Text('一键智能结算')),

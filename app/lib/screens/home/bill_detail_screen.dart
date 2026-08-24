@@ -25,7 +25,7 @@ class BillDetailScreen extends ConsumerStatefulWidget {
 
 class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
   Bill? get _bill {
-    final all = ref.read(billsProvider);
+    final all = ref.read(billsProvider).value ?? const <Bill>[];
     for (final b in all) {
       if (b.id == widget.billId) return b;
     }
@@ -187,8 +187,9 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
   void _edit(Bill bill) {
     showAaSheet(
       context,
-      child: _EditSheet(bill: bill, onSave: (title, cents) {
-        ref.read(billRepositoryProvider).update(bill.id, title: title, amountCents: cents);
+      child: _EditSheet(bill: bill, onSave: (title, cents) async {
+        await ref.read(billRepositoryProvider).update(bill.id, title: title, amountCents: cents);
+        if (!mounted) return;
         ref.read(refreshProvider.notifier).bump();
         showAaToast(context, '账单已更新');
       }),
@@ -204,7 +205,8 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
     );
     if (ok == true) {
       if (!mounted) return;
-      ref.read(billRepositoryProvider).delete(bill.id);
+      await ref.read(billRepositoryProvider).delete(bill.id);
+      if (!mounted) return;
       ref.read(refreshProvider.notifier).bump();
       showAaToast(context, '小票已撕掉');
       context.pop();
@@ -335,12 +337,12 @@ class _MarkPaidSheetState extends ConsumerState<_MarkPaidSheet> {
     );
   }
 
-  void _apply() {
+  Future<void> _apply() async {
     final repo = ref.read(billRepositoryProvider);
     for (final id in _toPay) {
-      repo.markPaid(widget.bill.id, id, true);
+      await repo.markPaid(widget.bill.id, id, true);
     }
-    Navigator.of(context).pop(true);
+    if (mounted) Navigator.of(context).pop(true);
   }
 }
 

@@ -1,15 +1,18 @@
+import '../../core/api/api_client.dart';
+import '../../core/api/codec.dart';
 import '../../core/config.dart';
+import '../../models/bill.dart';
 import '../../models/group.dart';
 import '../../models/group_member.dart';
 import '../mock/mock_store.dart';
 
-/// 群组仓库（Demo 模式走 MockStore）
-///
-/// 非 Demo 模式：应改为 async 并调用 ApiClient 的 `/groups` 接口（技术方案 §4.2）。
+/// 群组仓库。
+/// Demo 模式走 MockStore；真实模式调用 /groups 系列接口，
+/// 群列表/成员净额所需统计（未结清数/总额/净额）由客户端按账单数据派生。
 class GroupRepository {
   GroupRepository();
 
-  List<Group> list() {
+  Future<List<Group>> list() async {
     if (AppConfig.useMock) {
       final store = MockStore.instance;
       final out = store.groups.map((g) {
@@ -27,15 +30,30 @@ class GroupRepository {
       }).toList();
       return out;
     }
-    throw UnsupportedError('useMock=false：GroupRepository.list 需 async + ApiClient');
+    final res = await ApiClient.instance.get('/groups');
+    final raw = res.data is List ? res.data as List : const [];
+    final groups = raw.map(parseGroup).toList();
+    // 派生：未结清数/总额/最近账单（服务端列表不携带）
+    final names = <String, String>{for (final g in groups) g.id: g.name};
+    for (var i = 0; i < groups.length; i++) {
+      final bills = await _billsOf(groups[i].id, names);
+      final pending = bills.where((b) => !b.fullySettled).length;
+      groups[i] = groups[i].copyWith(
+        pendingBillCount: pending,
+        totalCents: bills.fold<int>(0, (s, b) => s + b.amountCents),
+        recentBillTitle: bills.isEmpty ? '' : bills.first.title,
+        recentBillDate: bills.isEmpty ? null : bills.first.billDate,
+      );
+    }
+    return groups;
   }
 
-  Group create({
+  Future<Group> create({
     required String name,
     String intro = '',
     String avatar = '🐼',
     GroupDefaultSplit defaultSplit = GroupDefaultSplit.even,
-  }) {
+  }) async {
     if (AppConfig.useMock) {
       final store = MockStore.instance;
       final me = store.currentUser;
@@ -64,19 +82,28 @@ class GroupRepository {
       ];
       return group;
     }
-    throw UnsupportedError('useMock=false：GroupRepository.create 需 async + ApiClient');
+    final res = await ApiClient.instance.post('/groups', body: {
+      'name': name,
+      'intro': intro,
+      'avatarUrl': avatar,
+      'defaultSplitType': defaultSplit.name,
+    });
+    final group = parseGroup(res.data);
+    return group.copyWith(memberCount: 1);
   }
 
-  Group get(String id) {
+  Future<Group> get(String id) async {
     if (AppConfig.useMock) {
       final g = MockStore.instance.groupById(id);
       if (g == null) throw UnsupportedError('群组不存在');
       return g;
     }
-    throw UnsupportedError('useMock=false：GroupRepository.get 需 async + ApiClient');
+    final res = await ApiClient.instance.get('/groups/$id');
+    return parseGroup(res.data);
   }
 
-  void update(String id, {String? name, String? intro, String? avatar}) {
+  Future<void> update(String id,
+      {String? name, String? intro, String? avatar}) async {
     if (AppConfig.useMock) {
       final store = MockStore.instance;
       final idx = store.groups.indexWhere((g) => g.id == id);
@@ -85,11 +112,15 @@ class GroupRepository {
       store.groups[idx] = g.copyWith(name: name, intro: intro, avatar: avatar);
       return;
     }
-    throw UnsupportedError('useMock=false：GroupRepository.update 需 async + ApiClient');
+    await ApiClient.instance.patch('/groups/$id', body: {
+      'name': ?name,
+      'intro': ?intro,
+      'avatarUrl': ?avatar,
+    });
   }
 
   /// 解散群组（仅群主，需二次确认）
-  void disband(String id) {
+  Future<void> disband(String id) async {
     if (AppConfig.useMock) {
       final store = MockStore.instance;
       store.groups.removeWhere((g) => g.id == id);
@@ -97,10 +128,10 @@ class GroupRepository {
       store.members.remove(id);
       return;
     }
-    throw UnsupportedError('useMock=false：GroupRepository.disband 需 async + ApiClient');
+    await ApiClient.instance.delete('/groups/$id');
   }
 
-  List<GroupMember> members(String groupId) {
+  Future<List<GroupMember>> members(String groupId) async {
     if (AppConfig.useMock) {
       final store = MockStore.instance;
       final net = _netBalances(store, groupId);
@@ -119,10 +150,30 @@ class GroupRepository {
         );
       }).toList();
     }
-    throw UnsupportedError('useMock=false：GroupRepository.members 需 async + ApiClient');
+    // 详情接口含成员列表；净额派生自未结清账单
+    final res = await ApiClient.instance.get('/groups/$groupId');
+    final j = (res.data as Map?)?.cast<String, dynamic>() ?? const {};
+    final ownerId = (j['ownerId'] ?? '').toString();
+    final bills = await _billsOf(groupId, {});
+    final net = _netFromBills(bills, groupId);
+    final raw = (j['members'] is List) ? j['members'] as List : const [];
+    return raw.map((e) {
+      final m = parseGroupMember(e, isOwner: false);
+      return GroupMember(
+        id: m.userId,
+        userId: m.userId,
+        nickname: m.nickname,
+        accountName: m.accountName,
+        avatarUrl: m.avatarUrl,
+        isOwner: m.userId == ownerId,
+        status: m.status,
+        joinedAt: m.joinedAt,
+        netBalanceCents: net[m.userId] ?? 0,
+      );
+    }).toList();
   }
 
-  void addMember(String groupId, String accountName) {
+  Future<void> addMember(String groupId, String accountName) async {
     if (AppConfig.useMock) {
       final store = MockStore.instance;
       final users = _demoUsers;
@@ -148,10 +199,12 @@ class GroupRepository {
       store.refreshGroup(groupId);
       return;
     }
-    throw UnsupportedError('useMock=false：GroupRepository.addMember 需 async + ApiClient');
+    await ApiClient.instance.post('/groups/$groupId/members', body: {
+      'accountName': accountName.trim(),
+    });
   }
 
-  void removeMember(String groupId, String userId) {
+  Future<void> removeMember(String groupId, String userId) async {
     if (AppConfig.useMock) {
       final store = MockStore.instance;
       final list = store.members[groupId];
@@ -160,10 +213,10 @@ class GroupRepository {
       store.refreshGroup(groupId);
       return;
     }
-    throw UnsupportedError('useMock=false：GroupRepository.removeMember 需 async + ApiClient');
+    await ApiClient.instance.delete('/groups/$groupId/members/$userId');
   }
 
-  bool join(String inviteCode) {
+  Future<bool> join(String inviteCode) async {
     if (AppConfig.useMock) {
       final store = MockStore.instance;
       for (final g in store.groups) {
@@ -171,36 +224,43 @@ class GroupRepository {
       }
       return false;
     }
-    throw UnsupportedError('useMock=false：GroupRepository.join 需 async + ApiClient');
+    final res = await ApiClient.instance.post('/groups/join', body: {
+      'inviteCode': inviteCode.trim(),
+    });
+    final j = (res.data as Map?)?.cast<String, dynamic>() ?? const {};
+    final already = (j['alreadyJoined'] ?? false) as bool? ?? false;
+    return j['id'] != null || already;
   }
 
-  String inviteLink(String groupId) {
+  Future<String> inviteLink(String groupId) async {
     if (AppConfig.useMock) {
       final g = MockStore.instance.groupById(groupId);
       final code = g?.inviteCode ?? '';
       return '${AppConfig.inviteScheme}$code';
     }
-    throw UnsupportedError('useMock=false：GroupRepository.inviteLink 需 async + ApiClient');
+    final res = await ApiClient.instance.get('/groups/$groupId/invite');
+    final j = (res.data as Map?)?.cast<String, dynamic>() ?? const {};
+    final code = (j['inviteCode'] ?? '').toString();
+    return '${AppConfig.inviteScheme}$code';
   }
 
-  /// 用于演示的可搜索成员字典（账户名 → 昵称）
-  Map<String, String> get _demoUsers => {
-        'zhangsan': '张三',
-        'lisi': '李四',
-        'wangwu': '王五',
-        'xiaoming': '小明',
-        'xiaohong': '小红',
-        'xiaolu': '小鹿',
-        'aqiang': '阿强',
-        'ahua': '阿花',
-      };
+  // ---- 内部工具 ----
 
-  Map<String, int> _netBalances(MockStore store, String groupId) {
+  Future<List<Bill>> _billsOf(String groupId, Map<String, String> groupNames) async {
+    // 群账单流水第一页就够派生统计（上限 100）
+    final res = await ApiClient.instance.get('/groups/$groupId/bills',
+        query: {'page': 1, 'pageSize': 100});
+    final j = (res.data as Map?)?.cast<String, dynamic>() ?? const {};
+    final list = (j['list'] is List) ? j['list'] as List : const [];
+    return list
+        .map((e) => parseBill(e, groupName: groupNames[groupId] ?? ''))
+        .toList();
+  }
+
+  /// 用户净额派生（正=应收，负=应付）—— 与 Demo 逻辑/Mock 一致
+  static Map<String, int> _netFromBills(List<Bill> bills, String groupId) {
     final net = <String, int>{};
-    for (final m in store.activeMembersOf(groupId)) {
-      net[m.userId] = 0;
-    }
-    for (final b in store.billsForGroup(groupId)) {
+    for (final b in bills) {
       if (b.fullySettled) continue;
       final payer = b.payerId;
       var credit = 0;
@@ -213,4 +273,19 @@ class GroupRepository {
     }
     return net;
   }
+
+  Map<String, int> _netBalances(MockStore store, String groupId) =>
+      _netFromBills(store.billsForGroup(groupId), groupId);
+
+  /// 用于演示的可搜索成员字典（账户名 → 昵称）
+  Map<String, String> get _demoUsers => {
+        'zhangsan': '张三',
+        'lisi': '李四',
+        'wangwu': '王五',
+        'xiaoming': '小明',
+        'xiaohong': '小红',
+        'xiaolu': '小鹿',
+        'aqiang': '阿强',
+        'ahua': '阿花',
+      };
 }

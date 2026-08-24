@@ -1,56 +1,68 @@
+import '../../core/api/api_client.dart';
+import '../../core/api/codec.dart';
 import '../../core/config.dart';
 import '../../models/notification_item.dart';
 import '../mock/mock_store.dart';
 
-/// 通知仓库（Demo 模式走 MockStore）
-///
-/// 非 Demo 模式：应改为 async 并调用 ApiClient 的 `/notifications`（技术方案 §4.5）。
+/// 通知仓库。
+/// Demo 模式走 MockStore（sendRemind/sendInvite/sendRegular 仅供演示）；
+/// 真实模式（AA_USE_MOCK=false）对接 /notifications 系列接口。
+/// 服务端通知由 /bills/:id/remind 等操作产生，客户端不直接写通知。
 class NotificationRepository {
   NotificationRepository();
 
-  List<NotificationItem> list() {
+  static const _pageSize = 100;
+
+  Future<List<NotificationItem>> list() async {
     if (AppConfig.useMock) {
       final out = List.of(MockStore.instance.notifications)
         ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
       return out;
     }
-    throw UnsupportedError('useMock=false：list 需 async + ApiClient');
+    final res = await ApiClient.instance
+        .get('/notifications', query: {'page': 1, 'pageSize': _pageSize});
+    final j = (res.data as Map?)?.cast<String, dynamic>() ?? const {};
+    final list = (j['list'] is List) ? j['list'] as List : const [];
+    return list.map(parseNotification).toList();
   }
 
-  int unreadCount() {
+  Future<int> unreadCount() async {
     if (AppConfig.useMock) {
       return MockStore.instance.notifications.where((n) => !n.isRead).length;
     }
-    throw UnsupportedError('useMock=false：unreadCount 需 async + ApiClient');
+    final res = await ApiClient.instance.get('/notifications/unread-count');
+    final j = (res.data as Map?)?.cast<String, dynamic>() ?? const {};
+    return (j['count'] as num?)?.toInt() ?? 0;
   }
 
-  void markRead(String id) {
+  Future<void> markRead(String id) async {
     if (AppConfig.useMock) {
       final store = MockStore.instance;
       final idx = store.notifications.indexWhere((n) => n.id == id);
       if (idx >= 0) store.notifications[idx] = store.notifications[idx].copyWith(isRead: true);
       return;
     }
-    throw UnsupportedError('useMock=false：markRead 需 async + ApiClient');
+    await ApiClient.instance.post('/notifications/$id/read');
   }
 
-  void markAllRead() {
+  Future<void> markAllRead() async {
     if (AppConfig.useMock) {
       final store = MockStore.instance;
       store.notifications.replaceRange(0, store.notifications.length,
           store.notifications.map((n) => n.copyWith(isRead: true)));
       return;
     }
-    throw UnsupportedError('useMock=false：markAllRead 需 async + ApiClient');
+    await ApiClient.instance.post('/notifications/read-all');
   }
 
-  /// 发送催款提醒（P26 → P40 对方收到）
-  void sendRemind({
+  /// 发送催款提醒（P26 → P40 对方收到）。
+  /// 真实模式：服务端由 POST /bills/:id/remind 写通知并推 SSE，此处仅演示用不落库。
+  Future<void> sendRemind({
     required String billId,
     required String billTitle,
     required List<String> userIds,
     required String message,
-  }) {
+  }) async {
     if (AppConfig.useMock) {
       final store = MockStore.instance;
       for (final uid in userIds) {
@@ -67,11 +79,11 @@ class NotificationRepository {
       }
       return;
     }
-    throw UnsupportedError('useMock=false：sendRemind 需 async + ApiClient');
+    // 真实模式由服务端产生通知（/bills/:id/remind），无需本地写入
   }
 
-  /// 邀请通知
-  void sendInvite({required String groupName, required String inviteCode}) {
+  /// 邀请通知（Demo 演示用；真实模式由加入群后的服务端通知流转）
+  Future<void> sendInvite({required String groupName, required String inviteCode}) async {
     if (AppConfig.useMock) {
       MockStore.instance.notifications.add(NotificationItem(
         id: 'ni${DateTime.now().microsecondsSinceEpoch}',
@@ -85,11 +97,10 @@ class NotificationRepository {
       ));
       return;
     }
-    throw UnsupportedError('useMock=false：sendInvite 需 async + ApiClient');
   }
 
-  /// 定期账单通知（P34 开启后横幅）
-  void sendRegular(RegularBillDraft draft) {
+  /// 定期账单通知（P34 开启后横幅；真实模式由服务端 BullMQ 生成）
+  Future<void> sendRegular(RegularBillDraft draft) async {
     if (AppConfig.useMock) {
       MockStore.instance.notifications.add(NotificationItem(
         id: 'nreg${DateTime.now().microsecondsSinceEpoch}',
@@ -103,7 +114,6 @@ class NotificationRepository {
       ));
       return;
     }
-    throw UnsupportedError('useMock=false：sendRegular 需 async + ApiClient');
   }
 }
 

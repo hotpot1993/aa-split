@@ -15,7 +15,7 @@ class StatsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final bills = ref.watch(billsProvider);
+    final bills = ref.watch(billsProvider).value ?? const <Bill>[];
     final text = Theme.of(context).textTheme;
 
     // 分类占比

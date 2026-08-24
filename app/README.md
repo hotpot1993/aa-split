@@ -14,7 +14,7 @@ flutter run            # Demo 模式（默认，无后端可完整走通 31 页�
 默认 `AppConfig.useMock = true`：所有数据来自 `lib/data/mock/mock_store.dart`
 （演示用户"团子酱"、3 个群、带分摊/已付状态账单、通知、定期账单）。
 
-### 连接真实后端（联调清单）
+### 连接真实后端 ✅（已接线）
 
 1. 启动服务端（见 `server/README.md`，需 PostgreSQL 16；`npx prisma db push` 后 `npm run dev`）
 2. 关闭 Demo 并指向后端：
@@ -26,9 +26,14 @@ flutter run --dart-define=AA_USE_MOCK=false \
 # 真机同局域网：     http://<电脑局域网IP>:3000/api/v1
 ```
 
-3. 将 `lib/data/repositories/*.dart` 中 `useMock=false` 分支由 `UnsupportedError`
-   改为调用 `ApiClient`（端点即服务端 README「API 一览」，客户端模型与
-   `{code,message,data}` 信封已就绪，改动为一对一映射）。
+3. 说明：`lib/data/repositories/*.dart` 的 `useMock=false` 分支已调用 `ApiClient`
+   对接服务端全量端点（auth/groups/bills/settlement/notifications/regular-bills），
+   token 持久化于 SharedPreferences，启动页自动恢复会话。
+   已知边界：
+   - 凭证上传（P33）：Demo 为模拟拍摄；真实模式需接入 `image_picker`/相机后
+     以本地文件路径调用 `BillRepository.addReceipt`（multipart）
+   - 个人资料编辑（P50）：服务端暂无 PATCH /auth/me，仅本地演示生效
+   - 忘记密码问题展示（P04）：服务端无安全问题的查询端点，真实模式下由用户自行输入
 
 ## 目录
 

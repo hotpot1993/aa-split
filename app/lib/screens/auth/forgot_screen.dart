@@ -20,28 +20,41 @@ class _ForgotScreenState extends ConsumerState<ForgotScreen> {
   String _question = '';
   String? _error;
 
-  void _lookup() {
+  Future<void> _lookup() async {
     if (_account.text.trim().isEmpty) {
       setState(() => _error = '先输入账户名');
       return;
     }
-    final q = ref.read(authRepositoryProvider).securityQuestionOf(_account.text.trim());
-    setState(() {
-      _question = q;
-      _error = null;
-    });
+    try {
+      final q =
+          await ref.read(authRepositoryProvider).securityQuestionOf(_account.text.trim());
+      setState(() {
+        _question = q;
+        _error = null;
+      });
+    } catch (e) {
+      setState(() => _error = e.toString());
+    }
   }
 
-  void _verify() {
+  Future<void> _verify() async {
     if (_answer.text.trim().isEmpty) {
       setState(() => _error = '回答问题才能继续哦');
       return;
     }
-    if (!ref.read(authRepositoryProvider).verifySecurityQuestion(_account.text, _answer.text)) {
-      setState(() => _error = '回答不对，再想想～');
-      return;
+    try {
+      final ok = await ref
+          .read(authRepositoryProvider)
+          .verifySecurityQuestion(_account.text, _answer.text);
+      if (!ok) {
+        setState(() => _error = '回答不对，再想想～');
+        return;
+      }
+      if (!mounted) return;
+      context.push('/forgot/reset');
+    } catch (e) {
+      setState(() => _error = e.toString());
     }
-    context.push('/forgot/reset');
   }
 
   @override

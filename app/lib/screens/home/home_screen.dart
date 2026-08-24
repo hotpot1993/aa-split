@@ -7,6 +7,7 @@ import 'package:aa_design/aa_design.dart';
 import '../../core/utils/balance.dart';
 import '../../core/utils/format.dart';
 import '../../models/bill.dart';
+import '../../models/group.dart';
 import '../../providers/data_providers.dart';
 import '../../providers/settings_provider.dart';
 import '../../widgets/avatar.dart';
@@ -20,8 +21,8 @@ class HomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider);
-    final bills = ref.watch(billsProvider);
-    final groups = ref.watch(groupsProvider);
+    final bills = ref.watch(billsProvider).value ?? const <Bill>[];
+    final groups = ref.watch(groupsProvider).value ?? const <Group>[];
     final themeMode = ref.watch(themeModeProvider);
     final name = user?.nickname ?? '朋友';
 

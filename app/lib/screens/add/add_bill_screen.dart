@@ -43,18 +43,28 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
   @override
   void initState() {
     super.initState();
-    final groups = ref.read(groupsProvider);
-    _groupId = widget.initialGroupId ?? (groups.isEmpty ? '' : groups.first.id);
-    _resetForGroup();
+    _loadInitial();
   }
 
-  void _resetForGroup() {
+  Future<void> _loadInitial() async {
+    final groups = await ref.read(groupsProvider.future);
+    if (!mounted) return;
+    setState(() {
+      _groupId = widget.initialGroupId ??
+          (groups.isEmpty ? '' : groups.first.id);
+    });
+    await _resetForGroup();
+  }
+
+  Future<void> _resetForGroup() async {
     final me = ref.read(currentUserProvider)?.id ?? 'me';
-    final members = ref.read(groupMembersProvider)[_groupId] ?? const [];
+    final members =
+        (await ref.read(groupMembersProvider.future))[_groupId] ?? const [];
     _payerId = me;
     _selectedIds = members.map((m) => m.userId).toSet();
     _split = null;
     _receipts = [];
+    if (mounted) setState(() {});
   }
 
   @override
@@ -65,15 +75,17 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
   }
 
   List<GroupMember> get _selectedMembers {
-    final all = ref.read(groupMembersProvider)[_groupId] ?? const [];
+    final all =
+        (ref.read(groupMembersProvider).value ?? const {})[_groupId] ??
+            const [];
     return all.where((m) => _selectedIds.contains(m.userId)).toList();
   }
 
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
-    final groups = ref.watch(groupsProvider);
-    final members = ref.watch(groupMembersProvider)[_groupId] ?? const [];
+    final groups = ref.watch(groupsProvider).value ?? const <Group>[];
+    final members = (ref.watch(groupMembersProvider).value ?? const {})[_groupId] ?? const [];
     final amountH = (MediaQuery.of(context).size.height / 3).clamp(150.0, 300.0);
     final n = _selectedMembers.length;
     final perEven = n == 0 ? 0 : _amountCents ~/ n;
@@ -270,7 +282,7 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
   }
 
   Group? get _group {
-    for (final g in ref.read(groupsProvider)) {
+    for (final g in ref.read(groupsProvider).value ?? const <Group>[]) {
       if (g.id == _groupId) return g;
     }
     return null;
@@ -302,7 +314,7 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
     final result = await showAaSheet<Set<String>>(
       context,
       child: ParticipantsPanel(
-        members: ref.read(groupMembersProvider)[_groupId] ?? const [],
+        members: (ref.read(groupMembersProvider).value ?? const {})[_groupId] ?? const [],
         myId: ref.read(currentUserProvider)?.id ?? 'me',
         initialSelected: _selectedIds,
       ),
@@ -353,7 +365,7 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
     return d == null ? 0 : (d * 100).round();
   }
 
-  void _save() {
+  Future<void> _save() async {
     if (!_canSave) return;
     final repo = ref.read(billRepositoryProvider);
     final user = ref.read(currentUserProvider)!;
@@ -385,7 +397,7 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
       }).toList();
     }
 
-    repo.create(
+    await repo.create(
       groupId: _groupId,
       groupName: group?.name ?? '',
       title: _titleCtrl.text.trim().isEmpty ? '未命名账单' : _titleCtrl.text.trim(),
@@ -400,7 +412,7 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
       isRegular: _isRegular,
     );
     ref.read(refreshProvider.notifier).bump();
-    setState(() => _saved = true);
+    if (mounted) setState(() => _saved = true);
   }
 }
 

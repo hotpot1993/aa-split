@@ -25,7 +25,7 @@ class _BillsScreenState extends ConsumerState<BillsScreen> {
   @override
   Widget build(BuildContext context) {
     final me = ref.watch(currentUserProvider)?.id ?? 'me';
-    final all = ref.watch(billsProvider);
+    final all = ref.watch(billsProvider).value ?? const <Bill>[];
     final filtered = all.where((b) {
       switch (_filter) {
         case _Filter.all:

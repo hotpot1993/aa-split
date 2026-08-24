@@ -76,6 +76,15 @@ class ApiClient {
     return _parse(() => dio.delete(path, data: body));
   }
 
+  /// multipart 文件上传（凭证，字段名 [field]，默认 file）
+  Future<ApiResponse> upload(String path, String filePath,
+      {String field = 'file'}) async {
+    final form = FormData.fromMap({
+      field: await MultipartFile.fromFile(filePath),
+    });
+    return _parse(() => dio.post(path, data: form));
+  }
+
   Future<ApiResponse> _parse(Future<Response<dynamic>> Function() send) async {
     try {
       final res = await send();

@@ -23,6 +23,23 @@ class InviteScreen extends ConsumerStatefulWidget {
 class _InviteScreenState extends ConsumerState<InviteScreen> {
   final _account = TextEditingController();
   final List<String> _added = [];
+  String _link = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLink();
+  }
+
+  Future<void> _loadLink() async {
+    try {
+      final link =
+          await ref.read(groupRepositoryProvider).inviteLink(widget.groupId);
+      if (mounted) setState(() => _link = link);
+    } catch (_) {
+      // 链接拉取失败时留空，用户仍可通过成员列表页回到群组
+    }
+  }
 
   @override
   void dispose() {
@@ -33,9 +50,7 @@ class _InviteScreenState extends ConsumerState<InviteScreen> {
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
-    final members = ref.watch(groupMembersProvider)[widget.groupId] ?? const [];
-
-    final link = ref.read(groupRepositoryProvider).inviteLink(widget.groupId);
+    final members = (ref.watch(groupMembersProvider).value ?? const {})[widget.groupId] ?? const [];
 
     return AaScaffold(
       appBar: AppBar(title: const Text('邀请小伙伴')),
@@ -49,14 +64,14 @@ class _InviteScreenState extends ConsumerState<InviteScreen> {
               children: [
                 Text('邀请链接', style: text.titleSmall),
                 const SizedBox(height: 4),
-                Text(link, style: const TextStyle(color: AAColors.sky, fontFamily: 'ZCOOLKuaiLe', fontSize: 13)),
+                Text(_link, style: const TextStyle(color: AAColors.sky, fontFamily: 'ZCOOLKuaiLe', fontSize: 13)),
                 const SizedBox(height: 10),
                 DoodleButton(
                   label: '复制邀请链接',
                   type: DoodleButtonType.secondary,
                   expand: true,
                   onPressed: () {
-                    Clipboard.setData(ClipboardData(text: link));
+                    Clipboard.setData(ClipboardData(text: _link));
                     showAaToast(context, '链接已复制，发给TA吧');
                   },
                 ),
@@ -76,7 +91,7 @@ class _InviteScreenState extends ConsumerState<InviteScreen> {
                     border: Border.all(color: AAColors.ink, width: 2),
                   ),
                   child: QrImageView(
-                    data: link,
+                    data: _link,
                     size: 190,
                     eyeStyle: const QrEyeStyle(
                       eyeShape: QrEyeShape.square,
@@ -142,16 +157,21 @@ class _InviteScreenState extends ConsumerState<InviteScreen> {
     );
   }
 
-  void _add() {
+  Future<void> _add() async {
     final name = _account.text.trim();
     if (name.isEmpty) {
       showAaToast(context, '先输入对方账户名');
       return;
     }
-    ref.read(groupRepositoryProvider).addMember(widget.groupId, name);
-    ref.read(refreshProvider.notifier).bump();
-    setState(() => _added.add(name));
-    _account.clear();
-    showAaToast(context, '已添加 $name');
+    try {
+      await ref.read(groupRepositoryProvider).addMember(widget.groupId, name);
+      if (!mounted) return;
+      ref.read(refreshProvider.notifier).bump();
+      setState(() => _added.add(name));
+      _account.clear();
+      showAaToast(context, '已添加 $name');
+    } catch (e) {
+      showAaToast(context, '添加失败：$e');
+    }
   }
 }

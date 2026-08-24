@@ -18,7 +18,7 @@ class GroupsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final groups = ref.watch(groupsProvider);
+    final groups = ref.watch(groupsProvider).value ?? const <Group>[];
     final me = ref.watch(currentUserProvider)?.id ?? 'me';
 
     return AaScaffold(
@@ -111,8 +111,9 @@ class GroupsScreen extends ConsumerWidget {
           _SheetAction(
             icon: Icons.link,
             label: '复制邀请链接',
-            onTap: () {
-              final link = ref.read(groupRepositoryProvider).inviteLink(g.id);
+            onTap: () async {
+              final link = await ref.read(groupRepositoryProvider).inviteLink(g.id);
+              if (!context.mounted) return;
               Clipboard.setData(ClipboardData(text: link));
               Navigator.of(context).pop('copy');
             },

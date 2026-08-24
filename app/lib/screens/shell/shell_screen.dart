@@ -15,7 +15,7 @@ class ShellScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final unread = ref.watch(unreadCountProvider);
+    final unread = ref.watch(unreadCountProvider).value ?? 0;
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: SketchPaper(child: navigationShell),

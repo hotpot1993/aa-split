@@ -34,9 +34,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   @override
   Widget build(BuildContext context) {
     final q = _q.text.trim();
-    final groups = ref.watch(groupsProvider);
-    final bills = ref.watch(billsProvider);
-    final members = ref.watch(groupMembersProvider).values.expand((e) => e).toList();
+    final groups = ref.watch(groupsProvider).value ?? const <Group>[];
+    final bills = ref.watch(billsProvider).value ?? const <Bill>[];
+    final members = (ref.watch(groupMembersProvider).value ?? const {}).values.expand((e) => e).toList();
 
     final groupHits = q.isEmpty ? <Group>[] : groups.where((g) => g.name.contains(q)).toList();
     final billHits = q.isEmpty

@@ -30,7 +30,7 @@ class _GroupSettingsScreenState extends ConsumerState<GroupSettingsScreen> {
     super.didChangeDependencies();
     if (_init) return;
     _init = true;
-    final groups = ref.read(groupsProvider);
+    final groups = ref.read(groupsProvider).value ?? const <Group>[];
     Group? group;
     for (final g in groups) {
       if (g.id == widget.groupId) {
@@ -58,7 +58,7 @@ class _GroupSettingsScreenState extends ConsumerState<GroupSettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
-    final groups = ref.watch(groupsProvider);
+    final groups = ref.watch(groupsProvider).value ?? const <Group>[];
     Group? group;
     for (final g in groups) {
       if (g.id == widget.groupId) {
