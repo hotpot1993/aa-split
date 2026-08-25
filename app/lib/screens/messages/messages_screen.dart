@@ -12,7 +12,7 @@ import '../../providers/refresh_provider.dart';
 import '../../widgets/common.dart';
 import '../../widgets/sheet.dart';
 
-/// P40 消息中心页
+/// P40 消息中心 —— 对齐 docs/ui-demo/index.html
 class MessagesScreen extends ConsumerWidget {
   const MessagesScreen({super.key});
 
@@ -23,56 +23,39 @@ class MessagesScreen extends ConsumerWidget {
     final earlier = items.where((n) => !n.isToday).toList();
 
     return AaScaffold(
-      appBar: AppBar(
-        title: const Text('消息中心'),
-        actions: [
-          IconButton(
-            onPressed: () => context.push('/messages/settings'),
-            icon: const Icon(Icons.settings, size: 24, color: AAColors.ink),
-          ),
-          TextButton(
-            onPressed: () {
-              ref.read(notificationRepositoryProvider).markAllRead();
-              ref.read(refreshProvider.notifier).bump();
-              showAaToast(context, '全部已读');
-            },
-            child: const Text('全部已读',
-                style: TextStyle(color: AAColors.sky, fontFamily: 'ZCOOLKuaiLe', fontSize: 13)),
-          ),
-        ],
+      appBar: AaAppBar(
+        title: '消息中心',
+        back: false,
+        headIcon: 'assets/icons/notify.png',
+        iconImage: 'assets/icons/settings.png',
+        onIconTap: () => context.push('/messages/settings'),
       ),
       body: items.isEmpty
-          ? const EmptyState(
-              title: '安静的一天～ 没有新消息',
-              subtitle: '去记一笔，喊上小伙伴吧',
+          ? ListView(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+              children: [
+                EmptyState(
+                  title: '安静的一天～ 没有新消息',
+                  subtitle: '团团戴着耳机打瞌睡，你不找它它不醒',
+                  tag: 'P40 消息中心',
+                  artImage: 'assets/icons/headphone.png',
+                  buttonLabel: '去记一笔',
+                  onButtonTap: () => context.push('/add'),
+                ),
+              ],
             )
           : ListView(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
               children: [
-                if (today.isNotEmpty) const _GroupLabel(label: '今天'),
+                if (today.isNotEmpty)
+                  const SectionTitle('今天', emojiImage: 'assets/icons/sun.png'),
                 ...today.map((n) => _MsgCard(n: n)),
-                if (earlier.isNotEmpty) const _GroupLabel(label: '更早'),
+                if (earlier.isNotEmpty)
+                  const SectionTitle('更早', emojiImage: 'assets/icons/moon.png'),
                 ...earlier.map((n) => _MsgCard(n: n)),
+                const SizedBox(height: 16),
               ],
             ),
-    );
-  }
-}
-
-class _GroupLabel extends StatelessWidget {
-  const _GroupLabel({required this.label});
-  final String label;
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 16, 4, 6),
-      child: Row(
-        children: [
-          Text(label, style: const TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.inkSoft)),
-          const SizedBox(width: 8),
-          const Expanded(child: Divider(color: AAColors.inkSoft, height: 1)),
-        ],
-      ),
     );
   }
 }
@@ -83,99 +66,159 @@ class _MsgCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final text = Theme.of(context).textTheme;
     final isRemind = n.type == NotifyType.remind;
     final isInvite = n.type == NotifyType.invite;
-    final color = _colorOf(n.type);
+    final emoji = _emojiOf(n.type);
 
-    return GestureDetector(
-      onTap: () {
-        ref.read(notificationRepositoryProvider).markRead(n.id);
-        ref.read(refreshProvider.notifier).bump();
-        if (n.refType == 'bill' && n.refId.isNotEmpty) {
-          context.push('/bills/${n.refId}');
-        } else if (n.refType == 'group' && n.refId.isNotEmpty) {
-          context.push('/groups/${n.refId}');
-        }
-      },
-      child: PaperCard(
-        margin: const EdgeInsets.only(bottom: 10),
-        withTape: true,
-        tapeColor: isRemind ? AAColors.berry : AAColors.lemon,
-        tiltSeed: n.id,
+    void open() {
+      ref.read(notificationRepositoryProvider).markRead(n.id);
+      ref.read(refreshProvider.notifier).bump();
+      if (n.refType == 'bill' && n.refId.isNotEmpty) {
+        context.push('/bills/${n.refId}');
+      } else if (n.refType == 'group' && n.refId.isNotEmpty) {
+        context.push('/groups/${n.refId}');
+      }
+    }
+
+    // 催款粉卡（Demo：border-color:var(--pink);background:#FFF6F8 + 印章）
+    if (isRemind) {
+      return PaperCard(
+        margin: const EdgeInsets.only(bottom: 16),
+        color: AASemantic.msgPinkBg,
+        borderColor: AAColors.berry,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Icon(_iconOf(n.type), color: color, size: 20),
+                const StampBadge(text: '催款', color: AASemantic.stampMoney),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text(
-                    n.title,
-                    style: text.titleMedium,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                  child: Text.rich(TextSpan(children: [
+                    const TextSpan(
+                        text: '',
+                        style: TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 12)),
+                    TextSpan(text: n.title, style: const TextStyle(
+                        fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.ink)),
+                  ])),
                 ),
-                if (isRemind) const Text('❗', style: TextStyle(fontSize: 16)),
-                const SizedBox(width: 4),
-                if (!n.isRead)
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: const BoxDecoration(color: AAColors.berry, shape: BoxShape.circle),
-                  ),
               ],
             ),
-            const SizedBox(height: 4),
-            Text(n.body, style: text.bodySmall),
-            const SizedBox(height: 10),
+            const SizedBox(height: 6),
+            Text('来自：${n.body}',
+                style: const TextStyle(
+                    fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
+            const SizedBox(height: 8),
+            DoodleButton(
+              label: '去处理 ✓',
+              mini: true,
+              onPressed: open,
+            ),
+          ],
+        ),
+      );
+    }
+
+    // 邀请卡（emoji + 标题 + 接受/拒绝按钮）
+    if (isInvite) {
+      return PaperCard(
+        onTap: open,
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
             Row(
               children: [
-                Text(Fmt.relative(n.createdAt), style: text.bodySmall),
-                const Spacer(),
-                if (isRemind)
-                  DoodleButton(
-                    label: '去处理',
-                    type: DoodleButtonType.secondary,
-                    onPressed: () => context.push('/bills/${n.refId}'),
-                  ),
-                if (isInvite) ...[
-                  DoodleButton(
+                AaIconImage(emoji, size: 22),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(n.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.ink)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: DoodleButton(
                     label: '接受 ✓',
-                    type: DoodleButtonType.secondary,
-                    onPressed: () => showAaToast(context, '已接受邀请'),
+                    mini: true,
+                    expand: true,
+                    color: AAColors.mint,
+                    textColor: AAColors.ink,
+                    onPressed: () => showAaToast(context, '🎉 已加入群组'),
                   ),
-                  const SizedBox(width: 8),
-                  DoodleButton(
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: DoodleButton(
                     label: '拒绝 ✗',
+                    mini: true,
+                    expand: true,
                     onPressed: () => showAaToast(context, '已拒绝邀请'),
                   ),
-                ],
+                ),
               ],
             ),
           ],
         ),
+      );
+    }
+
+    // 普通消息卡（emoji + 标题 + mini dim 详情 + chip）
+    return PaperCard(
+      onTap: open,
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(12),
+      child: Row(
+        children: [
+          AaIconImage(emoji, size: 22),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(n.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.ink)),
+                const SizedBox(height: 2),
+                Text('${n.body} · ${Fmt.relative(n.createdAt)}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          HandTag(_chipText(n.type), fontSize: 12, variant: ChipVariant.blue),
+        ],
       ),
     );
   }
 
-  IconData _iconOf(NotifyType t) => switch (t) {
-        NotifyType.newBill => Icons.receipt_long,
-        NotifyType.remind => Icons.notifications_active,
-        NotifyType.invite => Icons.group_add,
-        NotifyType.regular => Icons.repeat,
-        NotifyType.settled => Icons.check_circle,
-        NotifyType.member => Icons.people,
+  String _chipText(NotifyType t) => switch (t) {
+        NotifyType.newBill => '新账单',
+        NotifyType.regular => '定期',
+        NotifyType.settled => '已清',
+        NotifyType.member => '动态',
+        NotifyType.remind => '催款',
+        NotifyType.invite => '邀请',
       };
 
-  Color _colorOf(NotifyType t) => switch (t) {
-        NotifyType.newBill => AAColors.sky,
-        NotifyType.remind => AAColors.berry,
-        NotifyType.invite => AAColors.mint,
-        NotifyType.regular => AAColors.lilac,
-        NotifyType.settled => AAColors.mint,
-        NotifyType.member => AAColors.lemon,
+  String _emojiOf(NotifyType t) => switch (t) {
+        NotifyType.newBill => 'assets/icons/receipt.png',
+        NotifyType.remind => 'assets/icons/broadcast.png',
+        NotifyType.invite => 'assets/icons/inbox.png',
+        NotifyType.regular => 'assets/icons/notify.png',
+        NotifyType.settled => 'assets/icons/party.png',
+        NotifyType.member => 'assets/icons/group.png',
       };
 }

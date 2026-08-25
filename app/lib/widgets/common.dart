@@ -30,32 +30,191 @@ class AaScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      // 纸米底（Demo body 背景 var(--paper)），避免透出系统窗口背景（深色模式下为黑色）
+      backgroundColor: AAColors.paper,
       appBar: appBar,
+      // 无顶部导航栏时（如首页），body 内容需避开状态栏
       body: SketchPaper(
-        child: SafeArea(top: false, child: body),
+        child: SafeArea(top: appBar == null, bottom: false, child: body),
       ),
       bottomNavigationBar: bottomBar,
     );
   }
 }
 
-/// 手写体小节标题 + 手抖下划线（UI规范 §7 分组标题）
+/// 自有图标素材（docs/pic → assets/icons，透明底 512px）
+class AaIconImage extends StatelessWidget {
+  const AaIconImage(this.asset, {super.key, this.size = 22});
+
+  final String asset;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Image.asset(
+      asset,
+      width: size,
+      height: size,
+      cacheWidth: (size * 4).round(),
+      fit: BoxFit.contain,
+    );
+  }
+}
+
+/// 顶部涂鸦导航 —— 严格照搬 Demo `.nav`：
+/// `<span class="back">‹ 返回</span><h2>标题</h2><span class="ic">✂️</span>`
+/// back 18px / 标题 22px（站酷快乐体）/ 右侧图标 17px，下方间距 10px
+class AaAppBar extends StatelessWidget implements PreferredSizeWidget {
+  const AaAppBar({
+    super.key,
+    required this.title,
+    this.back = true,
+    this.backLabel = '‹ 返回',
+    this.onBack,
+    this.icon,
+    this.iconImage,
+    this.onIconTap,
+    this.headIcon,
+    this.actions = const [],
+  });
+
+  final String title;
+
+  /// 是否显示返回键（‹ 返回）
+  final bool back;
+  final String backLabel;
+  final VoidCallback? onBack;
+
+  /// 右侧图标（emoji 字符串 / 任意 widget）
+  final String? icon;
+
+  /// 右侧图标（自有素材图片路径）
+  final String? iconImage;
+  final VoidCallback? onIconTap;
+
+  /// 标题前的图标素材（自有图片）
+  final String? headIcon;
+  final List<Widget> actions;
+
+  @override
+  Size get preferredSize => const Size.fromHeight(46);
+
+  @override
+  Widget build(BuildContext context) {
+    // 自定义导航栏需自行处理状态栏内边距（Scaffold 只把 appBar 放在 y=0）
+    // 左右 16px 留白：与页面内容边距、Demo .screen padding 一致，标题不贴屏幕边
+    return SafeArea(
+      bottom: false,
+      child: Container(
+        height: 46,
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+        alignment: Alignment.bottomCenter,
+        child: Row(
+          children: [
+            if (back) ...[
+              InkWell(
+                onTap: onBack ?? () => Navigator.of(context).maybePop(),
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 12, top: 8),
+                  child: Text(
+                    backLabel,
+                    style: const TextStyle(
+                      fontFamily: 'ZCOOLKuaiLe',
+                      fontSize: 18,
+                      color: AAColors.ink,
+                      height: 1.2,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+            if (headIcon != null) ...[
+              Padding(
+                padding: const EdgeInsets.only(right: 6, top: 8),
+                child: AaIconImage(headIcon!, size: 20),
+              ),
+            ],
+            Expanded(
+              child: Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontFamily: 'ZCOOLKuaiLe',
+                  fontSize: 22,
+                  color: AAColors.ink,
+                  height: 1.2,
+                ),
+              ),
+            ),
+            ...actions,
+            if (iconImage != null) ...[
+              InkWell(
+                onTap: onIconTap,
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 10, top: 8),
+                  child: AaIconImage(iconImage!, size: 22),
+                ),
+              ),
+              const SizedBox(width: 2),
+            ],
+            if (icon != null) ...[
+              InkWell(
+                onTap: onIconTap,
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 10, top: 8),
+                  child: Text(icon!, style: const TextStyle(fontSize: 17)),
+                ),
+              ),
+              const SizedBox(width: 2),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 小节标题 —— 严格照搬 Demo `.sect`：
+/// `[虚线][span 14px 墨色][emoji]`，虚线为 repeating-linear-gradient
+/// (90deg, ink2 0 6px, transparent 6px 12px) 高 2px
 class SectionTitle extends StatelessWidget {
-  const SectionTitle(this.text, {super.key, this.trailing});
+  const SectionTitle(this.text, {super.key, this.trailing, this.emoji, this.emojiImage});
 
   final String text;
   final Widget? trailing;
 
+  /// 文字右侧的 emoji（.sect em）
+  final String? emoji;
+
+  /// 文字右侧的素材图片（替代 emoji）
+  final String? emojiImage;
+
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(top: 18, bottom: 8),
+      padding: const EdgeInsets.only(top: 16, bottom: 6),
       child: Row(
         children: [
-          Text(text, style: Theme.of(context).textTheme.headlineSmall),
+          const Expanded(child: _DashLine()),
           const SizedBox(width: 8),
-          const Expanded(child: _SquiggleLine()),
+          Text(
+            text,
+            style: const TextStyle(
+              fontFamily: 'ZCOOLKuaiLe',
+              fontSize: 14,
+              color: AAColors.ink,
+              height: 1.3,
+            ),
+          ),
+          if (emojiImage != null) ...[
+            const SizedBox(width: 6),
+            AaIconImage(emojiImage!, size: 16),
+          ],
+          if (emoji != null) ...[
+            const SizedBox(width: 6),
+            Text(emoji!, style: const TextStyle(fontSize: 13)),
+          ],
           ?trailing,
         ],
       ),
@@ -63,37 +222,112 @@ class SectionTitle extends StatelessWidget {
   }
 }
 
-class _SquiggleLine extends StatelessWidget {
-  const _SquiggleLine();
+class _DashLine extends StatelessWidget {
+  const _DashLine();
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 3),
-      child: CustomPaint(
-        size: const Size(double.infinity, 6),
-        painter: _LinePainter(),
-      ),
+    return CustomPaint(
+      size: const Size(double.infinity, 2),
+      painter: _DashLinePainter(),
     );
   }
 }
 
-class _LinePainter extends CustomPainter {
+class _DashLinePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final p = Paint()
-      ..color = AAColors.inkSoft.withValues(alpha: 0.7)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.6
-      ..strokeCap = StrokeCap.round;
-    final path = Path()
-      ..moveTo(0, size.height / 2)
-      ..quadraticBezierTo(size.width * 0.25, 1, size.width * 0.5, size.height / 2)
-      ..quadraticBezierTo(size.width * 0.75, size.height - 1, size.width, size.height / 2);
-    canvas.drawPath(path, p);
+      ..color = AAColors.inkSoft
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.butt;
+    var x = 0.0;
+    while (x < size.width) {
+      canvas.drawLine(Offset(x, 1), Offset(x + 6, 1), p);
+      x += 12;
+    }
   }
 
   @override
   bool shouldRepaint(covariant CustomPainter old) => false;
+}
+
+/// 表单行 —— 严格照搬 Demo `.line`：
+/// `display:flex;justify-content:space-between;align-items:center;
+///  border-bottom:2.5px dashed var(--ink);padding:11px 2px;font-size:15px`
+class AaLine extends StatelessWidget {
+  const AaLine({
+    super.key,
+    this.label,
+    this.value,
+    this.child,
+    this.trailing,
+    this.showBorder = true,
+    this.onTap,
+    this.padding = const EdgeInsets.fromLTRB(2, 11, 2, 11),
+  });
+
+  /// 左侧标签（.line span，淡墨）
+  final String? label;
+
+  /// 右侧值（.line b，墨色 15px）
+  final String? value;
+
+  /// 整体内容（label + value 省略时）
+  final Widget? child;
+
+  /// 右侧自定义内容（替代 value）
+  final Widget? trailing;
+
+  /// 是否显示底部虚线（最后一行不带）
+  final bool showBorder;
+  final VoidCallback? onTap;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget row = Padding(
+      padding: padding,
+      child: child ??
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              if (label != null)
+                Text(
+                  label!,
+                  style: const TextStyle(
+                    fontFamily: 'ZCOOLKuaiLe',
+                    fontSize: 15,
+                    color: AAColors.inkSoft,
+                    height: 1.3,
+                  ),
+                ),
+              if (value != null) Text(value!, style: _valueStyle),
+              ?trailing,
+            ],
+          ),
+    );
+    row = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        row,
+        if (showBorder)
+          CustomPaint(size: const Size(double.infinity, 2.5), painter: _DashLinePainter()),
+      ],
+    );
+    if (onTap != null) {
+      row = GestureDetector(onTap: onTap, behavior: HitTestBehavior.opaque, child: row);
+    }
+    return row;
+  }
+
+  static const _valueStyle = TextStyle(
+    fontFamily: 'ZCOOLKuaiLe',
+    fontSize: 15,
+    color: AAColors.ink,
+    height: 1.3,
+  );
 }
 
 /// 内容加载/占位后的统一包裹：添加统一外边距

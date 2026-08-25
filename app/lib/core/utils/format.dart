@@ -5,11 +5,14 @@ import '../../models/group.dart';
 
 /// 金额（分 → ¥xx.xx）与日期文案工具
 abstract final class Fmt {
-  /// 分 → "¥xx.xx"（不含符号极性）
-  static String yuan(int cents) {
+  /// 分 → "¥xx.xx"（不含符号极性）；trimZero 时整数省略 .00
+  static String yuan(int cents, {bool trimZero = false}) {
     final negative = cents < 0;
     final abs = cents.abs();
-    final s = '¥${(abs ~/ 100)}.${(abs % 100).toString().padLeft(2, '0')}';
+    final decimal = trimZero && abs % 100 == 0
+        ? '${abs ~/ 100}'
+        : '${abs ~/ 100}.${(abs % 100).toString().padLeft(2, '0')}';
+    final s = '¥$decimal';
     return negative ? '-$s' : s;
   }
 

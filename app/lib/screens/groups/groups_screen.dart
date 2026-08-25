@@ -5,16 +5,23 @@ import 'package:go_router/go_router.dart';
 
 import 'package:aa_design/aa_design.dart';
 
-import '../../core/utils/format.dart';
 import '../../models/group.dart';
 import '../../providers/data_providers.dart';
 import '../../providers/repositories.dart';
+import '../../widgets/avatar.dart';
 import '../../widgets/common.dart';
 import '../../widgets/sheet.dart';
 
-/// P20 群组列表页
+/// P20 群组列表页 —— 对齐 docs/ui-demo/index.html
 class GroupsScreen extends ConsumerWidget {
   const GroupsScreen({super.key});
+
+  static const _tints = [
+    Color(0xFFEDF7EE),
+    Color(0xFFF0F6FB),
+    Color(0xFFF7F0FB),
+    Color(0xFFFFF1EA),
+  ];
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -22,80 +29,53 @@ class GroupsScreen extends ConsumerWidget {
     final me = ref.watch(currentUserProvider)?.id ?? 'me';
 
     return AaScaffold(
-      appBar: AppBar(
-        title: const Text('群组'),
-        actions: [
-          IconButton(
-            onPressed: () => context.push('/groups/create'),
-            icon: const Icon(Icons.add, color: AAColors.ink, size: 26),
-          ),
-          IconButton(
-            onPressed: () => context.push('/search'),
-            icon: const Icon(Icons.search, color: AAColors.ink, size: 24),
-          ),
-        ],
+      appBar: AaAppBar(
+        title: '我的群组',
+        back: false,
+        onBack: null,
+        headIcon: 'assets/icons/group.png',
+        iconImage: 'assets/icons/search.png',
+        onIconTap: () => context.push('/search'),
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            child: GestureDetector(
-              onTap: () => context.push('/search'),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                decoration: BoxDecoration(
-                  color: AAColors.cardWhite,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AAColors.ink, width: 1.5),
+      body: groups.isEmpty
+          ? ListView(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+              children: [
+                _InviteCard(onTap: () => context.push('/groups/create')),
+                const SizedBox(height: 12),
+                EmptyState(
+                  title: '还没有群组，拉上小伙伴开个AA局吧～',
+                  subtitle: '团团这里只有硬币，快来人多才热闹',
+                  tag: 'P20 群组列表',
+                  artImage: 'assets/icons/bag.png',
+                  buttonLabel: '＋ 创建群组',
+                  onButtonTap: () => context.push('/groups/create'),
                 ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.search, size: 18, color: AAColors.inkSoft),
-                    const SizedBox(width: 8),
-                    Text('搜群组名 / 群成员',
-                        style: const TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 14, color: AAColors.inkSoft)),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: groups.isEmpty
-                ? EmptyState(
-                    title: '还没有群组，拉上小伙伴开个AA局吧～',
-                    buttonLabel: '＋ 创建群组',
-                    onButtonTap: () => context.push('/groups/create'),
-                  )
-                : ListView(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                    children: [
-                      for (final g in groups)
-                        _GroupCard(
-                          group: g,
-                          isOwner: g.ownerId == me,
-                          onTap: () => context.push('/groups/${g.id}'),
-                          onLongPress: () => _longPress(context, ref, g, me),
-                        ),
-                    ],
+              ],
+            )
+          : ListView(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+              children: [
+                _InviteCard(onTap: () => context.push('/groups/${groups.first.id}/invite')),
+                SectionTitle('最近', emoji: '📔'),
+                for (var i = 0; i < groups.length; i++)
+                  _GroupCard(
+                    group: groups[i],
+                    tint: _tints[i % _tints.length],
+                    isOwner: groups[i].ownerId == me,
+                    onTap: () => context.push('/groups/${groups[i].id}'),
+                    onLongPress: () => _longPress(context, ref, groups[i], me),
                   ),
-          ),
-          SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-              child: DoodleButton(
-                label: '邀请朋友',
-                type: DoodleButtonType.secondary,
-                expand: true,
-                onPressed: groups.isEmpty
-                    ? () => context.push('/groups/create')
-                    : () => context.push('/groups/${groups.first.id}/invite'),
-              ),
+                const SizedBox(height: 12),
+                DoodleButton(
+                  label: '＋ 创建群组',
+                  type: DoodleButtonType.primary,
+                  big: true,
+                  onPressed: () => context.push('/groups/create'),
+                ),
+                const SizedBox(height: 8),
+              ],
             ),
-          ),
-        ],
-      ),
-      bottomBar: null,
     );
   }
 
@@ -108,12 +88,12 @@ class GroupsScreen extends ConsumerWidget {
           Text('「${g.name}」', style: Theme.of(context).textTheme.headlineSmall),
           const SizedBox(height: 8),
           _SheetAction(
-            icon: Icons.push_pin,
+            emoji: '📌',
             label: '置顶群组',
             onTap: () => Navigator.of(context).pop('pin'),
           ),
           _SheetAction(
-            icon: Icons.link,
+            emoji: '🔗',
             label: '复制邀请链接',
             onTap: () async {
               final link = await ref.read(groupRepositoryProvider).inviteLink(g.id);
@@ -133,17 +113,62 @@ class GroupsScreen extends ConsumerWidget {
 }
 
 class _SheetAction extends StatelessWidget {
-  const _SheetAction({required this.icon, required this.label, required this.onTap});
-  final IconData icon;
+  const _SheetAction({required this.emoji, required this.label, required this.onTap});
+  final String emoji;
   final String label;
   final VoidCallback onTap;
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      leading: Icon(icon, color: AAColors.ink, size: 22),
+      leading: Text(emoji, style: const TextStyle(fontSize: 20)),
       title: Text(label, style: const TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.ink)),
-      trailing: const Icon(Icons.chevron_right, color: AAColors.inkSoft),
+      trailing: const Text('→', style: TextStyle(fontSize: 15, color: AAColors.inkSoft)),
       onTap: onTap,
+    );
+  }
+}
+
+/// 邀请朋友来AA —— Demo P20 首卡：📮 emoji 底 + 标题/副行 + →
+class _InviteCard extends StatelessWidget {
+  const _InviteCard({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return PaperCard(
+      onTap: onTap,
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      child: Row(
+        children: [
+          // 邀请卡头像：📮 替换为「邮箱」素材
+          Container(
+            width: 44,
+            height: 44,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF1EA),
+              shape: BoxShape.circle,
+              border: Border.all(color: AAColors.ink, width: 2.5),
+            ),
+            child: const AaIconImage('assets/icons/inbox.png', size: 22),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('邀请朋友来AA',
+                    style: TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.ink)),
+                const SizedBox(height: 2),
+                Text('发送邀请链接/二维码',
+                    style: const TextStyle(
+                        fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
+              ],
+            ),
+          ),
+          const Text('→', style: TextStyle(fontSize: 15, color: AAColors.ink)),
+        ],
+      ),
     );
   }
 }
@@ -151,92 +176,66 @@ class _SheetAction extends StatelessWidget {
 class _GroupCard extends StatelessWidget {
   const _GroupCard({
     required this.group,
+    required this.tint,
     required this.isOwner,
     required this.onTap,
     required this.onLongPress,
   });
   final Group group;
+  final Color tint;
   final bool isOwner;
   final VoidCallback onTap;
   final VoidCallback onLongPress;
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
     return GestureDetector(
       onTap: onTap,
       onLongPress: onLongPress,
       child: PaperCard(
-        margin: const EdgeInsets.only(bottom: 14),
-        withTape: true,
-        tiltSeed: group.id,
+        onTap: null,
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(12),
         child: Row(
           children: [
-            Container(
-              width: 52,
-              height: 52,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: AAColors.lemon.withValues(alpha: 0.4),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AAColors.ink, width: 1.5),
-              ),
-              child: Text(group.avatar, style: const TextStyle(fontSize: 28)),
-            ),
-            const SizedBox(width: 12),
+            SketchAvatar(emoji: group.avatar, size: 44, background: tint),
+            const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
-                      Text(group.name, style: text.titleLarge),
+                      Text(group.name,
+                          style: const TextStyle(
+                              fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.ink)),
                       if (isOwner) ...[
                         const SizedBox(width: 6),
                         const Text('👑', style: TextStyle(fontSize: 14)),
                       ],
                     ],
                   ),
-                  const SizedBox(height: 3),
+                  const SizedBox(height: 2),
                   Text(
-                    group.recentBillTitle.isEmpty
-                        ? '${group.memberCount}人 · 还没有账单'
-                        : '${group.recentBillTitle} · ${Fmt.relative(group.recentBillDate!)}',
-                    style: text.bodySmall,
+                    group.pendingBillCount > 0
+                        ? '${group.memberCount}个小伙伴 · ${group.pendingBillCount}笔待清'
+                        : '${group.memberCount}个小伙伴 · 已清账',
+                    style: const TextStyle(
+                        fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
             ),
-            if (group.pendingBillCount > 0)
-              _AngleTag(count: group.pendingBillCount)
-            else
-              Text('${group.memberCount}人', style: text.bodySmall),
+            const SizedBox(width: 8),
+            StampBadge(
+              text: group.pendingBillCount > 0 ? '${group.pendingBillCount}笔待清' : '✅已清',
+              color: group.pendingBillCount > 0
+                  ? AASemantic.stampMoney
+                  : AASemantic.stampDone,
+            ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _AngleTag extends StatelessWidget {
-  const _AngleTag({required this.count});
-  final int count;
-  @override
-  Widget build(BuildContext context) {
-    return Transform.rotate(
-      angle: -0.08,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        decoration: BoxDecoration(
-          color: AAColors.berry.withValues(alpha: 0.16),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AAColors.berry, width: 1.5),
-        ),
-        child: Text(
-          '📮$count笔待清',
-          style: const TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.ink),
         ),
       ),
     );

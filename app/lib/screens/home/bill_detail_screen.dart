@@ -10,7 +10,6 @@ import '../../models/bill_participant.dart';
 import '../../providers/data_providers.dart';
 import '../../providers/repositories.dart';
 import '../../providers/refresh_provider.dart';
-import '../../widgets/avatar.dart';
 import '../../widgets/common.dart';
 import '../../widgets/sheet.dart';
 
@@ -36,13 +35,12 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
   Widget build(BuildContext context) {
     final billsAsync = ref.watch(billsProvider);
     final bill = _bill;
-    final text = Theme.of(context).textTheme;
     final me = ref.watch(currentUserProvider)?.id ?? 'me';
     // 深链/通知点击进入时数据可能仍在加载：等待而非误报"账单不存在"
     if (bill == null && billsAsync.isLoading) {
       return const AaScaffold(
         appBar: null,
-        body: Center(child: CircularProgressIndicator()),
+        body: Center(child: AaLoading()),
       );
     }
     if (bill == null) {
@@ -58,118 +56,142 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
     final canManage = bill.payerId == me;
 
     return AaScaffold(
-      appBar: AppBar(
-        title: const Text('账单详情'),
-        actions: [
-          if (canManage)
-            IconButton(
-              icon: const Icon(Icons.edit, size: 22, color: AAColors.ink),
-              onPressed: () => _edit(bill),
-            ),
-        ],
+      appBar: AaAppBar(
+        title: '账单详情',
+        headIcon: 'assets/icons/receipt.png',
+        backLabel: '‹ 返回',
+        iconImage: canManage ? 'assets/icons/edit.png' : null,
+        onIconTap: canManage ? () => _edit(bill) : null,
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: [
+          // 金额卡 Demo：标题 22px + 金额 42px + mini 信息行
           PaperCard(
             withTape: true,
             tiltSeed: bill.id,
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(bill.title, style: text.headlineSmall, maxLines: 1, overflow: TextOverflow.ellipsis),
-                    ),
-                    // P33 拍凭证入口
-                    IconButton(
-                      onPressed: () => context.push('/bills/${bill.id}/receipt'),
-                      tooltip: '拍凭证',
-                      icon: const Icon(Icons.photo_camera, color: AAColors.ink, size: 22),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                HandAmount(amountCents: bill.amountCents, color: AAColors.ink, size: 34),
+                Text('${bill.title} ${Cat.emoji(bill.category)}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 22, color: AAColors.ink)),
                 const SizedBox(height: 6),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 6,
-                  children: [
-                    HandTag(label: Fmt.date(bill.billDate), icon: Icons.calendar_today),
-                    HandTag(label: bill.groupName, icon: Icons.group),
-                    HandTag(label: Cat.label(bill.category), icon: Icons.category),
-                    if (bill.location.isNotEmpty) HandTag(label: bill.location, color: AAColors.mint),
-                  ],
+                HandAmount(amountCents: bill.amountCents, color: AASemantic.amountNeg, size: 42),
+                const SizedBox(height: 4),
+                Text(
+                  '${Fmt.date(bill.billDate)} · ${bill.groupName} · ${Cat.label(bill.category)}'
+                  '${bill.location.isEmpty ? '' : ' · ${bill.location}'}',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                      fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft),
                 ),
-                if (bill.receipts.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    children: bill.receipts
-                        .map((r) => _ReceiptTile(url: r.url))
-                        .toList(),
+              ],
+            ),
+          ),
+          // 拍立得凭证（Demo：两张拍立得 + 小字标题）
+          const SizedBox(height: 14),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (bill.receipts.isEmpty)
+                GestureDetector(
+                  onTap: () => context.push('/bills/${bill.id}/receipt'),
+                  child: const _Polaroid(
+                      emoji: '📷', image: 'assets/icons/camera.png', caption: '拍小票📷', rotate: -2),
+                )
+              else ...[
+                for (var i = 0; i < bill.receipts.take(2).length; i++)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 14),
+                    child: _Polaroid(
+                      emoji: i == 0 ? '🧾' : '🍲',
+                      image: i == 0
+                          ? 'assets/icons/receipt.png'
+                          : 'assets/icons/food.png',
+                      caption: i == 0 ? '小票📷' : '凭据',
+                      rotate: i == 0 ? -2 : 2,
+                      url: bill.receipts[i].url,
+                    ),
                   ),
-                ],
+              ],
+              if (bill.receipts.isEmpty) const SizedBox(width: 14),
+              if (bill.receipts.isEmpty)
+                const _Polaroid(
+                    emoji: '🧾', image: 'assets/icons/receipt.png', caption: '结账单', rotate: 2),
+            ],
+          ),
+          const SizedBox(height: 16),
+          PaperCard(
+            padding: const EdgeInsets.fromLTRB(14, 4, 14, 4),
+            child: Column(
+              children: [
+                AaLine(
+                  label: '垫付人',
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('垫付人',
+                          style: const TextStyle(
+                              fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.inkSoft)),
+                      Text.rich(TextSpan(children: [
+                        TextSpan(
+                            text: '${bill.payerName} ',
+                            style: const TextStyle(
+                                fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.ink)),
+                        TextSpan(
+                            text: '（已垫付 ${Fmt.yuan(bill.amountCents)}）',
+                            style: const TextStyle(
+                                fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
+                      ])),
+                    ],
+                  ),
+                ),
+                AaLine(
+                  label: '分摊方式',
+                  value: '${SplitText.label(bill.splitType)} ${Fmt.yuan(perPerson)} / 人',
+                  showBorder: false,
+                ),
               ],
             ),
           ),
           const SizedBox(height: 16),
           PaperCard(
-            color: AAColors.paperDeep,
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 4),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    const Icon(Icons.money, size: 18, color: AAColors.inkSoft),
-                    const SizedBox(width: 6),
-                    Text('我付了', style: text.titleSmall),
-                    const Spacer(),
-                    HandAmount(
-                      amountCents: bill.amountCents,
-                      color: AAColors.coral,
-                      size: 22,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Text('垫付人：${bill.payerName}', style: text.bodySmall),
-                const SizedBox(height: 10),
-                Text(
-                  '参与者 ${bill.participants.length} 人 · ${SplitText.label(bill.splitType)}'
-                  '${bill.splitType == SplitType.even ? ' ${Fmt.yuan(perPerson)}/人' : ''}',
-                  style: text.titleSmall,
-                ),
-                if (bill.fullySettled) ...[
-                  const SizedBox(height: 8),
-                  const Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [StampBadge(text: '已结清')],
-                  ),
-                ],
+                const Text('👥 谁还没付？',
+                    style: TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 14, color: AAColors.ink)),
+                const SizedBox(height: 4),
+                ...bill.participants.map((p) => _ParticipantLine(
+                      participant: p,
+                      isPayer: p.userId == bill.payerId,
+                      onTap: canManage ? () => _markPaid(bill) : null,
+                    )),
               ],
             ),
           ),
           const SizedBox(height: 16),
-          SectionTitle('谁还没付'),
-          ...bill.participants.map((p) => _ParticipantRow(participant: p, isPayer: p.userId == bill.payerId)),
-          const SizedBox(height: 20),
           Row(
             children: [
               Expanded(
                 child: DoodleButton(
-                  label: '催款',
+                  label: '📢 催款',
                   type: DoodleButtonType.secondary,
+                  mini: true,
                   expand: true,
                   onPressed: () => context.push('/groups/${bill.groupId}/remind'),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Expanded(
                 child: DoodleButton(
-                  label: '标记已付',
+                  label: canManage ? '✓ 标记已付' : '✓ 我付了',
+                  mini: true,
                   expand: true,
                   onPressed: () => _markPaid(bill),
                 ),
@@ -187,6 +209,7 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
               onPressed: () => _delete(bill),
             ),
           ],
+          const SizedBox(height: 16),
         ],
       ),
     );
@@ -234,87 +257,108 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
   }
 }
 
-class _ReceiptTile extends StatelessWidget {
-  const _ReceiptTile({required this.url});
+/// 拍立得 —— Demo `.polaroid`：`background:#fff;border:2.5px solid var(--ink);
+/// padding:8px 8px 22px;border-radius:4px;rotate(-2deg);width:132px;
+/// box-shadow:3px 3px 0 rgba(68,58,50,.2)`，内图 92px（纸米底虚线）。
+class _Polaroid extends StatelessWidget {
+  const _Polaroid({
+    required this.emoji,
+    required this.caption,
+    required this.rotate,
+    this.url = '',
+    this.image,
+  });
+  final String emoji;
+  final String? image;
+  final String caption;
+  final double rotate;
   final String url;
+
   @override
   Widget build(BuildContext context) {
-    // Demo 模式为 emoji 占位；真实模式展示上传后的凭证图片
-    if (url.startsWith('🧾') || url.isEmpty) {
-      return Container(
-        width: 72,
-        height: 72,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: AAColors.cardWhite,
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: AAColors.ink, width: 1.5),
+    return Transform.rotate(
+      angle: rotate / 180 * 3.14159265,
+      child: Container(
+        width: 132,
+        padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          border: Border.fromBorderSide(BorderSide(color: AAColors.ink, width: 2.5)),
+          borderRadius: BorderRadius.all(Radius.circular(4)),
+          boxShadow: [AATokens.polaroidShadow],
         ),
-        child: Text(url, style: const TextStyle(fontSize: 30)),
-      );
-    }
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(6),
-      child: Image.network(
-        absReceiptUrl(url),
-        width: 72,
-        height: 72,
-        fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => Container(
-          width: 72,
-          height: 72,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: AAColors.cardWhite,
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: AAColors.ink, width: 1.5),
-          ),
-          child: const Icon(Icons.broken_image, color: AAColors.inkSoft, size: 24),
+        child: Column(
+          children: [
+            Container(
+              height: 92,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: AAColors.paperDeep,
+                border: Border.all(color: AAColors.inkSoft, width: 2),
+                borderRadius: BorderRadius.circular(2),
+              ),
+              child: url.isEmpty
+                  ? (image != null
+                      ? AaIconImage(image!, size: 44)
+                      : Text(emoji, style: const TextStyle(fontSize: 40)))
+                  : url.startsWith('🧾')
+                      ? (image != null
+                          ? AaIconImage(image!, size: 44)
+                          : Text(emoji, style: const TextStyle(fontSize: 40)))
+                      : Image.network(
+                          absReceiptUrl(url),
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, _, _) => Text(emoji,
+                              style: const TextStyle(fontSize: 40)),
+                        ),
+            ),
+            const SizedBox(height: 4),
+            Text(caption,
+                style: const TextStyle(
+                    fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
+            const SizedBox(height: 18),
+          ],
         ),
       ),
     );
   }
 }
 
-class _ParticipantRow extends StatelessWidget {
-  const _ParticipantRow({required this.participant, required this.isPayer});
+/// 参与人行 —— Demo `.line`：`✓ 我（已付）/ ○ 张三` + 右侧小胶囊（已付/未付 ¥xx）
+class _ParticipantLine extends StatelessWidget {
+  const _ParticipantLine({required this.participant, required this.isPayer, this.onTap});
   final BillParticipant participant;
   final bool isPayer;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
     final paid = participant.paid;
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 4),
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-      child: Row(
-        children: [
-          SketchAvatar(emoji: participant.avatarUrl, size: 40, name: participant.nickname),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              participant.nickname,
-              style: text.titleMedium,
-            ),
-          ),
-          if (participant.exempt)
-            const HandTag(label: '全免', color: AAColors.lemon, icon: Icons.emoji_events)
-          else if (isPayer)
-            const HandTag(label: '垫付人', color: AAColors.sky)
-          else
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 2),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
             Text(
-              paid ? '✓ 已付' : '○ 未付',
-              style: TextStyle(
-                fontFamily: 'ZCOOLKuaiLe',
-                color: paid ? AAColors.mint : AAColors.coral,
-                fontSize: 14,
-              ),
+              '${participant.paid ? '✓' : '○'} ${participant.nickname}${paid ? '（已付）' : ''}',
+              style: const TextStyle(
+                  fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.ink),
             ),
-          const SizedBox(width: 8),
-          if (!participant.exempt)
-            HandAmount(amountCents: participant.shareAmountCents, color: AAColors.ink, size: 18),
-        ],
+            if (participant.exempt)
+              const HandTag.label(label: '全免', dense: true, color: AAColors.lemon)
+            else if (paid)
+              const HandTag.label(label: '已付', dense: true, variant: ChipVariant.green)
+            else
+              HandTag(
+                '未付 ${Fmt.yuan(participant.shareAmountCents, trimZero: true)}',
+                dense: true,
+                variant: ChipVariant.orange,
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -347,18 +391,35 @@ class _MarkPaidSheetState extends ConsumerState<_MarkPaidSheet> {
         ...widget.bill.participants.map((p) {
           if (p.exempt || p.userId == widget.bill.payerId) return const SizedBox.shrink();
           final on = _toPay.contains(p.userId);
-          return CheckboxListTile(
-            value: on,
-            controlAffinity: ListTileControlAffinity.leading,
-            activeColor: AAColors.mint,
-            title: Text(p.nickname, style: text.titleMedium),
-            onChanged: (v) => setState(() {
-              if (v == true) {
-                _toPay.add(p.userId);
-              } else {
+          return GestureDetector(
+            onTap: () => setState(() {
+              if (on) {
                 _toPay.remove(p.userId);
+              } else {
+                _toPay.add(p.userId);
               }
             }),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 2),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(p.nickname,
+                      style: const TextStyle(
+                          fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.ink)),
+                  AaCheckbox(
+                    value: on,
+                    onChanged: () => setState(() {
+                      if (on) {
+                        _toPay.remove(p.userId);
+                      } else {
+                        _toPay.add(p.userId);
+                      }
+                    }),
+                  ),
+                ],
+              ),
+            ),
           );
         }),
         const SizedBox(height: 16),

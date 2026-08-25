@@ -5,8 +5,11 @@ import '../tokens/aa_tokens.dart';
 import 'doodle_button.dart';
 import 'paper_card.dart';
 
-/// 空状态（UI规范 §9）：团团插画 + 手写大字文案 + 可选主按钮
-/// 空态文案禁止"无数据/加载失败"系统语言，允许"～"，感叹号每屏 ≤ 1
+/// 空状态卡片 —— 严格照搬 Demo `.emptyc`：
+/// `background:#FFFDF6;border-radius:16px 6px 14px 7px/7px 14px 6px 16px;
+///  padding:18px 14px 14px;box-shadow:3px 3px 0 rgba(68,58,50,.15);
+///  margin:12px 0;text-align:center`
+/// 内含：`.tag`（左上角标签）、`.art`（38px 插画）、`h4`（16px）、`p`（12px 淡墨）、按钮
 class EmptyState extends StatelessWidget {
   const EmptyState({
     super.key,
@@ -17,6 +20,9 @@ class EmptyState extends StatelessWidget {
     this.emotion = TuanTuanEmotion.sleepy,
     this.mascotSize = 130,
     this.compact = false,
+    this.tag,
+    this.art = '🎒🪙',
+    this.artImage,
   });
 
   final String title;
@@ -29,62 +35,124 @@ class EmptyState extends StatelessWidget {
   /// 紧凑模式（用于卡片内），否则撑起 ≥60% 屏高
   final bool compact;
 
+  /// 左上角标签（.emptyc .tag）
+  final String? tag;
+
+  /// 插画 emoji（.emptyc .art）
+  final String art;
+
+  /// 插画素材图片（优先于 art emoji）
+  final String? artImage;
+
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
     Widget body = Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        TuanTuan(emotion: emotion, size: mascotSize, withPencil: true),
-        SizedBox(height: compact ? 12 : AATokens.space6),
+        if (artImage != null)
+          Image.asset(artImage!, width: 38, height: 38, fit: BoxFit.contain)
+        else
+          Text(art, style: const TextStyle(fontSize: 38)),
+        const SizedBox(height: 6),
         Text(
           title,
           textAlign: TextAlign.center,
-          style: text.headlineSmall,
+          style: const TextStyle(
+            fontFamily: 'ZCOOLKuaiLe',
+            fontSize: 16,
+            color: AAColors.ink,
+            height: 1.4,
+          ),
         ),
         if (subtitle != null) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           Text(
             subtitle!,
             textAlign: TextAlign.center,
-            style: text.bodySmall,
+            style: const TextStyle(
+              fontFamily: 'ZCOOLKuaiLe',
+              fontSize: 12,
+              color: AAColors.inkSoft,
+              height: 1.4,
+            ),
           ),
         ],
         if (buttonLabel != null) ...[
-          const SizedBox(height: AATokens.space5),
-          DoodleButton(label: buttonLabel!, onPressed: onButtonTap),
+          const SizedBox(height: 10),
+          DoodleButton(label: buttonLabel!, onPressed: onButtonTap, mini: true),
         ],
       ],
     );
 
-    final card = PaperCard(
-      color: AAColors.cardWhite.withValues(alpha: 0.75),
-      padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
+    Widget card = PaperCard(
+      color: AAColors.cardWhite,
+      padding: const EdgeInsets.fromLTRB(14, 18, 14, 14),
+      shadow: AATokens.emptyShadow,
+      borderWidth: AATokens.stroke,
       child: body,
     );
 
-    if (compact) return Center(child: card);
-    // 无界高度（如 ListView 内）时不能按高度比例撑起，退化为让内容居中；
-    // 有界高度时按 60% 屏高撑起（UI 规范 §9）
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (!constraints.hasBoundedHeight) return Center(child: card);
-        return Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 320),
-            child: FractionallySizedBox(
-              heightFactor: 0.6,
-              widthFactor: 1,
-              child: Center(child: card),
+    if (tag != null) {
+      card = Stack(
+        clipBehavior: Clip.none,
+        children: [
+          card,
+          Positioned(
+            top: -11,
+            left: 10,
+            child: Transform.rotate(
+              angle: -3 * 3.14159265 / 180,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AAColors.paper,
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: AAColors.ink, width: 2),
+                ),
+                child: Text(
+                  tag!,
+                  style: const TextStyle(
+                    fontFamily: 'ZCOOLKuaiLe',
+                    fontSize: 11,
+                    color: AAColors.ink,
+                    height: 1.2,
+                  ),
+                ),
+              ),
             ),
           ),
-        );
-      },
+        ],
+      );
+    }
+
+    if (compact) return Padding(padding: const EdgeInsets.symmetric(vertical: 12), child: card);
+    return Padding(padding: const EdgeInsets.symmetric(vertical: 12), child: card);
+  }
+}
+
+/// 手绘加载态：团团 + 淡墨小字（替代系统转圈）
+class AaLoading extends StatelessWidget {
+  const AaLoading({super.key, this.label = '团团翻账中…', this.mascotSize = 72});
+
+  final String label;
+  final double mascotSize;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        TuanTuanPanda(size: mascotSize),
+        const SizedBox(height: 10),
+        Text(label,
+            style: const TextStyle(
+                fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
+      ],
     );
   }
 }
 
-/// 网络/服务器错误态（§9.3）：团团摔四脚朝天 + 重试
+/// 网络/服务器错误态（§9.3）
 class ErrorState extends StatelessWidget {
   const ErrorState({
     super.key,
@@ -99,8 +167,10 @@ class ErrorState extends StatelessWidget {
   Widget build(BuildContext context) {
     return EmptyState(
       title: title,
-      emotion: TuanTuanEmotion.excited,
-      buttonLabel: '重试',
+      subtitle: '团团头顶的WiFi都断了，它也急',
+      tag: '全局 · 网络/服务器',
+      artImage: 'assets/icons/signal.png',
+      buttonLabel: '🔄 重试',
       onButtonTap: onRetry,
     );
   }

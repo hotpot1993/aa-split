@@ -17,7 +17,7 @@ class ShellScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final unread = ref.watch(unreadCountProvider).value ?? 0;
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: AAColors.paper,
       body: SketchPaper(child: navigationShell),
       bottomNavigationBar: AppBottomNav(
         currentIndex: navigationShell.currentIndex,

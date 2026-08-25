@@ -12,10 +12,18 @@ import '../../providers/data_providers.dart';
 import '../../widgets/avatar.dart';
 import '../../widgets/common.dart';
 
-/// P23 群组详情页（核心页）
+/// P23 群组详情页 —— 对齐 docs/ui-demo/index.html
 class GroupDetailScreen extends ConsumerWidget {
   const GroupDetailScreen({super.key, required this.groupId});
   final String groupId;
+
+  static const _tints = [
+    Color(0xFFFFF1EA),
+    Color(0xFFEDF7EE),
+    Color(0xFFF0F6FB),
+    Color(0xFFF7F0FB),
+    Color(0xFFF4E8D3),
+  ];
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -36,220 +44,202 @@ class GroupDetailScreen extends ConsumerWidget {
     final allBills = ref.watch(billsProvider).value ?? const <Bill>[];
     final bills = allBills.where((b) => b.groupId == groupId).toList();
     final members = (ref.watch(groupMembersProvider).value ?? const {})[groupId] ?? [];
-    final me = ref.watch(currentUserProvider)?.id ?? 'me';
 
     final total = bills.fold<int>(0, (s, b) => s + b.amountCents);
     final perPerson = members.isEmpty ? 0 : total ~/ members.length;
     final allSettled = bills.isNotEmpty && bills.every((b) => b.fullySettled);
-    final text = Theme.of(context).textTheme;
 
     return AaScaffold(
-      appBar: AppBar(
-        title: Text(group.name),
-        actions: [
-          IconButton(
-            onPressed: () => context.push('/groups/$groupId/settings'),
-            icon: const Icon(Icons.settings, size: 24, color: AAColors.ink),
-          ),
-        ],
+      appBar: AaAppBar(
+        title: '',
+        backLabel: '‹ ${group.name}',
+        iconImage: 'assets/icons/settings.png',
+        onIconTap: () => context.push('/groups/$groupId/settings'),
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: [
-          // 群总账卡
+          // 群总账卡（.card.tilt + .tape）
           PaperCard(
             withTape: true,
-            tapeColor: AAColors.mint,
+            tapeColor: AATokens.tapeLemon,
             tiltSeed: 'ledger-$groupId',
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('群总账', style: text.titleSmall),
-                const SizedBox(height: 8),
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    const AaIconImage('assets/icons/coin.png', size: 16),
+                    const SizedBox(width: 6),
+                    const Text('群总账',
+                        style: TextStyle(
+                            fontFamily: 'ZCOOLKuaiLe', fontSize: 13, color: AAColors.inkSoft)),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
                   children: [
                     HandAmount(amountCents: total, color: AAColors.ink, size: 34),
-                    const Spacer(),
-                    Text('人均 ${Fmt.yuan(perPerson)} / ${members.length}人',
-                        style: text.bodySmall),
+                    const SizedBox(width: 8),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Text('人均 ${Fmt.yuan(perPerson, trimZero: true)} / ${members.length}人',
+                          style: const TextStyle(
+                              fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final m in members) ...[
+                      HandTag(
+                        _netLabel(m),
+                        fontSize: 12,
+                        variant: _netVariant(m),
+                      ),
+                      const SizedBox(width: 1),
+                    ],
                   ],
                 ),
                 const SizedBox(height: 12),
-                SizedBox(
-                  height: 96, // 手写体行高偏大；84 会溢出约 10px
-                  child: members.isEmpty
-                      ? const Center(child: Text('还没有成员'))
-                      : ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: members.length,
-                          separatorBuilder: (_, _) => const SizedBox(width: 8),
-                          itemBuilder: (_, i) => _MemberNetCard(member: members[i]),
-                        ),
-                ),
-                const SizedBox(height: 14),
                 DoodleButton(
                   label: '✨ 一键智能结算',
-                  expand: true,
+                  big: true,
                   onPressed: allSettled ? null : () => context.push('/groups/$groupId/settlement'),
                 ),
-                if (allSettled)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 8),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        StampBadge(text: '本群已清账'),
-                        SizedBox(width: 6),
-                        Text('✅ 两不相欠啦 🎉',
-                            style: TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 12)),
-                      ],
-                    ),
-                  ),
               ],
             ),
           ),
-          const SizedBox(height: 8),
-          SectionTitle(
-            '成员',
-            trailing: TextButton(
-              onPressed: () => context.push('/groups/$groupId/members'),
-              child: const Text('管理成员 >',
-                  style: TextStyle(color: AAColors.sky, fontFamily: 'ZCOOLKuaiLe', fontSize: 13)),
-            ),
-          ),
-          SizedBox(
-            height: 66, // 头像42 + 名称行高(手写体约16) + 间距2；54 会溢出约 11px
-            child: members.isEmpty
-                ? const SizedBox()
-                : ListView(
-                    scrollDirection: Axis.horizontal,
-                    children: members
-                        .map((m) => Padding(
-                              padding: const EdgeInsets.only(right: 12),
-                              child: Column(
-                                children: [
-                                  SketchAvatar(emoji: m.avatarUrl, size: 42, name: m.nickname),
-                                  const SizedBox(height: 2),
-                                  Text(m.nickname,
-                                      style: const TextStyle(fontSize: 11, color: AAColors.ink)),
-                                ],
-                              ),
-                            ))
-                        .toList(),
+          SectionTitle('成员', emoji: '🐾'),
+          // 成员头像行（52px 淡彩底）
+          Row(
+            children: [
+              if (members.isEmpty)
+                const Text('还没有成员',
+                    style: TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft))
+              else ...[
+                for (var i = 0; i < members.length; i++)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 10),
+                    child: SketchAvatar(
+                      emoji: members[i].avatarUrl,
+                      size: 52,
+                      name: members[i].nickname,
+                      background: _tints[i % _tints.length],
+                    ),
                   ),
+                const SizedBox(width: 6),
+                InkWell(
+                  onTap: () => context.push('/groups/$groupId/members'),
+                  child: const Text('管理成员→',
+                      style: TextStyle(
+                          fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
+                ),
+              ],
+            ],
           ),
-          SectionTitle('账单流水'),
+          SectionTitle('账单流水', emoji: '🧾'),
           if (bills.isEmpty)
             EmptyState(
               title: '记第一笔账，开启AA之旅',
-              compact: true,
-              emotion: TuanTuanEmotion.sleepy,
+              subtitle: '30秒搞定，以后回头翻账可开心了',
+              tag: 'P23 群组详情',
+              artImage: 'assets/icons/edit.png',
               buttonLabel: '✏️ 记一笔',
               onButtonTap: () => context.push('/add'),
             )
+          else if (allSettled)
+            EmptyState(
+              title: '本群已清账！两不相欠啦 🎉',
+              subtitle: '团团撒花中——钱的事清了，咱们还是好朋友',
+              tag: 'P23/P25 已清账 🎉',
+              artImage: 'assets/icons/party.png',
+              buttonLabel: '再来一笔 💪',
+              onButtonTap: () => context.push('/add'),
+            )
           else
-            ...bills.map((b) => _FlowRow(bill: b, me: me, onTap: () => context.push('/bills/${b.id}'))),
-          const SizedBox(height: 12),
+            ...bills.map((b) => _FlowRow(bill: b, onTap: () => context.push('/bills/${b.id}'))),
+          const SizedBox(height: 4),
           DoodleButton(
-            label: '＋ 记一笔',
+            label: '✏️ + 记一笔',
+            big: true,
             type: DoodleButtonType.secondary,
-            expand: true,
             onPressed: () => context.push('/add'),
           ),
+          const SizedBox(height: 8),
         ],
       ),
     );
   }
-}
 
-class _MemberNetCard extends StatelessWidget {
-  const _MemberNetCard({required this.member});
-  final GroupMember member;
+  static String _netLabel(GroupMember m) {
+    final net = m.netBalanceCents;
+    if (net == 0) return '${m.nickname} · 已平 0';
+    final sign = net > 0 ? '+' : '-';
+    return '${m.nickname} $sign${(net.abs() / 100).toStringAsFixed(0)}';
+  }
 
-  @override
-  Widget build(BuildContext context) {
-    final net = member.netBalanceCents;
-    final color = net > 0
-        ? AAColors.mint
-        : (net < 0 ? AAColors.coral : AAColors.inkSoft);
-    final label = net > 0
-        ? '应收'
-        : (net < 0 ? '应付' : '已平');
-    return Container(
-      width: 88,
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color, width: 1.5),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(member.nickname,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 13, color: AAColors.ink)),
-          const SizedBox(height: 4),
-          if (net == 0)
-            Text('已平', style: TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 14, color: AAColors.inkSoft))
-          else
-            FittedBox(
-              child: HandAmount(amountCents: net, color: color, size: 20, showSign: true),
-            ),
-          Text(label, style: TextStyle(fontSize: 10, color: AAColors.inkSoft)),
-        ],
-      ),
-    );
+  static ChipVariant _netVariant(GroupMember m) {
+    final net = m.netBalanceCents;
+    if (net > 0) return ChipVariant.green;
+    if (net < 0) return ChipVariant.orange;
+    return ChipVariant.blue;
   }
 }
 
+/// 流水行 —— Demo `.card.tap`：`[avatar][日期+标题 / ¥xx · 均摊][印章]`
 class _FlowRow extends StatelessWidget {
-  const _FlowRow({required this.bill, required this.me, required this.onTap});
+  const _FlowRow({required this.bill, required this.onTap});
   final Bill bill;
-  final String me;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    return GestureDetector(
+    final perPerson = bill.participants.isEmpty
+        ? 0
+        : bill.amountCents ~/ bill.participants.length;
+    final splitPart = bill.splitType == SplitType.even
+        ? '均摊${Fmt.yuan(perPerson, trimZero: true)}/人'
+        : SplitText.label(bill.splitType);
+    return PaperCard(
       onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        child: Row(
-          children: [
-            CategoryIcon(category: bill.category, size: 40),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(bill.title, style: text.titleMedium, maxLines: 1, overflow: TextOverflow.ellipsis),
-                  Text(
-                    '${Fmt.dateShort(bill.billDate)} · ${SplitText.label(bill.splitType)} · ${bill.payerName}垫付',
-                    style: text.bodySmall,
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        children: [
+          CategoryIcon(category: bill.category, size: 44),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('${Fmt.dateShort(bill.billDate)} ${bill.title}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                HandAmount(
-                  amountCents: -bill.amountCents,
-                  color: bill.fullySettled ? AASemantic.settled : AAColors.coral,
-                  size: 18,
+                    style: const TextStyle(
+                        fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.ink)),
+                const SizedBox(height: 2),
+                Text(
+                  '${Fmt.yuan(bill.amountCents, trimZero: true)} · $splitPart',
+                  style: const TextStyle(
+                      fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                if (bill.payerId == me)
-                  const StampBadge(text: '我垫的', size: 46, rotate: -8, color: AAColors.sky),
               ],
             ),
-          ],
-        ),
+          ),
+          const SizedBox(width: 8),
+          StampBadge(
+            text: bill.fullySettled ? '已结清' : '待结算',
+            color: bill.fullySettled ? AASemantic.stampDone : AASemantic.stampMoney,
+          ),
+        ],
       ),
     );
   }

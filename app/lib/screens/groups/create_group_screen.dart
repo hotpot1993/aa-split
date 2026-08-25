@@ -4,15 +4,17 @@ import 'package:go_router/go_router.dart';
 
 import 'package:aa_design/aa_design.dart';
 
+import '../../core/utils/format.dart';
 import '../../models/group.dart';
 import '../../providers/repositories.dart';
 import '../../providers/refresh_provider.dart';
+import '../../widgets/avatar.dart';
 import '../../widgets/common.dart';
 import '../../widgets/sheet.dart';
 
-const _avatars = ['🐼', '🐶', '🐰', '🐻', '🐱', '🦊', '🐹', '🦌'];
+const _avatars = ['🐼', '🐶', '🐱', '🐰', '🦊'];
 
-/// P21 创建群组页
+/// P21 创建群组 —— 对齐 docs/ui-demo/index.html
 class CreateGroupScreen extends ConsumerStatefulWidget {
   const CreateGroupScreen({super.key});
   @override
@@ -22,6 +24,7 @@ class CreateGroupScreen extends ConsumerStatefulWidget {
 class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
   final _name = TextEditingController();
   final _intro = TextEditingController();
+  final FocusNode _nameFocus = FocusNode();
   String _avatar = '🐼';
   GroupDefaultSplit _split = GroupDefaultSplit.even;
 
@@ -29,13 +32,22 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
   void dispose() {
     _name.dispose();
     _intro.dispose();
+    _nameFocus.dispose();
     super.dispose();
   }
 
-  bool get _canSubmit => _name.text.trim().isNotEmpty && _name.text.length <= 20;
-
   Future<void> _create() async {
-    if (!_canSubmit) return;
+    // 校验未通过时给出明确反馈（不再静默禁用按钮）
+    if (_name.text.trim().isEmpty) {
+      showAaToast(context, '先给群组起个名吧～');
+      _nameFocus.requestFocus();
+      return;
+    }
+    if (_name.text.trim().length > 20) {
+      showAaToast(context, '群名太长啦，20个字以内哦');
+      _nameFocus.requestFocus();
+      return;
+    }
     try {
       final group = await ref.read(groupRepositoryProvider).create(
             name: _name.text.trim(),
@@ -45,7 +57,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
           );
       ref.read(refreshProvider.notifier).bump();
       if (!mounted) return;
-      showAaToast(context, '创建成功，拉上小伙伴吧');
+      showAaToast(context, '🍡 群组创建成功！');
       // 引导邀请
       if (mounted) context.pushReplacement('/groups/${group.id}/invite');
     } catch (e) {
@@ -56,124 +68,117 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
   @override
   Widget build(BuildContext context) {
     return AaScaffold(
-      appBar: AppBar(title: const Text('创建群组')),
+      appBar: AaAppBar(title: '🏕 创建群组', icon: '🎨'),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: [
-          SectionTitle('选个群头像'),
-          SizedBox(
-            height: 76,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              children: _avatars
-                  .map((a) => GestureDetector(
-                        onTap: () => setState(() => _avatar = a),
-                        child: Container(
-                          margin: const EdgeInsets.only(right: 10),
-                          width: 64,
-                          height: 64,
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: _avatar == a ? AAColors.lemon.withValues(alpha: 0.6) : AAColors.cardWhite,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: _avatar == a ? AAColors.coral : AAColors.ink,
-                              width: 2,
-                            ),
-                          ),
-                          child: Text(a, style: const TextStyle(fontSize: 30)),
+          // 选队徽（Demo：五枚 .ava，选中荧光笔黄底）
+          const SizedBox(height: 6),
+          const Center(
+            child: Text('选一个队伍头像：',
+                style: TextStyle(
+                    fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              for (var i = 0; i < _avatars.length; i++)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 5),
+                  child: GestureDetector(
+                    onTap: () => setState(() => _avatar = _avatars[i]),
+                    child: SketchAvatar(
+                      emoji: _avatars[i],
+                      size: 44,
+                      background: _avatar == _avatars[i]
+                          ? AAColors.marker
+                          : AAColors.cardWhite,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          PaperCard(
+            padding: const EdgeInsets.fromLTRB(14, 4, 14, 4),
+            child: Column(
+              children: [
+                AaLine(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('群组名称',
+                          style: TextStyle(
+                              fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.inkSoft)),
+                      SizedBox(
+                        width: 180,
+                        child: HandTextField(
+                          controller: _name,
+                          focusNode: _nameFocus,
+                          hint: '饭友群',
+                          textAlign: TextAlign.end,
+                          onChanged: (_) => setState(() {}),
                         ),
-                      ))
-                  .toList(),
+                      ),
+                    ],
+                  ),
+                ),
+                AaLine(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('简介（选填）',
+                          style: TextStyle(
+                              fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.inkSoft)),
+                      SizedBox(
+                        width: 180,
+                        child: HandTextField(
+                          controller: _intro,
+                          hint: '干饭第一名！',
+                          textAlign: TextAlign.end,
+                          maxLines: 1,
+                          onChanged: (_) => setState(() {}),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                AaLine(
+                  showBorder: false,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('默认分摊',
+                          style: TextStyle(
+                              fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.inkSoft)),
+                      DropdownButtonHideUnderline(
+                        child: DropdownButton<GroupDefaultSplit>(
+                          value: _split,
+                          icon: const Text('▾',
+                              style: TextStyle(fontSize: 16, color: AAColors.inkSoft, height: 1)),
+                          items: GroupDefaultSplit.values
+                              .map((s) => DropdownMenuItem(
+                                  value: s, child: Text(GroupSplit.label(s))))
+                              .toList(),
+                          onChanged: (v) => setState(() => _split = v ?? _split),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 16),
-          SectionTitle('群组名称（≤20字）'),
-          HandTextField(
-            controller: _name,
-            hint: '如 饭友群',
-            onChanged: (_) => setState(() {}),
-          ),
-          const SizedBox(height: 16),
-          SectionTitle('群简介（选填，≤50字）'),
-          HandTextField(
-            controller: _intro,
-            hint: '一句话介绍这个群',
-            maxLines: 2,
-            onChanged: (_) => setState(() {}),
-          ),
-          const SizedBox(height: 16),
-          SectionTitle('默认分摊方式'),
-          Row(
-            children: [
-              _SplitChip(
-                label: '均摊',
-                selected: _split == GroupDefaultSplit.even,
-                onTap: () => setState(() => _split = GroupDefaultSplit.even),
-              ),
-              const SizedBox(width: 8),
-              _SplitChip(
-                label: '自定义',
-                selected: _split == GroupDefaultSplit.custom,
-                onTap: () => setState(() => _split = GroupDefaultSplit.custom),
-              ),
-              const SizedBox(width: 8),
-              _SplitChip(
-                label: '按比例',
-                selected: _split == GroupDefaultSplit.ratio,
-                onTap: () => setState(() => _split = GroupDefaultSplit.ratio),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          const FieldHint(text: '新建账单会默认用这个分摊方式，随时可改'),
-          const SizedBox(height: 28),
           DoodleButton(
-            label: '创建群组',
-            expand: true,
-            onPressed: _canSubmit ? _create : null,
+            label: '创建，拉上小伙伴 →',
+            big: true,
+            onPressed: _create,
           ),
           const SizedBox(height: 16),
         ],
       ),
-    );
-  }
-}
-
-class _SplitChip extends StatelessWidget {
-  const _SplitChip({required this.label, required this.selected, required this.onTap});
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: selected ? AAColors.mint.withValues(alpha: 0.3) : AAColors.cardWhite,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: selected ? AAColors.mint : AAColors.ink, width: 1.5),
-          ),
-          child: Text(label,
-              style: TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 14, color: AAColors.ink)),
-        ),
-      ),
-    );
-  }
-}
-
-class FieldHint extends StatelessWidget {
-  const FieldHint({super.key, required this.text});
-  final String text;
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 6),
-      child: Text(text, style: Theme.of(context).textTheme.bodySmall),
     );
   }
 }

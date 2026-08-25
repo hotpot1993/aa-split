@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import '../tokens/aa_colors.dart';
+import '../tokens/aa_tokens.dart';
 
-/// 速写本点阵纸背景（UI规范 §5：点距 24px，5% 墨色）
+/// 速写本点阵纸背景 —— 严格照搬 Demo `.screen`：
+/// `background:radial-gradient(rgba(68,58,50,.05) 1px, transparent 1px) 0 0/22px 22px, var(--paper)`
 class GridPaperPainter extends CustomPainter {
-  const GridPaperPainter({this.spacing = 24, this.inkAlpha = 0.05});
+  const GridPaperPainter({this.spacing = AATokens.dotSpacing, this.inkAlpha = AATokens.dotAlpha});
 
   final double spacing;
   final double inkAlpha;
@@ -13,7 +15,7 @@ class GridPaperPainter extends CustomPainter {
     final paint = Paint()..color = AAColors.ink.withValues(alpha: inkAlpha);
     for (double x = spacing / 2; x <= size.width; x += spacing) {
       for (double y = spacing / 2; y <= size.height; y += spacing) {
-        canvas.drawCircle(Offset(x, y), 1.1, paint);
+        canvas.drawCircle(Offset(x, y), AATokens.dotRadius, paint);
       }
     }
   }

@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
-import '../shapes/sketchy_border.dart';
+import '../shapes/wonky_border.dart';
 import '../tokens/aa_colors.dart';
 import '../tokens/aa_tokens.dart';
 
-/// 涂鸦按钮（UI规范 §7.2）
-/// primary：珊瑚橙填充 + 墨线手绘边框 + 3,3,0 涂鸦阴影，按压下沉 2px 影子缩小
-/// secondary：纸底白 + 墨线边框
-/// text：手绘文字按钮（可带下划线/星星点缀）
+/// 涂鸦按钮 —— 严格照搬 Demo `.btn`：
+/// `font-size:15px;padding:10px 18px;border:2.5px solid var(--ink);
+///  border-radius:16px 6px 14px 7px/7px 14px 6px 16px;background:#FFFDF6;color:var(--ink);
+///  box-shadow:3px 3px 0 var(--ink)`
+/// 按压：`translate(2.5px,2.5px)` + 阴影收缩为 `1px 1px 0`
+///
+/// 变体（Demo）：
+/// `.primary{background:var(--coral);color:#fff}` `.danger{background:var(--pink);color:#fff}`
+/// `.mini{padding:6px 12px;font-size:13px}` `.big{width:100%;padding:13px;font-size:18px}`
+/// `.ghost{background:transparent;box-shadow:none;border:2.5px dashed var(--ink)}`
 class DoodleButton extends StatefulWidget {
   const DoodleButton({
     super.key,
@@ -15,6 +21,8 @@ class DoodleButton extends StatefulWidget {
     this.type = DoodleButtonType.primary,
     this.icon,
     this.expand = false,
+    this.mini = false,
+    this.big = false,
     this.color,
     this.textColor,
     this.borderSeed,
@@ -26,10 +34,16 @@ class DoodleButton extends StatefulWidget {
   final DoodleButtonType type;
   final IconData? icon;
 
-  /// 拉伸到可用宽度
+  /// 拉伸到可用宽度（.btn.big width:100%；普通按钮 expand=true 时同样占满）
   final bool expand;
 
-  /// 覆盖主色（primary 时）
+  /// 小号（.btn.mini：padding 6/12、13px）
+  final bool mini;
+
+  /// 大号（.btn.big：padding 13、18px、占满宽度）
+  final bool big;
+
+  /// 覆盖主色（primary / danger 时）
   final Color? color;
   final Color? textColor;
   final int? borderSeed;
@@ -39,7 +53,7 @@ class DoodleButton extends StatefulWidget {
   State<DoodleButton> createState() => _DoodleButtonState();
 }
 
-enum DoodleButtonType { primary, secondary, text }
+enum DoodleButtonType { primary, secondary, ghost, danger, text }
 
 class _DoodleButtonState extends State<DoodleButton> {
   bool _pressed = false;
@@ -49,16 +63,26 @@ class _DoodleButtonState extends State<DoodleButton> {
   void _down(dynamic _) => setState(() => _pressed = _enabled);
   void _up(dynamic _) => setState(() => _pressed = false);
 
+  double get _fontSize => widget.big ? 18 : (widget.mini ? 13 : 15);
+  EdgeInsets get _padding => widget.big
+      ? const EdgeInsets.all(13)
+      : widget.mini
+          ? const EdgeInsets.symmetric(horizontal: 12, vertical: 6)
+          : const EdgeInsets.symmetric(horizontal: 18, vertical: 10);
+
   @override
   Widget build(BuildContext context) {
     final Color textColor = widget.textColor ??
-        (widget.type == DoodleButtonType.primary
+        (widget.type == DoodleButtonType.primary ||
+                widget.type == DoodleButtonType.danger
             ? Colors.white
             : AAColors.ink);
     final Color fill = widget.type == DoodleButtonType.primary
         ? (widget.color ?? AAColors.coral)
-        : AAColors.cardWhite;
-    final Color ink = _enabled ? AAColors.ink : AAColors.inkSoft;
+        : widget.type == DoodleButtonType.danger
+            ? (widget.color ?? AAColors.berry)
+            : AAColors.cardWhite;
+    final Color stroke = _enabled ? AAColors.ink : AAColors.inkSoft;
 
     Widget content;
     if (widget.type == DoodleButtonType.text) {
@@ -79,16 +103,16 @@ class _DoodleButtonState extends State<DoodleButton> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           if (widget.icon != null) ...[
-            Icon(widget.icon, size: 18, color: textColor),
+            Icon(widget.icon, size: _fontSize - 2, color: textColor),
             const SizedBox(width: 6),
           ],
           Text(
             widget.label,
             style: TextStyle(
               fontFamily: 'ZCOOLKuaiLe',
-              fontSize: 16,
+              fontSize: _fontSize,
               color: textColor,
-              height: 1.1,
+              height: 1.3,
             ),
           ),
         ],
@@ -113,29 +137,27 @@ class _DoodleButtonState extends State<DoodleButton> {
       onTapUp: _up,
       onTapCancel: () => setState(() => _pressed = false),
       onTap: widget.onPressed,
-      child: Transform.translate(
-        offset: Offset(0, _pressed ? 2 : 0),
-        child: DecoratedBox(
-          decoration: ShapeDecoration(
-            color: _enabled ? fill : fill.withValues(alpha: 0.5),
-            shape: SketchyBorder(
-              side: BorderSide(color: ink, width: AATokens.stroke),
-              seed: widget.borderSeed ?? 23,
-              bow: 4.5,
+      child: SizedBox(
+        width: widget.expand || widget.big ? double.infinity : null,
+        child: Transform.translate(
+          offset: _pressed ? const Offset(2.5, 2.5) : Offset.zero,
+          child: DecoratedBox(
+            decoration: ShapeDecoration(
+              color: widget.type == DoodleButtonType.ghost
+                  ? Colors.transparent
+                  : (_enabled ? fill : fill.withValues(alpha: 0.5)),
+              shape: widget.type == DoodleButtonType.ghost
+                  ? const DashedWonkyBorder()
+                  : WonkyBorder(
+                      side: BorderSide(color: stroke, width: AATokens.stroke),
+                    ),
+              shadows: widget.type == DoodleButtonType.ghost
+                  ? const []
+                  : [
+                      _pressed ? AATokens.buttonPressShadow : AATokens.buttonShadow,
+                    ],
             ),
-            shadows: [
-              BoxShadow(
-                color: ink,
-                offset: _pressed ? AATokens.shadowPressOffset : AATokens.shadowOffset,
-              ),
-            ],
-          ),
-          child: Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: widget.expand ? 0 : 22,
-              vertical: 12,
-            ),
-            child: content,
+            child: Padding(padding: _padding, child: content),
           ),
         ),
       ),

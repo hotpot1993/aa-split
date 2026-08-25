@@ -7,6 +7,7 @@ import 'package:aa_design/aa_design.dart';
 import '../../core/utils/format.dart';
 import '../../models/bill.dart';
 import '../../models/group_member.dart';
+import '../../widgets/sheet.dart';
 import 'bill_draft.dart';
 
 /// 分摊设置面板（P31）—— 均摊/自定义/按比例/免分摊
@@ -63,19 +64,11 @@ class _SplitPanelState extends State<SplitPanel> {
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('分摊设置', style: text.headlineSmall),
-        const SizedBox(height: 4),
-        Text('总额 ${Fmt.yuan(widget.amountCents)}', style: text.bodySmall),
-        const SizedBox(height: 12),
-        _TypeRow(
-          selected: _type,
-          onSelect: (t) => setState(() => _type = t),
-        ),
+        _TypeRowWidget(selected: _type, onSelect: (t) => setState(() => _type = t)),
         const SizedBox(height: 12),
         _body(),
         const SizedBox(height: 12),
@@ -277,40 +270,59 @@ class _SplitPanelState extends State<SplitPanel> {
   int _customCents(GroupMember m) => _parseCents(_ctrl[m.userId]!.text);
 }
 
-class _TypeRow extends StatelessWidget {
-  const _TypeRow({required this.selected, required this.onSelect});
+class _TypeRowWidget extends StatelessWidget {
+  const _TypeRowWidget({required this.selected, required this.onSelect});
   final SplitType selected;
   final ValueChanged<SplitType> onSelect;
 
   static const _items = [
-    (SplitType.even, '均摊'),
-    (SplitType.custom, '自定义'),
-    (SplitType.ratio, '按比例'),
-    (SplitType.exempt, '免分摊'),
+    (SplitType.even, '🍕', '均摊（最常用）', '每人 ¥xx · 平分成N块披萨', '推荐', ChipVariant.green),
+    (SplitType.custom, '✍️', '自定义金额', '每人不同，如酒店各住不同天数', '', ChipVariant.plain),
+    (SplitType.ratio, '🧈', '按比例分摊', '按天数/里程占比自动算', '', ChipVariant.plain),
+    (SplitType.exempt, '🏅', '免分摊人员', '请客的人/司机不参与，剩余人重新算', '', ChipVariant.blue),
   ];
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: _items
-          .map((it) => Expanded(
-                child: GestureDetector(
-                  onTap: () => onSelect(it.$1),
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 3),
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: selected == it.$1 ? AAColors.mint.withValues(alpha: 0.3) : AAColors.cardWhite,
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: selected == it.$1 ? AAColors.mint : AAColors.ink, width: 1.5),
+    return Column(
+      children: [
+        for (final it in _items)
+          GestureDetector(
+            onTap: () => onSelect(it.$1),
+            child: Container(
+              width: double.infinity,
+              margin: const EdgeInsets.symmetric(vertical: 8),
+              padding: const EdgeInsets.fromLTRB(12, 11, 12, 11),
+              decoration: ShapeDecoration(
+                color: selected == it.$1 ? AAColors.marker : AAColors.cardWhite,
+                shape: WonkyBorder(radius: AARadii.opt),
+                shadows: const [AATokens.optShadow],
+              ),
+              child: Row(
+                children: [
+                  Text(it.$2, style: const TextStyle(fontSize: 26)),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(it.$3,
+                            style: const TextStyle(
+                                fontFamily: 'ZCOOLKuaiLe', fontSize: 14, color: AAColors.ink)),
+                        const SizedBox(height: 2),
+                        Text(it.$4,
+                            style: const TextStyle(
+                                fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
+                      ],
                     ),
-                    child: Text(it.$2,
-                        style: TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 13, color: AAColors.ink)),
                   ),
-                ),
-              ))
-          .toList(),
+                  if (it.$5.isNotEmpty)
+                    HandTag(it.$5, dense: true, variant: it.$6),
+                ],
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
@@ -363,7 +375,5 @@ class _PizzaPainter extends CustomPainter {
 }
 
 void _toast(BuildContext context, String msg) {
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text(msg), duration: const Duration(milliseconds: 1200)),
-  );
+  showAaToast(context, msg);
 }

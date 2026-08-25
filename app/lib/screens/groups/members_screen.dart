@@ -8,11 +8,10 @@ import '../../models/group_member.dart';
 import '../../providers/data_providers.dart';
 import '../../providers/repositories.dart';
 import '../../providers/refresh_provider.dart';
-import '../../widgets/avatar.dart';
 import '../../widgets/common.dart';
 import '../../widgets/sheet.dart';
 
-/// P24 成员管理页
+/// P24 成员管理 —— 对齐 docs/ui-demo/index.html
 class MembersScreen extends ConsumerWidget {
   const MembersScreen({super.key, required this.groupId});
   final String groupId;
@@ -23,33 +22,42 @@ class MembersScreen extends ConsumerWidget {
     final me = ref.watch(currentUserProvider)?.id ?? 'me';
 
     return AaScaffold(
-      appBar: AppBar(
-        title: Text('成员管理（${members.length}）'),
-        actions: [
-          IconButton(
-            onPressed: () => context.push('/groups/$groupId/invite'),
-            icon: const Icon(Icons.person_add_alt, size: 24, color: AAColors.ink),
-          ),
-        ],
-      ),
+      appBar: AaAppBar(title: '👑 成员管理', icon: '➕', onIconTap: () => context.push('/groups/$groupId/invite')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: [
-          ...members.map((m) => _MemberTile(
-                member: m,
-                isMe: m.userId == me,
-                canManage: m.userId == me ? false : members.any((x) => x.isOwner && x.userId == me),
-                onRemove: () => _remove(ref, context, m),
-              )),
+          PaperCard(
+            padding: const EdgeInsets.fromLTRB(14, 4, 14, 4),
+            child: Column(
+              children: [
+                for (var i = 0; i < members.length; i++)
+                  _MemberLine(
+                    member: members[i],
+                    isMe: members[i].userId == me,
+                    showBorder: i != members.length - 1,
+                    canManage:
+                        members[i].userId == me
+                            ? false
+                            : members.any((x) => x.isOwner && x.userId == me),
+                    onRemove: () => _remove(ref, context, members[i]),
+                  ),
+              ],
+            ),
+          ),
           const SizedBox(height: 16),
           DoodleButton(
-            label: '退出群组',
-            type: DoodleButtonType.secondary,
-            color: AAColors.berry,
-            textColor: AAColors.berry,
-            expand: true,
+            label: '＋ 添加成员',
+            big: true,
+            onPressed: () => context.push('/groups/$groupId/invite'),
+          ),
+          const SizedBox(height: 10),
+          DoodleButton(
+            label: '退出群组（账单仍保留）',
+            type: DoodleButtonType.danger,
+            big: true,
             onPressed: () => _leave(ref, context, me),
           ),
+          const SizedBox(height: 16),
         ],
       ),
     );
@@ -89,68 +97,95 @@ class MembersScreen extends ConsumerWidget {
       await ref.read(groupRepositoryProvider).removeMember(groupId, me);
       if (!context.mounted) return;
       ref.read(refreshProvider.notifier).bump();
-      showAaToast(context, '已退出群组');
+      showAaToast(context, '👋 已退出群组');
       if (context.mounted) context.pop();
     }
   }
 }
 
-class _MemberTile extends StatelessWidget {
-  const _MemberTile({
+class _MemberLine extends StatelessWidget {
+  const _MemberLine({
     required this.member,
     required this.isMe,
+    required this.showBorder,
     required this.canManage,
     required this.onRemove,
   });
   final GroupMember member;
   final bool isMe;
+  final bool showBorder;
   final bool canManage;
   final VoidCallback onRemove;
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    return PaperCard(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      child: Row(
-        children: [
-          SketchAvatar(emoji: member.avatarUrl, size: 46, name: member.nickname),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(member.nickname, style: text.titleMedium),
-                    if (member.isOwner) ...[
-                      const SizedBox(width: 6),
-                      const Text('👑', style: TextStyle(fontSize: 14)),
-                    ],
-                    if (isMe) ...[
-                      const SizedBox(width: 6),
-                      const Text('(我)', style: TextStyle(fontSize: 12, color: AAColors.inkSoft)),
-                    ],
-                  ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 2),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text.rich(TextSpan(children: [
+                TextSpan(
+                  text: '${member.avatarUrl} ${member.nickname}${isMe ? '（我）' : ''} ',
+                  style: const TextStyle(
+                      fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.ink),
                 ),
-                Text(
-                  '@${member.accountName} · ${member.joinedAt != null ? '加入于${member.joinedAt!.year}' : '刚加入'}',
-                  style: text.bodySmall,
+                TextSpan(
+                  text: '@${member.accountName}',
+                  style: const TextStyle(
+                      fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft),
                 ),
-              ],
-            ),
+              ])),
+              if (member.isOwner)
+                const Text('👑 群主',
+                    style: TextStyle(
+                        fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.ink))
+              else if (canManage)
+                InkWell(
+                  onTap: onRemove,
+                  child: Row(
+                    children: [
+                      const HandTag('正常', dense: true, variant: ChipVariant.blue),
+                      const SizedBox(width: 6),
+                      const Text('✗',
+                          style: TextStyle(
+                              fontFamily: 'ZCOOLKuaiLe', fontSize: 13, color: AAColors.inkSoft)),
+                      const SizedBox(width: 2),
+                      Text('移除',
+                          style: const TextStyle(
+                              fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
+                    ],
+                  ),
+                )
+              else
+                const HandTag('正常', dense: true, variant: ChipVariant.blue),
+            ],
           ),
-          if (canManage)
-            InkWell(
-              onTap: onRemove,
-              child: const Icon(Icons.delete_outline, color: AAColors.berry, size: 22),
-            )
-          else if (!member.isOwner)
-            const Text('已完成',
-                style: TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
-        ],
-      ),
+        ),
+        if (showBorder)
+          CustomPaint(size: const Size(double.infinity, 2.5), painter: _MemberDash()),
+      ],
     );
   }
+}
+
+class _MemberDash extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final p = Paint()
+      ..color = AAColors.ink
+      ..strokeWidth = 2.5;
+    var x = 0.0;
+    while (x < size.width) {
+      canvas.drawLine(Offset(x, 1.25), Offset(x + 7, 1.25), p);
+      x += 14;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter old) => false;
 }

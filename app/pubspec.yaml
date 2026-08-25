@@ -70,6 +70,28 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
+  # ---------- 自有图标素材（docs/pic 处理产物：透明底 512px） ----------
+  assets:
+    - assets/icons/
+
+  # ---------- 字体系统（规范 §4 分级字体） ----------
+  # 注意：字体文件在 aa_design 包内，但在「应用 pubspec」中声明，
+  # 家族名才会以不带包名前缀的方式注册（packages/aa_design/xxx 前缀
+  # 会导致 App 内 fontFamily 引用无法命中、静默回退系统字体）。
+  fonts:
+    - family: ZCOOLKuaiLe
+      fonts:
+        - asset: packages/aa_design/assets/fonts/ZCOOLKuaiLe-Regular.ttf
+    - family: LongCang
+      fonts:
+        - asset: packages/aa_design/assets/fonts/LongCang-Regular.ttf
+    - family: ZhiMangXing
+      fonts:
+        - asset: packages/aa_design/assets/fonts/ZhiMangXing-Regular.ttf
+    - family: Caveat
+      fonts:
+        - asset: packages/aa_design/assets/fonts/Caveat-VariableFont_wght.ttf
+
   # To add assets to your application, add an assets section, like this:
   # assets:
   #   - images/a_dot_burr.jpeg

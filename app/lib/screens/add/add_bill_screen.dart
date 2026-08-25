@@ -83,10 +83,8 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
     final groups = ref.watch(groupsProvider).value ?? const <Group>[];
     final members = (ref.watch(groupMembersProvider).value ?? const {})[_groupId] ?? const [];
-    final amountH = (MediaQuery.of(context).size.height / 3).clamp(150.0, 300.0);
     final n = _selectedMembers.length;
     final perEven = n == 0 ? 0 : _amountCents ~/ n;
 
@@ -97,179 +95,272 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
     }
 
     return AaScaffold(
-      appBar: AppBar(
-        title: const Text('✏️ 记一笔'),
-        actions: [
-          TextButton(
-            onPressed: _amountCents > 0 && _groupId.isNotEmpty && _selectedIds.isNotEmpty ? _save : null,
-            child: const Text('保存',
-                style: TextStyle(color: AAColors.coral, fontFamily: 'ZCOOLKuaiLe', fontSize: 16)),
+      appBar: AaAppBar(
+        title: '记一笔',
+        back: false,
+        headIcon: 'assets/icons/notebook.png',
+        iconImage: 'assets/icons/camera.png',
+        onIconTap: _addReceipt,
+      ),
+      body: Stack(
+        children: [
+          ListView(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+            children: [
+              // 金额区（Demo：¥ + 58px 数字 + 虚线 + chip）
+              Container(
+                height: 210,
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      height: 92,
+                      child: TextField(
+                        controller: _amountCtrl,
+                        autofocus: true,
+                        keyboardType: TextInputType.number,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontFamily: 'LongCang', fontSize: 58, color: AAColors.ink, height: 1.1),
+                        onChanged: (v) => setState(() {
+                          _amountCents = _parseCents(v);
+                        }),
+                        decoration: const InputDecoration(
+                          hintText: '0.00',
+                          hintStyle: TextStyle(fontFamily: 'LongCang', fontSize: 58, color: AAColors.inkSoft),
+                          // Demo P30：¥ 用知音漫兴体 40px
+                          prefixText: '¥ ',
+                          prefixStyle: TextStyle(fontFamily: 'ZhiMangXing', fontSize: 40, color: AAColors.inkSoft),
+                          border: InputBorder.none,
+                        ),
+                      ),
+                    ),
+                    // 虚线（Demo：repeating-linear-gradient ink 0 10px, transparent 10px 15px）
+                    SizedBox(
+                      width: MediaQuery.of(context).size.width * 0.6,
+                      child: CustomPaint(
+                        size: const Size(double.infinity, 3),
+                        painter: _AmountDashPainter(),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    if (n > 0)
+                      HandTag(
+                        '$n人 × ${Fmt.yuan(perEven, trimZero: true)} 均摊',
+                        fontSize: 13,
+                        variant: ChipVariant.orange,
+                      )
+                    else
+                      const Text('输入金额，实时预览均摊',
+                          style: TextStyle(
+                              fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              PaperCard(
+                padding: const EdgeInsets.fromLTRB(14, 4, 14, 4),
+                child: Column(
+                  children: [
+                    _FieldRow(
+                      label: '标题',
+                      child: HandTextField(controller: _titleCtrl, hint: '如 今晚聚餐'),
+                    ),
+                    _FieldRow(
+                      label: '日期',
+                      child: GestureDetector(
+                        onTap: _pickDate,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(Fmt.date(_date),
+                                style: const TextStyle(
+                                    fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.ink)),
+                            const Text('▾', style: TextStyle(fontSize: 16, color: AAColors.inkSoft, height: 1)),
+                          ],
+                        ),
+                      ),
+                    ),
+                    _FieldRow(
+                      label: '群组',
+                      child: groups.isEmpty
+                          ? const Text('还没有群组',
+                              style: TextStyle(
+                                  fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.inkSoft))
+                          : DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                value: _groupId,
+                                isExpanded: true,
+                                icon: const Text('▾',
+                                    style: TextStyle(fontSize: 16, color: AAColors.inkSoft, height: 1)),
+                                items: groups
+                                    .map((g) =>
+                                        DropdownMenuItem(value: g.id, child: Text(g.name)))
+                                    .toList(),
+                                onChanged: (v) => setState(() {
+                                  _groupId = v ?? _groupId;
+                                  _resetForGroup();
+                                }),
+                              ),
+                            ),
+                    ),
+                    _FieldRow(
+                      label: '分类',
+                      child: GestureDetector(
+                        onTap: _pickCategory,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text('${Cat.emoji(_category)} ${Cat.label(_category)}',
+                                style: const TextStyle(
+                                    fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.ink)),
+                            const Text('▾', style: TextStyle(fontSize: 16, color: AAColors.inkSoft, height: 1)),
+                          ],
+                        ),
+                      ),
+                    ),
+                    _FieldRow(
+                      label: '垫付人',
+                      child: _payerChooser(members),
+                    ),
+                    _FieldRow(
+                      label: '参与者',
+                      child: GestureDetector(
+                        onTap: _pickParticipants,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text('${_selectedIds.length}人',
+                                style: const TextStyle(
+                                    fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.ink)),
+                            const Text('▾', style: TextStyle(fontSize: 16, color: AAColors.inkSoft, height: 1)),
+                          ],
+                        ),
+                      ),
+                    ),
+                    _FieldRow(
+                      label: '分摊方式',
+                      child: GestureDetector(
+                        onTap: _pickSplit,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              _split?.summary ??
+                                  '${SplitText.label(members.isEmpty ? SplitType.even : _defaultSplitType)} '
+                                      '${_evenPerPersonText(members.length)}',
+                              style: const TextStyle(
+                                  fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.ink),
+                            ),
+                            const Text('▾', style: TextStyle(fontSize: 16, color: AAColors.inkSoft, height: 1)),
+                          ],
+                        ),
+                      ),
+                    ),
+                    _FieldRow(
+                      label: '凭证',
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          GestureDetector(
+                            onTap: _addReceipt,
+                            child: const Text('📷 拍照/相册',
+                                style: TextStyle(
+                                    fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.sky)),
+                          ),
+                          if (_receipts.isNotEmpty) ...[
+                            const SizedBox(width: 8),
+                            ..._receipts.map((r) => Padding(
+                                  padding: const EdgeInsets.only(right: 4),
+                                  child: _MiniReceipt(emoji: r.url),
+                                )),
+                          ],
+                        ],
+                      ),
+                    ),
+                    // 定期账单（Demo：`.cbx` + `.mini` 文案）
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 11),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        children: [
+                          AaCheckbox(
+                            value: _isRegular,
+                            onChanged: () => setState(() => _isRegular = !_isRegular),
+                          ),
+                          const SizedBox(width: 8),
+                          const Text('⏰ 设为定期账单（每月自动生成）',
+                              style: TextStyle(
+                                  fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.ink)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              DoodleButton(
+                label: '收下这张小票！✓',
+                big: true,
+                onPressed: _canSave ? _save : null,
+              ),
+              const SizedBox(height: 10),
+              const Text('📷 拍照凭证 · 只要30秒就记好啦',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                      fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
+              const SizedBox(height: 16),
+            ],
+          ),
+          // 💰 涂鸦装饰（Demo .doodle）→ 金币素材
+          const Positioned(
+            top: 70,
+            right: 10,
+            child: Opacity(
+              opacity: 0.5,
+              child: AaIconImage('assets/icons/coin.png', size: 20),
+            ),
           ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+    );
+  }
+
+  String _evenPerPersonText(int n) {
+    if (n <= 0 || _amountCents <= 0) return '';
+    return '${Fmt.yuan(_amountCents ~/ n, trimZero: true)}/人';
+  }
+
+  Future<void> _pickCategory() async {
+    final picked = await showAaSheet<BillCategory>(
+      context,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 金额区
-          Container(
-            height: amountH,
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Column(
-              children: [
-                SizedBox(
-                  height: 90,
-                  child: TextField(
-                    controller: _amountCtrl,
-                    autofocus: true,
-                    keyboardType: TextInputType.number,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(fontFamily: 'LongCang', fontSize: 56, color: AAColors.ink),
-                    onChanged: (v) => setState(() {
-                      _amountCents = _parseCents(v);
-                    }),
-                    decoration: const InputDecoration(
-                      hintText: '0.00',
-                      hintStyle: TextStyle(fontFamily: 'LongCang', fontSize: 44, color: AAColors.inkSoft),
-                      prefixText: '¥ ',
-                      prefixStyle: TextStyle(fontFamily: 'LongCang', fontSize: 30, color: AAColors.inkSoft),
-                      border: InputBorder.none,
-                    ),
-                  ),
-                ),
-                _ShakeUnderline(),
-                const SizedBox(height: 12),
-                if (n > 0 && _amountCents > 0)
-                  Center(
-                    child: HighlightText(
-                      '均摊 ${Fmt.yuan(perEven)}/人',
-                      style: const TextStyle(fontFamily: 'LongCang', fontSize: 20, color: AAColors.ink),
-                    ),
-                  )
-                else
-                  Text('输入金额，实时预览均摊', style: text.bodySmall),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          _FieldRow(
-            label: '标题',
-            child: HandTextField(controller: _titleCtrl, hint: '如 今晚聚餐'),
-          ),
-          _FieldRow(
-            label: '日期',
-            child: Row(
-              children: [
-                GestureDetector(
-                  onTap: _pickDate,
-                  child: Text(Fmt.date(_date), style: const TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.ink)),
-                ),
-                const Icon(Icons.arrow_drop_down, color: AAColors.inkSoft),
-              ],
-            ),
-          ),
-          _FieldRow(
-            label: '群组',
-            child: groups.isEmpty
-                ? const Text('还没有群组', style: TextStyle(color: AAColors.inkSoft))
-                : DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: _groupId,
-                      isExpanded: true,
-                      items: groups.map((g) => DropdownMenuItem(value: g.id, child: Text(g.name))).toList(),
-                      onChanged: (v) => setState(() {
-                        _groupId = v ?? _groupId;
-                        _resetForGroup();
-                      }),
-                    ),
-                  ),
-          ),
-          SectionTitle('分类'),
+          const Text('选个分类',
+              style: TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 18, color: AAColors.ink)),
+          const SizedBox(height: 10),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: Cat.all.map((c) {
               final on = _category == c;
               return GestureDetector(
-                onTap: () => setState(() => _category = c),
+                onTap: () => Navigator.of(context).pop(c),
                 child: HandTag(
-                  label: '${Cat.emoji(c)} ${Cat.label(c)}',
-                  color: on ? AAColors.coral : AAColors.inkSoft,
-                  textColor: on ? AAColors.coral : AAColors.ink,
+                  '${Cat.emoji(c)} ${Cat.label(c)}',
+                  selected: on,
+                  fontSize: on ? 13 : 12,
                 ),
               );
             }).toList(),
           ),
-          const SizedBox(height: 12),
-          _FieldRow(
-            label: '垫付人',
-            child: _payerChooser(members),
-          ),
-          _FieldRow(
-            label: '参与者',
-            child: GestureDetector(
-              onTap: _pickParticipants,
-              child: Text(
-                '${_selectedIds.length}人',
-                style: const TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.sky),
-              ),
-            ),
-          ),
-          _FieldRow(
-            label: '分摊',
-            child: GestureDetector(
-              onTap: _pickSplit,
-              child: Text(
-                _split?.summary ?? '自动（${SplitText.label(members.isEmpty ? SplitType.even : _defaultSplitType)}）',
-                style: const TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.sky),
-              ),
-            ),
-          ),
-          _FieldRow(
-            label: '凭证',
-            child: Row(
-              children: [
-                GestureDetector(
-                  onTap: _addReceipt,
-                  child: const Text('📷 拍照/相册', style: TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.sky)),
-                ),
-                if (_receipts.isNotEmpty) ...[
-                  const SizedBox(width: 8),
-                  ..._receipts.map((r) => Padding(
-                        padding: const EdgeInsets.only(right: 4),
-                        child: _MiniReceipt(emoji: r.url),
-                      )),
-                ],
-              ],
-            ),
-          ),
-          _FieldRow(
-            label: '定期',
-            child: GestureDetector(
-              onTap: () => setState(() => _isRegular = !_isRegular),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (_isRegular) const Text('⏰ 交给团团记着！', style: TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 14, color: AAColors.coral)),
-                  const SizedBox(width: 8),
-                  HandToggle(
-                    value: _isRegular,
-                    activeColor: AAColors.mint,
-                    onChanged: (v) => setState(() => _isRegular = v),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-          DoodleButton(
-            label: '收下这张小票！',
-            expand: true,
-            onPressed: _canSave ? _save : null,
-          ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 8),
         ],
       ),
     );
+    if (picked != null) setState(() => _category = picked);
   }
 
   SplitType get _defaultSplitType {
@@ -300,6 +391,7 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
       child: DropdownButton<String>(
         value: _payerId.isEmpty ? null : _payerId,
         isExpanded: true,
+        icon: const Text('▾', style: TextStyle(fontSize: 16, color: AAColors.inkSoft, height: 1)),
         items: members.map((m) => DropdownMenuItem(value: m.userId, child: Text(m.nickname))).toList(),
         onChanged: (v) => setState(() {
           if (v != null) {
@@ -352,11 +444,10 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
   }
 
   Future<void> _pickDate() async {
-    final d = await showDatePicker(
-      context: context,
-      initialDate: _date,
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
+    // 手绘纸日历（替代系统 DatePicker 弹窗）
+    final d = await showAaSheet<DateTime>(
+      context,
+      child: _HandDateSheet(initial: _date),
     );
     if (d != null) setState(() => _date = d);
   }
@@ -421,45 +512,65 @@ class _FieldRow extends StatelessWidget {
   const _FieldRow({required this.label, required this.child});
   final String label;
   final Widget child;
+
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          SizedBox(width: 60, child: Text(label, style: text.bodyMedium)),
-          Expanded(child: child),
-        ],
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 2),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: 64,
+                child: Text(label,
+                    style: const TextStyle(
+                        fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.inkSoft)),
+              ),
+              Expanded(child: Align(alignment: Alignment.centerRight, child: child)),
+            ],
+          ),
+        ),
+        CustomPaint(size: const Size(double.infinity, 2.5), painter: _DashLine2()),
+      ],
     );
   }
 }
 
-class _ShakeUnderline extends StatelessWidget {
-  const _ShakeUnderline();
-  @override
-  Widget build(BuildContext context) {
-    return CustomPaint(
-      size: const Size(double.infinity, 6),
-      painter: _Underline2(),
-    );
-  }
-}
-
-class _Underline2 extends CustomPainter {
+class _DashLine2 extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final p = Paint()
-      ..color = AAColors.coral
-      ..style = PaintingStyle.stroke
+      ..color = AAColors.ink
       ..strokeWidth = 2.5
+      ..strokeCap = StrokeCap.butt;
+    var x = 0.0;
+    while (x < size.width) {
+      canvas.drawLine(Offset(x, 1.25), Offset(x + 7, 1.25), p);
+      x += 14;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter old) => false;
+}
+
+/// 金额下方虚线 —— Demo：`repeating-linear-gradient(90deg,var(--ink) 0 10px,transparent 10px 15px)`
+class _AmountDashPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final p = Paint()
+      ..color = AAColors.ink
+      ..strokeWidth = 3
       ..strokeCap = StrokeCap.round;
-    final path = Path()
-      ..moveTo(0, size.height / 2)
-      ..quadraticBezierTo(size.width * 0.3, size.height / 2 + 3, size.width * 0.55, size.height / 2)
-      ..quadraticBezierTo(size.width * 0.8, size.height / 2 - 3, size.width, size.height / 2);
-    canvas.drawPath(path, p);
+    var x = 0.0;
+    while (x < size.width) {
+      canvas.drawLine(Offset(x, 1.5), Offset(x + 10, 1.5), p);
+      x += 15;
+    }
   }
 
   @override
@@ -508,4 +619,132 @@ class _Celebration extends StatelessWidget {
       ),
     );
   }
+}
+
+/// 手绘纸日历 —— 替代系统 DatePicker（白纸卡 + 墨线网格 + 手写数字）
+class _HandDateSheet extends StatefulWidget {
+  const _HandDateSheet({required this.initial});
+  final DateTime initial;
+  @override
+  State<_HandDateSheet> createState() => _HandDateSheetState();
+}
+
+class _HandDateSheetState extends State<_HandDateSheet> {
+  late int _y = widget.initial.year;
+  late int _m = widget.initial.month;
+  late int _d = widget.initial.day;
+
+  int get _days {
+    final last = DateTime(_y, _m + 1, 0).day;
+    return last;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final atNow = _y == now.year && _m == now.month;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            InkWell(
+              onTap: () => setState(() {
+                if (_m == 1) {
+                  _m = 12;
+                  if (_y > 2020) _y--;
+                } else {
+                  _m--;
+                }
+              }),
+              child: const Text('‹', style: TextStyle(fontSize: 24, color: AAColors.ink)),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text('$_y年$_m月',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                      fontFamily: 'ZCOOLKuaiLe', fontSize: 18, color: AAColors.ink)),
+            ),
+            const SizedBox(width: 14),
+            InkWell(
+              onTap: atNow
+                  ? null
+                  : () => setState(() {
+                      if (_m == 12) {
+                        _m = 1;
+                        _y++;
+                      } else {
+                        _m++;
+                      }
+                    }),
+              child: Text('›',
+                  style: TextStyle(
+                      fontSize: 24,
+                      color: atNow ? AAColors.inkSoft.withValues(alpha: 0.4) : AAColors.ink)),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        CustomPaint(size: const Size(double.infinity, 2.5), painter: _CalDash()),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (var d = 1; d <= _days; d++)
+              Builder(builder: (_) {
+                final selected = d == _d;
+                return GestureDetector(
+                  onTap: () => setState(() => _d = d),
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: selected ? AAColors.marker : AAColors.cardWhite,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: selected ? AAColors.ink : AAColors.inkSoft,
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Text('$d',
+                        style: TextStyle(
+                            fontFamily: 'ZCOOLKuaiLe',
+                            fontSize: 13,
+                            color: selected ? AAColors.ink : AAColors.inkSoft)),
+                  ),
+                );
+              }),
+          ],
+        ),
+        const SizedBox(height: 12),
+        DoodleButton(
+          label: '就选 $_y年$_m月$_d日 ✓',
+          big: true,
+          onPressed: () => Navigator.of(context).pop(DateTime(_y, _m, _d)),
+        ),
+        const SizedBox(height: 8),
+      ],
+    );
+  }
+}
+
+class _CalDash extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final p = Paint()
+      ..color = AAColors.ink
+      ..strokeWidth = 2.5;
+    var x = 0.0;
+    while (x < size.width) {
+      canvas.drawLine(Offset(x, 1.25), Offset(x + 7, 1.25), p);
+      x += 14;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter old) => false;
 }

@@ -7,8 +7,10 @@
 
 | 产物 | 状态 | 验收 |
 |---|---|---|
-| 服务端 `server/`（NestJS 10 + Prisma + PostgreSQL，全模块 + SSE + BullMQ + Swagger） | ✅ | `npm install` / `npx prisma generate` / `npm run build` / `npm test`（35/35）全通过 |
-| 客户端 `app/`（Flutter + Riverpod + go_router，31 页全量 + `aa_design` 手绘设计系统） | ✅ | `flutter analyze` 0 issues / `flutter test` 3/3 通过 |
+| 服务端 `server/`（NestJS 10 + Prisma + PostgreSQL，全模块 + SSE + BullMQ + Swagger） | ✅ | `npm install` / `npx prisma generate` / `npm run build` / `npm test`（37/37）全通过 |
+| 客户端 `app/`（Flutter + Riverpod + go_router，31 页全量 + `aa_design` 手绘设计系统） | ✅ | `flutter analyze` 0 issues / `flutter test` **24/24**（8 张商店截图 golden 回归 + 16 屏视觉冒烟）/ 真机截屏逐页核对 |
+| **UI 视觉基线**（严格对齐 `docs/ui-demo/index.html`） | ✅ | 组件/圆角/阴影/间距/配色/字体五级/交互逐项照搬；字体包前缀命中修复（见 开发进度 v1.6） |
+| **图标素材系统**（`docs/pic` → `app/assets/icons`，40 枚全接入） | ✅ | `powershell -ExecutionPolicy Bypass -File scripts\process-icons.ps1`（透明度/水印/裁剪/启动图标一键重跑） |
 | 结算算法（`server/src/settlement/`，含"已付份额排除"修复） | ✅ | 13 个金标准单测全绿 |
 | 基础设施（docker-compose / Makefile / CI / 字体 asset） | ✅ | — |
 | **真实联调**（本机 PostgreSQL 16.12 便携实例 + API smoke + SSE） | ✅ | `node scripts/smoke-api.mjs` **22/22** · `node scripts/sse-check.mjs` SSE 实时事件 ✅ |
@@ -21,7 +23,8 @@
 
 ```
 aa-dsh/
-├── docs/                     # 产品原型 / UI设计规范 / 技术方案 / 可交互Demo
+├── docs/                     # 产品原型 / UI设计规范 / 技术方案 / 可交互Demo / 图标素材库(pic/)
+├── scripts/                  # build-release.ps1 / process-icons.ps1（图标素材流水线）/ smoke 等
 ├── server/                   # NestJS 10 + Prisma + PostgreSQL（REST + SSE）
 │   ├── prisma/schema.prisma  # 数据库模型（金额一律以分存储）
 │   └── src/
@@ -36,7 +39,8 @@ aa-dsh/
 │       └── statistics/       # 统计聚合
 └── app/                      # Flutter 客户端
     ├── lib/                  # 主工程（Riverpod + go_router）
-    └── packages/aa_design/   # 手绘风设计系统（组件库）
+    ├── assets/icons/         # 图标素材产物（透明底 512px，由脚本生成）
+    └── packages/aa_design/   # 手绘风设计系统（组件库 + 四套手写字体）
 ```
 
 ## 快速开始
@@ -91,9 +95,11 @@ flutter test                 # 组件/单元测试
 ## 文档
 
 - 📦 [产品原型（31 页流程）](docs/AA分账App-产品原型.md)
-- 🎨 [UI 设计规范](docs/AA分账App-UI设计规范.md)
+- 🎨 [UI 设计规范（含图标素材系统 §6.3）](docs/AA分账App-UI设计规范.md)
 - ⚙️ [技术方案（数据库/API/算法/排期）](docs/AA分账App-技术方案.md)
 - 🖥️ [手绘风高保真 Demo（浏览器打开）](docs/ui-demo/index.html)
+- 📈 [开发进度存档 v1.6](docs/开发进度.md)（UI 对齐 / 字体 / 图标系统 / 修复记录）
+- 🖼️ [自定义图标素材库 docs/pic](docs/pic/)（**文件名 = 对应 emoji** → `app/assets/icons`，脚本：`powershell -ExecutionPolicy Bypass -File scripts\process-icons.ps1`）
 - 🏪 [商店上架准备（素材/文案/法务/手册）](docs/store/上架手册.md)
   - 上架包：`make app-release` → `dist/release/`（AAB + 多 ABI APK + SHA256 + 签名指纹）
   - 素材：商店图标（`docs/store/icons/`）、截图（`docs/store/screenshots/`）

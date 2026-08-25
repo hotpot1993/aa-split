@@ -3,17 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:aa_design/aa_design.dart';
 
-import '../../core/utils/format.dart';
 import '../../models/bill.dart';
 import '../../providers/data_providers.dart';
 import '../../providers/repositories.dart';
 import '../../providers/refresh_provider.dart';
 import '../../providers/settings_provider.dart';
-import '../../widgets/avatar.dart';
 import '../../widgets/common.dart';
 import '../../widgets/sheet.dart';
 
-/// P26 催款页
+/// P26 催款页 —— 对齐 docs/ui-demo/index.html
 class RemindScreen extends ConsumerStatefulWidget {
   const RemindScreen({super.key, required this.groupId});
   final String groupId;
@@ -24,6 +22,7 @@ class RemindScreen extends ConsumerStatefulWidget {
 class _RemindScreenState extends ConsumerState<RemindScreen> {
   late final TextEditingController _message = TextEditingController();
   late Set<String> _selected = {};
+  int _remindCount = 1;
 
   @override
   void initState() {
@@ -57,65 +56,96 @@ class _RemindScreenState extends ConsumerState<RemindScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
     final targets = _unpaidTargets();
     final sending = _selected.isNotEmpty && _message.text.trim().isNotEmpty;
 
     if (targets.isEmpty) {
       return AaScaffold(
-        appBar: AppBar(title: const Text('催款')),
-        body: const Center(
+        appBar: AaAppBar(
+        title: '催款',
+        headIcon: 'assets/icons/broadcast.png',
+      ),
+        body: const Padding(
+          padding: EdgeInsets.all(16),
           child: EmptyState(
             title: '没有欠款要催，大家都超靠谱！',
-            emotion: TuanTuanEmotion.happy,
+            tag: 'P26 催款',
+            art: '✅🍉',
           ),
         ),
       );
     }
 
     return AaScaffold(
-      appBar: AppBar(title: const Text('催款')),
+      appBar: AaAppBar(
+        title: '催款',
+        headIcon: 'assets/icons/broadcast.png',
+      ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: [
-          SectionTitle('选择催款对象（默认全选）'),
-          ...targets.map((t) => _TargetTile(
-                target: t,
-                selected: _selected.contains(t.userId),
-                onChanged: (v) => setState(() {
-                  if (v) {
-                    _selected.add(t.userId);
-                  } else {
+          const Text('选一选还没付的小伙伴（默认全选）：',
+              style: TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: targets.map((t) {
+              final on = _selected.contains(t.userId);
+              return GestureDetector(
+                onTap: () => setState(() {
+                  if (on) {
                     _selected.remove(t.userId);
+                  } else {
+                    _selected.add(t.userId);
                   }
                 }),
-              )),
-          const SizedBox(height: 16),
-          SectionTitle('催款文案'),
+                child: HandTag(
+                  '${t.avatar} ${t.nickname}${on ? ' 💰' : ''}',
+                  fontSize: 15,
+                  selected: on,
+                  vpad: 7,
+                  hpad: 14,
+                ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 12),
+          // 催款小纸条：tape pink 卡 + 可编辑文案
           PaperCard(
-            child: HandTextField(
-              controller: _message,
-              maxLines: 4,
-              hint: '写下你温柔又不失礼貌的催款话',
-              onChanged: (_) => setState(() {}),
+            withTape: true,
+            tapeColor: AATokens.tapePink,
+            padding: const EdgeInsets.fromLTRB(14, 16, 14, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('催款小纸条（可编辑）',
+                    style: TextStyle(
+                        fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
+                const SizedBox(height: 6),
+                HandTextField(
+                  controller: _message,
+                  maxLines: 4,
+                  hint: '嗨～上一笔AA你还没付哦，记得转我一下 🙏',
+                  onChanged: (_) => setState(() {}),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: DoodleButton(
-                  label: '📣 发送',
-                  expand: true,
-                  onPressed: sending ? _send : null,
-                ),
-              ),
-            ],
+          DoodleButton(
+            label: '发送催款 ✈️',
+            big: true,
+            onPressed: sending ? _send : null,
           ),
-          const SizedBox(height: 8),
-          Text('发送后对方会在「消息」里收到催款提醒',
-              textAlign: TextAlign.center, style: text.bodySmall),
-          const SizedBox(height: 24),
+          const SizedBox(height: 10),
+          Text(
+            '已催过 $_remindCount 次 · 发送后对方会收到🔔提醒',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+                fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft),
+          ),
+          const SizedBox(height: 16),
         ],
       ),
     );
@@ -139,7 +169,8 @@ class _RemindScreenState extends ConsumerState<RemindScreen> {
     }
     if (!mounted) return;
     ref.read(refreshProvider.notifier).bump();
-    showAaToast(context, '已催款，等TA们自觉');
+    setState(() => _remindCount++);
+    showAaToast(context, '✈️ 催款已发出');
   }
 }
 
@@ -150,63 +181,4 @@ class _Target {
   final String avatar;
   final String billTitle;
   final int amountCents;
-}
-
-class _TargetTile extends StatelessWidget {
-  const _TargetTile({
-    required this.target,
-    required this.selected,
-    required this.onChanged,
-  });
-  final _Target target;
-  final bool selected;
-  final ValueChanged<bool> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    return GestureDetector(
-      onTap: () => onChanged(!selected),
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 4),
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
-        decoration: BoxDecoration(
-          color: selected ? AAColors.lemon.withValues(alpha: 0.35) : Colors.transparent,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Row(
-          children: [
-            Stack(
-              clipBehavior: Clip.none,
-              children: [
-                SketchAvatar(emoji: target.avatar, size: 40, name: target.nickname),
-                if (selected)
-                  const Positioned(
-                    top: -4,
-                    child: Text('💰', style: TextStyle(fontSize: 18)),
-                  ),
-              ],
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(target.nickname, style: text.titleMedium),
-                  Text('${target.billTitle} · ${Fmt.yuan(target.amountCents)}',
-                      style: text.bodySmall),
-                ],
-              ),
-            ),
-            Checkbox(
-              value: selected,
-              activeColor: AAColors.mint,
-              shape: const CircleBorder(side: BorderSide(color: AAColors.ink, width: 1.5)),
-              onChanged: (v) => onChanged(v ?? false),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }

@@ -163,3 +163,166 @@ class _TuanTuanPainter extends CustomPainter {
   bool shouldRepaint(covariant _TuanTuanPainter old) =>
       old.emotion != emotion || old.withPencil != withPencil;
 }
+
+/// 团团熊猫 —— 严格照搬 docs/ui-demo/index.html 的吉祥物 SVG（viewBox 0 0 100 100）：
+/// 墨线 3px 天线、墨色填充耳朵、白脸圆头、墨色眼圈、纸米眼点、粉腮红。
+/// 可选 `.wob` 摇晃动画（±3° · 2.4s）。
+class TuanTuanPanda extends StatefulWidget {
+  const TuanTuanPanda({
+    super.key,
+    this.size = 110,
+    this.wobble = false,
+  });
+
+  final double size;
+
+  /// Demo `.wob`：0/100% -3°，50% 3°
+  final bool wobble;
+
+  @override
+  State<TuanTuanPanda> createState() => _TuanTuanPandaState();
+}
+
+class _TuanTuanPandaState extends State<TuanTuanPanda>
+    with SingleTickerProviderStateMixin {
+  AnimationController? _c;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.wobble) {
+      _c = AnimationController(
+        vsync: this,
+        duration: const Duration(milliseconds: 2400),
+      )..repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _c?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: widget.size,
+      height: widget.size,
+      child: widget.wobble
+          ? AnimatedBuilder(
+              animation: _c!,
+              builder: (context, _) {
+                final t = _c!.value;
+                // 0%,100% → -3deg；50% → 3deg
+                final angle = -3 + 6 * (1 - (2 * t - 1).abs() / 1);
+                return Transform.rotate(
+                  angle: angle * pi / 180,
+                  child: CustomPaint(painter: _PandaPainter()),
+                );
+              },
+            )
+          : CustomPaint(painter: _PandaPainter()),
+    );
+  }
+}
+
+class _PandaPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final s = size.width / 100;
+    canvas.scale(s);
+    // 让线条宽度随缩放系数还原到 100 基准
+    final ink3 = Paint()
+      ..color = AAColors.ink
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    final inkFill = Paint()
+      ..color = AAColors.ink
+      ..style = PaintingStyle.fill;
+    final ink25 = Paint()
+      ..color = AAColors.ink
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.5
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    final white = Paint()
+      ..color = const Color(0xFFFFFFFF)
+      ..style = PaintingStyle.fill;
+    final paper = Paint()
+      ..color = AAColors.paper
+      ..style = PaintingStyle.fill;
+    final blush = Paint()
+      ..color = AAColors.berry.withValues(alpha: 0.75)
+      ..style = PaintingStyle.fill;
+
+    // 天线 M50 15 Q52 6 57 4
+    canvas.drawPath(
+      Path()
+        ..moveTo(50, 15)
+        ..quadraticBezierTo(52, 6, 57, 4),
+      ink3,
+    );
+
+    // 左耳 M31 26 Q21 9 37 11 Q36 19 31 26 Z
+    final earL = Path()
+      ..moveTo(31, 26)
+      ..quadraticBezierTo(21, 9, 37, 11)
+      ..quadraticBezierTo(36, 19, 31, 26)
+      ..close();
+    canvas.drawPath(earL, inkFill);
+    canvas.drawPath(earL, ink25);
+
+    // 右耳 M69 26 Q79 9 63 11 Q64 19 69 26 Z
+    final earR = Path()
+      ..moveTo(69, 26)
+      ..quadraticBezierTo(79, 9, 63, 11)
+      ..quadraticBezierTo(64, 19, 69, 26)
+      ..close();
+    canvas.drawPath(earR, inkFill);
+    canvas.drawPath(earR, ink25);
+
+    // 头圆 cx50 cy45 r26 白脸 + 3px 墨线
+    canvas.drawCircle(const Offset(50, 45), 26, white);
+    canvas.drawCircle(const Offset(50, 45), 26, ink3);
+
+    // 眼圈 M35 41 Q40 33 47 40 Q46 48 40 49 Q35 47 35 41 Z
+    final patchL = Path()
+      ..moveTo(35, 41)
+      ..quadraticBezierTo(40, 33, 47, 40)
+      ..quadraticBezierTo(46, 48, 40, 49)
+      ..quadraticBezierTo(35, 47, 35, 41)
+      ..close();
+    canvas.drawPath(patchL, inkFill);
+
+    // 眼圈 M65 41 Q60 33 53 40 Q54 48 60 49 Q65 47 65 41 Z
+    final patchR = Path()
+      ..moveTo(65, 41)
+      ..quadraticBezierTo(60, 33, 53, 40)
+      ..quadraticBezierTo(54, 48, 60, 49)
+      ..quadraticBezierTo(65, 47, 65, 41)
+      ..close();
+    canvas.drawPath(patchR, inkFill);
+
+    // 眼珠 纸米小点
+    canvas.drawCircle(const Offset(42, 43.5), 2.6, paper);
+    canvas.drawCircle(const Offset(58, 43.5), 2.6, paper);
+
+    // 嘴 M47 57 Q50 60 53 57
+    canvas.drawPath(
+      Path()
+        ..moveTo(47, 57)
+        ..quadraticBezierTo(50, 60, 53, 57),
+      ink3,
+    );
+
+    // 腮红椭圆
+    canvas.drawOval(const Rect.fromLTWH(28.5, 49.2, 9, 5.6), blush);
+    canvas.drawOval(const Rect.fromLTWH(62.5, 49.2, 9, 5.6), blush);
+  }
+
+  @override
+  bool shouldRepaint(covariant _PandaPainter old) => false;
+}

@@ -5,12 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:aa_design/aa_design.dart';
 
-import '../../models/bill.dart';
-import '../../providers/data_providers.dart';
 import '../../widgets/common.dart';
 import '../../widgets/sheet.dart';
 
-/// P53 数据导出页
+/// P53 数据导出 —— 对齐 docs/ui-demo/index.html
 class ExportScreen extends ConsumerStatefulWidget {
   const ExportScreen({super.key});
   @override
@@ -27,18 +25,18 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    final bills = ref.watch(billsProvider).value ?? const <Bill>[];
-
     return AaScaffold(
-      appBar: AppBar(title: const Text('数据导出')),
+      appBar: AaAppBar(
+        title: '数据导出',
+        headIcon: 'assets/icons/export.png',
+        icon: '📤',
+      ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: [
-          if (_packing) _Packing(onDone: () => setState(() => _done = true)),
-          if (_done) const _Done(),
-
-          SectionTitle('导出范围'),
+          const Text('导出范围：',
+              style: TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
+          const SizedBox(height: 4),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -46,57 +44,77 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
               final on = _scope == s;
               return GestureDetector(
                 onTap: () => setState(() => _scope = s),
-                child: HandTag(
-                  label: s,
-                  color: on ? AAColors.coral : AAColors.inkSoft,
-                  textColor: on ? AAColors.coral : AAColors.ink,
-                ),
+                child: HandTag(s, selected: on, fontSize: 12),
               );
             }).toList(),
           ),
-          const SizedBox(height: 14),
-          SectionTitle('文件格式'),
-          Row(
-            children: _Format.values
-                .map((f) => Expanded(
-                      child: GestureDetector(
-                        onTap: () => setState(() => _format = f),
-                        child: Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 3),
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: _format == f ? AAColors.lemon.withValues(alpha: 0.5) : AAColors.cardWhite,
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: _format == f ? AAColors.coral : AAColors.ink, width: 1.5),
-                          ),
-                          child: Text(f.name.toUpperCase(),
-                              style: const TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 14, color: AAColors.ink)),
-                        ),
-                      ),
-                    ))
-                .toList(),
+          const SizedBox(height: 12),
+          const Text('文件格式：',
+              style: TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
+          const SizedBox(height: 4),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _Format.values.map((f) {
+              final on = _format == f;
+              return GestureDetector(
+                onTap: () => setState(() => _format = f),
+                child: HandTag(f.name.toUpperCase(), selected: on, fontSize: 12),
+              );
+            }).toList(),
           ),
-          const SizedBox(height: 14),
-          Text('共 ${bills.length} 笔账单可导出', style: text.bodySmall),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
+          // 打包卡（Demo：🎒 + mini dim + 进度条）
+          PaperCard(
+            withTape: true,
+            tapeColor: AATokens.tapeMint,
+            padding: const EdgeInsets.fromLTRB(14, 18, 14, 14),
+            child: Column(
+              children: [
+                if (_done)
+                  const Image(image: AssetImage('assets/icons/box.png'), width: 44, height: 44)
+                else
+                  const Image(image: AssetImage('assets/icons/box.png'), width: 44, height: 44),
+                const SizedBox(height: 4),
+                const Text('团团正在打包你的账本…',
+                    style: TextStyle(
+                        fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
+                const SizedBox(height: 10),
+                _DemoProgress(progress: _packing ? 1.0 : 0.72),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
           DoodleButton(
-            label: _packing || _done ? '打包中…' : '开始打包',
-            expand: true,
+            label: _packing || _done ? '开始导出 ✈️' : '开始导出 ✈️',
+            big: true,
             onPressed: _packing ? null : _startPack,
           ),
-          if (_done)
-            Padding(
-              padding: const EdgeInsets.only(top: 12),
-              child: DoodleButton(
-                label: '下载文件',
-                type: DoodleButtonType.secondary,
-                expand: true,
-                onPressed: () => showAaToast(context, '已保存到本地'),
-              ),
+          if (_done) ...[
+            const SizedBox(height: 10),
+            DoodleButton(
+              label: '下载文件',
+              type: DoodleButtonType.secondary,
+              big: true,
+              onPressed: () => showAaToast(context, '📦 打包好啦！请查收'),
             ),
+          ],
           const SizedBox(height: 12),
-          Text('历史导出记录：暂无', style: text.bodySmall),
+          const Text('历史记录：',
+              style: TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
+          const SizedBox(height: 4),
+          PaperCard(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('6月账单.xlsx · 6月1日',
+                    style: TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.ink)),
+                const HandTag('已生成', dense: true, variant: ChipVariant.green),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
         ],
       ),
     );
@@ -107,37 +125,64 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
       _packing = true;
       _done = false;
     });
+    Timer(const Duration(milliseconds: 1800), () {
+      if (!mounted) return;
+      setState(() {
+        _packing = false;
+        _done = true;
+      });
+    });
   }
 }
 
-class _Packing extends StatelessWidget {
-  const _Packing({required this.onDone});
-  final VoidCallback onDone;
+/// Demo 进度条：`height:14px;border:2.5px solid var(--ink);border-radius:999px;
+/// background:#fff`，填充 `repeating-linear-gradient(90deg, var(--coral) 0 12px,transparent 12px 18px)`
+/// + 右侧 2px 墨线
+class _DemoProgress extends StatelessWidget {
+  const _DemoProgress({required this.progress});
+  final double progress;
+
   @override
   Widget build(BuildContext context) {
-    Timer(const Duration(milliseconds: 1800), onDone);
-    return Column(
-      children: [
-        const Text('正在打包你的账单…', style: TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 16, color: AAColors.ink)),
-        const SizedBox(height: 12),
-        const TuanTuan(size: 140, emotion: TuanTuanEmotion.excited),
-      ],
+    return Container(
+      height: 14,
+      decoration: BoxDecoration(
+        color: AAColors.cardWhite,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AAColors.ink, width: 2.5),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(999),
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: FractionallySizedBox(
+            widthFactor: progress.clamp(0, 1),
+            child: Container(
+              decoration: const BoxDecoration(
+                border: Border(right: BorderSide(color: AAColors.ink, width: 2)),
+              ),
+              child: CustomPaint(painter: _StripeBarPainter()),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
 
-class _Done extends StatelessWidget {
-  const _Done();
+class _StripeBarPainter extends CustomPainter {
   @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        const Center(child: Text('📦', style: TextStyle(fontSize: 56))),
-        const SizedBox(height: 8),
-        const HighlightText('打包好啦！',
-            style: TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 22, color: AAColors.ink)),
-        const SizedBox(height: 8),
-      ],
-    );
+  void paint(Canvas canvas, Size size) {
+    var x = 0.0;
+    while (x < size.width) {
+      canvas.drawRect(
+        Rect.fromLTWH(x, 0, 12, size.height),
+        Paint()..color = AAColors.coral,
+      );
+      x += 18;
+    }
   }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter old) => false;
 }

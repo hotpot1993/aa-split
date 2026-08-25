@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,13 +5,14 @@ import 'package:go_router/go_router.dart';
 
 import 'package:aa_design/aa_design.dart';
 
+import '../../core/utils/format.dart';
 import '../../models/transfer.dart';
 import '../../providers/data_providers.dart';
 import '../../widgets/avatar.dart';
 import '../../widgets/common.dart';
 import '../../widgets/sheet.dart';
 
-/// P25 群组结算页（核心）
+/// P25 群组结算页 —— 对齐 docs/ui-demo/index.html
 class SettlementScreen extends ConsumerStatefulWidget {
   const SettlementScreen({super.key, required this.groupId});
   final String groupId;
@@ -24,55 +23,73 @@ class SettlementScreen extends ConsumerStatefulWidget {
 class _SettlementScreenState extends ConsumerState<SettlementScreen> {
   bool _perBill = false;
 
+  static const _tints = [
+    Color(0xFFF0F6FB),
+    Color(0xFFEDF7EE),
+    Color(0xFFFFF1EA),
+    Color(0xFFF7F0FB),
+  ];
+
   @override
   Widget build(BuildContext context) {
     final plan = ref.watch(settlementPlanProvider(widget.groupId)).value;
     final perBillTransfers =
         ref.watch(perBillTransfersProvider(widget.groupId)).value ??
             const <Transfer>[];
-    final text = Theme.of(context).textTheme;
 
     final transfers = _perBill ? perBillTransfers : (plan?.transfers ?? const <Transfer>[]);
-    final title = _perBill ? '逐笔结算' : '最少 ${plan?.transferCount ?? 0} 笔清账！';
     final members = (ref.watch(groupMembersProvider).value ?? const {})[widget.groupId] ?? [];
 
     return AaScaffold(
-      appBar: AppBar(title: const Text('一键智能结算')),
+      appBar: AaAppBar(
+        title: '✨ 一键智能结算',
+        iconImage: 'assets/icons/abacus.png',
+      ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: [
-          // 顶部贴纸
-          Transform.rotate(
-            angle: -0.06,
-            child: Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-                decoration: BoxDecoration(
-                  color: AAColors.lemon.withValues(alpha: 0.8),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AAColors.coral, width: 2),
-                ),
-                child: Text(
-                  '🎉 $title',
-                  style: const TextStyle(
-                    fontFamily: 'ZCOOLKuaiLe',
-                    fontSize: 18,
-                    color: AAColors.ink,
-                    fontWeight: FontWeight.w600,
+          // 头部贴纸卡：Demo `.card` + `background:var(--marker)` + `.tape.sky`
+          PaperCard(
+            color: AAColors.marker,
+            withTape: true,
+            tapeColor: AATokens.tapeSky,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text.rich(TextSpan(children: [
+                  const TextSpan(
+                      text: '🎉 最少 ',
+                      style: TextStyle(
+                          fontFamily: 'ZCOOLKuaiLe', fontSize: 26, color: AAColors.ink)),
+                  TextSpan(
+                    text: '${transfers.length}',
+                    style: const TextStyle(
+                        fontFamily: 'LongCang',
+                        fontSize: 30,
+                        color: AASemantic.amountNeg),
                   ),
-                ),
-              ),
+                  const TextSpan(
+                      text: ' 笔清账！',
+                      style: TextStyle(
+                          fontFamily: 'ZCOOLKuaiLe', fontSize: 26, color: AAColors.ink)),
+                ])),
+                const SizedBox(height: 4),
+                const Text('团团帮你算好了，按这个转就行',
+                    style: TextStyle(
+                        fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
+              ],
             ),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 16),
           if (transfers.isEmpty)
             const EmptyState(
               title: '全群已清账，两不相欠啦 🎉',
-              emotion: TuanTuanEmotion.celebrate,
               subtitle: '这笔不用再转了',
+              tag: 'P23/P25 已清账 🎉',
+              art: '🎉🌸',
             )
           else
-            ...transfers.map((t) {
+            ...transfers.asMap().entries.map((e) {
               String avat(String uid) {
                 for (final m in members) {
                   if (m.userId == uid) return m.avatarUrl;
@@ -81,59 +98,57 @@ class _SettlementScreenState extends ConsumerState<SettlementScreen> {
               }
 
               return _TransferCard(
-                transfer: t,
-                index: transfers.indexOf(t),
-                fromAvatar: avat(t.fromUserId),
-                toAvatar: avat(t.toUserId),
+                transfer: e.value,
+                index: e.key,
+                tint: _tints[e.key % _tints.length],
+                fromAvatar: avat(e.value.fromUserId),
+                toAvatar: avat(e.value.toUserId),
               );
             }),
-          const SizedBox(height: 18),
+          const SizedBox(height: 6),
           Row(
             children: [
-              if (!_perBill)
-                Expanded(
-                  child: DoodleButton(
-                    label: '💬 复制文案',
-                    type: DoodleButtonType.secondary,
-                    expand: true,
-                    onPressed: () => _copyPlan(transfers),
-                  ),
-                ),
-              if (!_perBill) const SizedBox(width: 12),
               Expanded(
                 child: DoodleButton(
-                  label: '📱 开始催款',
+                  label: '💬 复制转账文案',
+                  type: DoodleButtonType.ghost,
+                  mini: true,
                   expand: true,
-                  onPressed: () => context.push('/groups/${widget.groupId}/remind'),
+                  onPressed: () => _copyPlan(transfers),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: DoodleButton(
+                  label: '📱 收款码卡片',
+                  type: DoodleButtonType.ghost,
+                  mini: true,
+                  expand: true,
+                  onPressed: () => showAaToast(context, '收款码卡片已生成'),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 20),
-          // 逐笔结算开关
-          PaperCard(
-            child: Row(
-              children: [
-                const Icon(Icons.swap_horiz, color: AAColors.inkSoft),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    _perBill ? '已切到逐笔明细模式' : '逐笔结算（按账单逐人）',
-                    style: text.titleSmall,
-                  ),
-                ),
-                HandToggle(
-                  value: _perBill,
-                  activeColor: AAColors.mint,
-                  onChanged: (v) => setState(() => _perBill = v),
-                ),
-              ],
+          const SizedBox(height: 16),
+          DoodleButton(
+            label: '📢 开始催款',
+            big: true,
+            onPressed: () => context.push('/groups/${widget.groupId}/remind'),
+          ),
+          const SizedBox(height: 10),
+          // 模式切换提示（Demo 底部 mini dim 文案）
+          InkWell(
+            onTap: () => setState(() => _perBill = !_perBill),
+            child: Text(
+              _perBill
+                  ? '🔀 已选：逐笔结算模式 · 切换到最少笔数'
+                  : '🔀 已选：最少笔数模式 · 切换到逐笔结算',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                  fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft),
             ),
           ),
-          const SizedBox(height: 8),
-          Text('按最少转账笔数智能规划，也可切换到“逐笔结算”',
-              textAlign: TextAlign.center, style: text.bodySmall),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
         ],
       ),
     );
@@ -144,95 +159,101 @@ class _SettlementScreenState extends ConsumerState<SettlementScreen> {
     var i = 0;
     for (final t in transfers) {
       i++;
-      sb.writeln('$i. ${t.fromName} → ${t.toName}  ${'¥${(t.amountCents ~/ 100)}.${(t.amountCents % 100).toString().padLeft(2, '0')}'}');
+      sb.writeln('$i. ${t.fromName} → ${t.toName}  ${Fmt.yuan(t.amountCents, trimZero: true)}');
     }
     Clipboard.setData(ClipboardData(text: sb.toString()));
-    showAaToast(context, '转账文案已复制');
+    showAaToast(context, '💬 转账文案已复制');
   }
 }
 
+/// 转账卡 —— Demo：`[头像][mini 王五→我 / 金额30px / mini 备注][手绘箭头][chip 待付]`
 class _TransferCard extends StatelessWidget {
   const _TransferCard({
     required this.transfer,
     required this.index,
+    required this.tint,
     required this.fromAvatar,
     required this.toAvatar,
   });
   final Transfer transfer;
   final int index;
+  final Color tint;
   final String fromAvatar;
   final String toAvatar;
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
     return PaperCard(
-      margin: const EdgeInsets.only(bottom: 14),
-      tiltSeed: 'transfer-$index',
-      child: Column(
+      margin: const EdgeInsets.only(bottom: 12),
+      onTap: null,
+      padding: const EdgeInsets.all(14),
+      child: Row(
         children: [
-          Row(
-            children: [
-              Column(
-                children: [
-                  SketchAvatar(emoji: fromAvatar, size: 42, name: transfer.fromName),
-                  const SizedBox(height: 2),
-                  Text(transfer.fromName, style: text.bodySmall),
-                ],
-              ),
-              const Expanded(child: _ArrowPainter()),
-              Column(
-                children: [
-                  SketchAvatar(emoji: toAvatar, size: 42, name: transfer.toName),
-                  const SizedBox(height: 2),
-                  Text(transfer.toName, style: text.bodySmall),
-                ],
-              ),
-            ],
+          SketchAvatar(emoji: fromAvatar, size: 44, name: transfer.fromName, background: tint),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('${transfer.fromName} → ${transfer.toName}',
+                    style: const TextStyle(
+                        fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
+                const SizedBox(height: 2),
+                HandAmount(amountCents: transfer.amountCents, color: AAColors.ink, size: 30),
+                Text(
+                  _note(),
+                  style: const TextStyle(
+                      fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 8),
-          HandAmount(amountCents: transfer.amountCents, color: AAColors.coral, size: 30),
+          const SizedBox(width: 6),
+          CustomPaint(
+            size: const Size(44, 26),
+            painter: _ArrowSvgPainter(),
+          ),
+          const SizedBox(width: 8),
+          HandTag(
+            transfer.fromUserId == 'me' ? '我去付' : '待付',
+            fontSize: 12,
+            variant: transfer.fromUserId == 'me'
+                ? ChipVariant.green
+                : ChipVariant.orange,
+          ),
         ],
       ),
     );
   }
-}
 
-class _ArrowPainter extends StatelessWidget {
-  const _ArrowPainter();
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      child: CustomPaint(
-        size: const Size(double.infinity, 24),
-        painter: _ArrowLinePainter(),
-      ),
-    );
+  String _note() {
+    if (transfer.billIds.length <= 1) return '今晚聚餐';
+    return '${transfer.billIds.length} 笔账单';
   }
 }
 
-class _ArrowLinePainter extends CustomPainter {
+/// 手绘箭头 —— Demo SVG `viewBox="0 0 40 24"`：
+/// `M3 14 Q16 4 30 11` + `M24 8 L33 11.4 L26 16`
+class _ArrowSvgPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final ink = Paint()
+    final s = size.width / 40;
+    canvas.save();
+    canvas.scale(s);
+    final p = Paint()
       ..color = AAColors.ink
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.5
-      ..strokeCap = StrokeCap.round;
-    final y = size.height / 2;
-    final start = Offset(2, size.height * 0.35);
-    final end = Offset(size.width - 2, size.height * 0.7);
+      ..strokeWidth = 2.6
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
     final path = Path()
-      ..moveTo(start.dx, start.dy)
-      ..quadraticBezierTo(size.width / 2, y - 8, end.dx, end.dy);
-    canvas.drawPath(path, ink);
-    // 起点圆点
-    canvas.drawCircle(start, 3.5, Paint()..color = AAColors.ink);
-    // 箭头
-    final angle = atan2(end.dy - y, end.dx - size.width / 2);
-    canvas.drawLine(end, Offset(end.dx - 8 * cos(angle - 0.5), end.dy - 8 * sin(angle - 0.5)), ink);
-    canvas.drawLine(end, Offset(end.dx - 8 * cos(angle + 0.5), end.dy - 8 * sin(angle + 0.5)), ink);
+      ..moveTo(3, 14)
+      ..quadraticBezierTo(16, 4, 30, 11)
+      ..moveTo(24, 8)
+      ..lineTo(33, 11.4)
+      ..lineTo(26, 16);
+    canvas.drawPath(path, p);
+    canvas.restore();
   }
 
   @override

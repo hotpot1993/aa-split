@@ -1,16 +1,6 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// 全局主题模式（跟随系统/浅色/深色）—— P51 深色模式
-final themeModeProvider =
-    NotifierProvider<ThemeModeController, ThemeMode>(ThemeModeController.new);
-
-class ThemeModeController extends Notifier<ThemeMode> {
-  @override
-  ThemeMode build() => ThemeMode.system;
-
-  void set(ThemeMode mode) => state = mode;
-}
+/// 主题已固定为浅色（与 docs/ui-demo/index.html 一致），不再提供深色模式。
 
 /// 通知偏好（P41 提醒设置）
 class NotifyPrefs {

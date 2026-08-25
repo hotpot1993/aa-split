@@ -4,52 +4,82 @@ import 'package:flutter/material.dart';
 
 import 'package:aa_design/aa_design.dart';
 
-/// 手绘 Toast（小纸片 + 团团 + 文案）—— UI规范 §7.5 / §8.1
+/// 手绘 Toast —— 严格照搬 Demo `.toast`：
+/// `background:#443A32;color:#FBF3E4;font-size:13px;padding:9px 16px;
+///  border-radius:12px 5px 11px 6px;bottom:104px`
+/// 出现：淡入 + 上移 8px → 0（.toast.show，250ms）；1.6s 后消失
 void showAaToast(BuildContext context, String message) {
   final overlay = Overlay.of(context, rootOverlay: true);
   final entry = OverlayEntry(
     builder: (_) => AaToast(message: message),
   );
   overlay.insert(entry);
-  Future<void>.delayed(const Duration(seconds: 2), entry.remove);
+  Future<void>.delayed(const Duration(milliseconds: 1600), entry.remove);
 }
 
-class AaToast extends StatelessWidget {
+class AaToast extends StatefulWidget {
   const AaToast({super.key, required this.message});
   final String message;
 
   @override
+  State<AaToast> createState() => _AaToastState();
+}
+
+class _AaToastState extends State<AaToast> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 250),
+  )..forward();
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Positioned(
-      bottom: 96,
-      left: 24,
-      right: 24,
-      child: Material(
-        color: Colors.transparent,
-        child: PaperCard(
-          color: AAColors.cardWhite,
-          withTape: true,
-          tapeColor: AAColors.lemon,
-          tiltSeed: 'toast',
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          child: Row(
-            children: [
-              const TuanTuan(emotion: TuanTuanEmotion.happy, size: 40),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  message,
-                  style: const TextStyle(
-                    fontFamily: 'ZCOOLKuaiLe',
-                    fontSize: 14,
-                    color: AAColors.ink,
+    // 键盘弹出时自动上移，避免被键盘遮挡
+    final kb = MediaQuery.viewInsetsOf(context).bottom;
+    return AnimatedBuilder(
+      animation: _c,
+      builder: (context, _) {
+        final t = Curves.easeOut.transform(_c.value);
+        return Positioned(
+          left: 0,
+          right: 0,
+          bottom: 104 + kb,
+          child: IgnorePointer(
+            child: Opacity(
+              opacity: t,
+              child: Transform.translate(
+                offset: Offset(0, 8 * (1 - t)),
+                child: Center(
+                  child: Container(
+                    constraints: const BoxConstraints(maxWidth: 320),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+                    decoration: BoxDecoration(
+                      color: AAColors.ink,
+                      borderRadius: AARadii.toast,
+                    ),
+                    child: Text(
+                      widget.message,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontFamily: 'ZCOOLKuaiLe',
+                        fontSize: 13,
+                        color: AAColors.paper,
+                        height: 1.2,
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
@@ -65,6 +95,9 @@ Future<bool?> showAaConfirm(
     context: context,
     backgroundColor: Colors.transparent,
     barrierColor: AAColors.ink.withValues(alpha: 0.35),
+    // 必须 isScrollControlled：否则弹层高度被限制在 9/16 屏高内，
+    // FractionallySizedBox(0.5) 再叠乘后内容被截断（底部按钮显示不全）
+    isScrollControlled: true,
     builder: (ctx) => _ConfirmSheet(
       title: title,
       subtitle: subtitle,

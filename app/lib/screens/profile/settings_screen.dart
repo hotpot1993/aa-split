@@ -5,76 +5,108 @@ import 'package:go_router/go_router.dart';
 import 'package:aa_design/aa_design.dart';
 
 import '../../providers/auth_provider.dart';
-import '../../providers/settings_provider.dart';
 import '../../widgets/common.dart';
 import '../../widgets/sheet.dart';
 
-/// P51 设置页
+/// P51 设置页 —— 对齐 docs/ui-demo/index.html
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final text = Theme.of(context).textTheme;
-    final themeMode = ref.watch(themeModeProvider);
-    final modeCtrl = ref.read(themeModeProvider.notifier);
-
     return AaScaffold(
-      appBar: AppBar(title: const Text('设置')),
+      appBar: AaAppBar(
+        title: '设置',
+        headIcon: 'assets/icons/settings.png',
+        icon: '🌗',
+      ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: [
-          _Group(title: '通用'),
-          _Row(
-            icon: Icons.notifications,
-            emoji: '🔔',
-            label: '通知设置',
-            onTap: () => context.push('/messages/settings'),
-          ),
-          _Row(
-            icon: Icons.dark_mode,
-            emoji: '🌙',
-            label: '深色模式',
-            trailing: _ModeSelector(
-              value: themeMode,
-              onChanged: (m) => modeCtrl.set(m),
+          PaperCard(
+            padding: const EdgeInsets.fromLTRB(14, 4, 14, 4),
+            child: Column(
+              children: [
+                _row('通知设置',
+                    leadImage: 'assets/icons/notify.png',
+                    trailing: const _Arrow(),
+                    onTap: () => context.push('/messages/settings')),
+                _row('深色模式',
+                    leadImage: 'assets/icons/moon.png',
+                    value: '浅色（固定）'),
+                _row('隐私设置',
+                    leadImage: 'assets/icons/locked.png',
+                    value: '账单仅参与者可见 ▾'),
+                _row('账号安全',
+                    leadImage: 'assets/icons/key.png',
+                    trailing: const _Arrow(),
+                    onTap: () => context.push('/security')),
+                _row('数据导出',
+                    leadImage: 'assets/icons/export.png',
+                    trailing: const _Arrow(),
+                    onTap: () => context.push('/export')),
+                _row('关于我们',
+                    leadImage: 'assets/icons/mail.png',
+                    trailing: const _Arrow(),
+                    onTap: () => context.push('/about'),
+                    showBorder: false),
+              ],
             ),
           ),
-          _Row(
-            icon: Icons.lock,
-            emoji: '🔒',
-            label: '账号安全',
-            onTap: () => context.push('/security'),
-          ),
-          _Row(
-            icon: Icons.download,
-            emoji: '📦',
-            label: '数据导出',
-            onTap: () => context.push('/export'),
-          ),
-          _Group(title: '其他'),
-          _Row(
-            icon: Icons.info,
-            emoji: 'ℹ️',
-            label: '关于',
-            onTap: () => context.push('/about'),
-          ),
-          _Group(title: '账户'),
-          const SizedBox(height: 8),
+          const SizedBox(height: 16),
           DoodleButton(
-            label: '下次再来玩呀（退出登录）',
-            type: DoodleButtonType.secondary,
-            color: AAColors.berry,
-            textColor: AAColors.berry,
-            expand: true,
+            label: '退出登录',
+            type: DoodleButtonType.danger,
+            big: true,
             onPressed: () => _logout(context, ref),
           ),
           const SizedBox(height: 8),
-          Center(
-            child: Text('退出后本地登录态会清除', style: text.bodySmall),
+          const Center(
+            child: Text('退出后本地登录态会清除',
+                style: TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
           ),
+          const SizedBox(height: 16),
         ],
       ),
+    );
+  }
+
+  Widget _row(String label,
+      {String? value, Widget? trailing, VoidCallback? onTap, String? leadImage, bool showBorder = true}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        GestureDetector(
+          onTap: onTap,
+          behavior: HitTestBehavior.opaque,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 2),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    if (leadImage != null) ...[
+                      AaIconImage(leadImage, size: 16),
+                      const SizedBox(width: 6),
+                    ],
+                    Text(label,
+                        style: const TextStyle(
+                            fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.inkSoft)),
+                  ],
+                ),
+                if (value != null)
+                  Text(value,
+                      style: const TextStyle(
+                          fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.ink)),
+                ?trailing,
+              ],
+            ),
+          ),
+        ),
+        if (showBorder)
+          CustomPaint(size: const Size(double.infinity, 2.5), painter: _SetDash()),
+      ],
     );
   }
 
@@ -94,78 +126,27 @@ class SettingsScreen extends ConsumerWidget {
   }
 }
 
-class _Group extends StatelessWidget {
-  const _Group({required this.title});
-  final String title;
+class _Arrow extends StatelessWidget {
+  const _Arrow();
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 18, 4, 8),
-      child: Text('— $title —',
-          style: const TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 14, color: AAColors.inkSoft)),
-    );
+    return const Text('→', style: TextStyle(fontSize: 15, color: AAColors.ink));
   }
 }
 
-class _Row extends StatelessWidget {
-  const _Row({required this.icon, required this.emoji, required this.label, this.onTap, this.trailing});
-  final IconData icon;
-  final String emoji;
-  final String label;
-  final VoidCallback? onTap;
-  final Widget? trailing;
+class _SetDash extends CustomPainter {
   @override
-  Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    return GestureDetector(
-      onTap: onTap,
-      child: PaperCard(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        child: Row(
-          children: [
-            Text(emoji, style: const TextStyle(fontSize: 20)),
-            const SizedBox(width: 12),
-            Expanded(child: Text(label, style: text.titleMedium)),
-            trailing ?? const Icon(Icons.arrow_forward, color: AAColors.inkSoft, size: 20),
-          ],
-        ),
-      ),
-    );
+  void paint(Canvas canvas, Size size) {
+    final p = Paint()
+      ..color = AAColors.ink
+      ..strokeWidth = 2.5;
+    var x = 0.0;
+    while (x < size.width) {
+      canvas.drawLine(Offset(x, 1.25), Offset(x + 7, 1.25), p);
+      x += 14;
+    }
   }
-}
 
-class _ModeSelector extends StatelessWidget {
-  const _ModeSelector({required this.value, required this.onChanged});
-  final ThemeMode value;
-  final ValueChanged<ThemeMode> onChanged;
   @override
-  Widget build(BuildContext context) {
-    final items = [
-      (ThemeMode.system, '跟随系统'),
-      (ThemeMode.light, '浅色'),
-      (ThemeMode.dark, '深色'),
-    ];
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: items
-          .map((it) => GestureDetector(
-                onTap: () => onChanged(it.$1),
-                child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 2),
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: value == it.$1 ? AAColors.lemon.withValues(alpha: 0.5) : Colors.transparent,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(it.$2,
-                      style: TextStyle(
-                          fontFamily: 'ZCOOLKuaiLe',
-                          fontSize: 12,
-                          color: value == it.$1 ? AAColors.coral : AAColors.inkSoft)),
-                ),
-              ))
-          .toList(),
-    );
-  }
+  bool shouldRepaint(covariant CustomPainter old) => false;
 }

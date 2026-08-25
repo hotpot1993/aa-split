@@ -19,7 +19,7 @@ void main() {
                   HandAmountWithLabel(amountCents: 12000, label: '应收'),
                   DoodleButton(label: '记一笔'),
                   StampBadge(text: '已结清'),
-                  HandTag(label: '餐饮', icon: Icons.restaurant),
+                  HandTag.label(label: '餐饮', icon: Icons.restaurant),
                   TuanTuan(emotion: TuanTuanEmotion.happy, size: 90),
                   CheckDraw(size: 60),
                   HighlightText('重点'),

@@ -1,32 +1,39 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import '../shapes/sketchy_border.dart';
+import '../shapes/wonky_border.dart';
 import '../tokens/aa_colors.dart';
 import '../tokens/aa_tokens.dart';
 
-/// 便签卡：手绘边框 + 实心涂鸦阴影 + 轻微旋转 + 可选纸胶带/图钉（UI规范 §7.1）
-class PaperCard extends StatelessWidget {
+/// 便签卡 —— 严格照搬 Demo `.card`：
+/// `background:#FFFDF6; border:2.5px solid var(--ink);
+///  border-radius:16px 6px 14px 7px/7px 14px 6px 16px;
+///  padding:16px 14px; box-shadow:3px 3px 0 rgba(68,58,50,.18)`
+/// 可选：顶部纸胶带（.tape）、轻微旋转（.card.tilt）、按压下沉（.card.tap:active）
+class PaperCard extends StatefulWidget {
   const PaperCard({
     super.key,
     required this.child,
     this.color = AAColors.cardWhite,
-    this.padding = const EdgeInsets.all(16),
+    this.padding = const EdgeInsets.fromLTRB(14, 16, 14, 16),
     this.withTape = false,
-    this.tapeColor = AAColors.lemon,
+    this.tapeColor = AATokens.tapeLemon,
     this.withPin = false,
     this.tiltSeed,
     this.borderSeed = 11,
     this.borderWidth = AATokens.stroke,
+    this.borderColor = AAColors.ink,
     this.onTap,
     this.margin = EdgeInsets.zero,
+    this.pressable = true,
+    this.shadow = AATokens.cardShadow,
   });
 
   final Widget child;
   final Color color;
   final EdgeInsetsGeometry padding;
 
-  /// 顶部纸胶带（半透明彩条 + 两端锯齿 + 旋转 ±3°）
+  /// 顶部纸胶带（Demo `.tape`：92x24、旋转 -3°、1.5px 描边圆角 2px）
   final bool withTape;
   final Color tapeColor;
 
@@ -36,45 +43,57 @@ class PaperCard extends StatelessWidget {
   /// 轻微旋转种子（同名同转）；null = 不旋转
   final String? tiltSeed;
 
-  /// 手绘边框种子（同形）
+  /// 手绘边框种子（保留参数，圆角由 AARadii 决定）
   final int borderSeed;
   final double borderWidth;
+
+  /// 边框颜色（Demo 粉卡 border-color:var(--pink)）
+  final Color borderColor;
   final VoidCallback? onTap;
   final EdgeInsetsGeometry margin;
 
+  /// onTap 时是否启用按下下沉效果（.card.tap:active translate(2px,2px)）
+  final bool pressable;
+
+  /// 卡片阴影（.card = rgba(68,58,50,.18) 3,3；.emptyc = .15）
+  final BoxShadow shadow;
+
+  @override
+  State<PaperCard> createState() => _PaperCardState();
+}
+
+class _PaperCardState extends State<PaperCard> {
+  bool _pressed = false;
+
   @override
   Widget build(BuildContext context) {
-    final angle = tiltSeed == null ? 0.0 : AATokens.tiltFor(tiltSeed!);
+    final angle = widget.tiltSeed == null ? 0.0 : AATokens.tiltFor(widget.tiltSeed!);
+    final offset = (_pressed && widget.pressable) ? const Offset(2, 2) : Offset.zero;
+
     Widget card = DecoratedBox(
       decoration: ShapeDecoration(
-        color: color,
-        shape: SketchyBorder(
-          seed: borderSeed,
-          side: BorderSide(color: AAColors.ink, width: borderWidth),
+        color: widget.color,
+        shape: WonkyBorder(
+          side: BorderSide(color: widget.borderColor, width: widget.borderWidth),
         ),
-        shadows: const [
-          BoxShadow(
-            color: AAColors.ink,
-            offset: AATokens.shadowOffset,
-          ),
-        ],
+        shadows: [widget.shadow],
       ),
-      child: Padding(padding: padding, child: child),
+      child: Padding(padding: widget.padding, child: widget.child),
     );
 
-    if (withTape || withPin) {
+    if (widget.withTape || widget.withPin) {
       card = Stack(
         clipBehavior: Clip.none,
         children: [
           card,
-          if (withTape)
+          if (widget.withTape)
             Positioned(
-              top: -11,
+              top: -12,
               left: 0,
               right: 0,
-              child: Center(child: TapeDecorator(color: tapeColor)),
+              child: Center(child: TapeDecorator(color: widget.tapeColor)),
             ),
-          if (withPin)
+          if (widget.withPin)
             const Positioned(
               top: -8,
               left: -6,
@@ -84,25 +103,37 @@ class PaperCard extends StatelessWidget {
       );
     }
 
-    Widget rotated = angle == 0
-        ? card
-        : Transform.rotate(angle: angle, child: card);
-
-    if (onTap != null) {
-      rotated = GestureDetector(
-        onTap: onTap,
-        behavior: HitTestBehavior.opaque,
-        child: rotated,
+    if (offset != Offset.zero || angle != 0) {
+      card = Transform.translate(
+        offset: offset,
+        child: Transform.rotate(angle: angle, child: card),
       );
     }
 
-    return Padding(padding: margin, child: rotated);
+    if (widget.onTap != null) {
+      card = GestureDetector(
+        onTapDown: widget.pressable ? (_) => setState(() => _pressed = true) : null,
+        onTapUp: widget.pressable ? (_) => setState(() => _pressed = false) : null,
+        onTapCancel: widget.pressable ? () => setState(() => _pressed = false) : null,
+        onTap: widget.onTap,
+        behavior: HitTestBehavior.opaque,
+        child: card,
+      );
+    }
+
+    return Padding(padding: widget.margin, child: card);
   }
 }
 
-/// 纸胶带（两端锯齿、旋转 ±3°）
+/// 纸胶带 —— Demo `.tape`：`width:92px;height:24px;rotate(-3deg);
+/// background:rgba(255,209,102,.85);border:1.5px solid rgba(68,58,50,.3);border-radius:2px`
 class TapeDecorator extends StatelessWidget {
-  const TapeDecorator({super.key, this.color = AAColors.lemon, this.width = 84, this.height = 22});
+  const TapeDecorator({
+    super.key,
+    this.color = AATokens.tapeLemon,
+    this.width = AATokens.tapeWidth,
+    this.height = AATokens.tapeHeight,
+  });
 
   final Color color;
   final double width;
@@ -112,36 +143,20 @@ class TapeDecorator extends StatelessWidget {
   Widget build(BuildContext context) {
     return Transform.rotate(
       angle: -3 * pi / 180,
-      child: CustomPaint(
-        size: Size(width, height),
-        painter: _TapePainter(color),
+      child: Container(
+        width: width,
+        height: height,
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(2),
+          border: Border.all(
+            color: AATokens.tapeBorderColor,
+            width: 1.5,
+          ),
+        ),
       ),
     );
   }
-}
-
-class _TapePainter extends CustomPainter {
-  _TapePainter(this.color);
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    final h = size.height;
-    final notch = h / 3.2;
-    final path = Path()
-      ..moveTo(0, notch)
-      ..lineTo(notch, 0)
-      ..lineTo(w - notch, 0)
-      ..lineTo(w, notch)
-      ..lineTo(w - notch, h)
-      ..lineTo(notch, h)
-      ..close();
-    canvas.drawPath(path, Paint()..color = color.withValues(alpha: 0.82));
-  }
-
-  @override
-  bool shouldRepaint(covariant _TapePainter old) => old.color != color;
 }
 
 /// 左上角图钉

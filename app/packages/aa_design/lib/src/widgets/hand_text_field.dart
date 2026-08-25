@@ -6,6 +6,7 @@ class HandTextField extends StatefulWidget {
   const HandTextField({
     super.key,
     this.controller,
+    this.focusNode,
     this.hint,
     this.onChanged,
     this.keyboardType,
@@ -14,9 +15,11 @@ class HandTextField extends StatefulWidget {
     this.inlineUnderline = false,
     this.autofocus = false,
     this.maxLines = 1,
+    this.obscure = false,
   });
 
   final TextEditingController? controller;
+  final FocusNode? focusNode;
   final String? hint;
   final ValueChanged<String>? onChanged;
   final TextInputType? keyboardType;
@@ -27,6 +30,9 @@ class HandTextField extends StatefulWidget {
   final bool inlineUnderline;
   final bool autofocus;
   final int maxLines;
+
+  /// 密码掩码（•••）
+  final bool obscure;
 
   @override
   State<HandTextField> createState() => _HandTextFieldState();
@@ -43,9 +49,11 @@ class _HandTextFieldState extends State<HandTextField> {
       children: [
         TextField(
           controller: widget.controller,
+          focusNode: widget.focusNode,
           autofocus: widget.autofocus,
           onChanged: widget.onChanged,
           keyboardType: widget.keyboardType,
+          obscureText: widget.obscure,
           textAlign: widget.textAlign ?? TextAlign.start,
           maxLines: widget.maxLines,
           style: TextStyle(

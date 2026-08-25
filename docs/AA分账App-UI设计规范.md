@@ -98,20 +98,17 @@
 
 ## 4. 字体系统
 
-| 用途 | 字体 | 字号/字重 |
+本项目不设置任何字体回退方案，也不设额外排印规则；严格按下述分级字体系统执行：
+
+| 用途 | 字体 | 字号区间 |
 |---|---|---|
-| App 标题/导航 | 站酷快乐体（ZCOOL KuaiLe）/ 圆体 | 22-26px |
-| **金额大字**（主角） | 龙藏体（Long Cang）手写 | 36-44px |
-| 正文 | 手写感楷体（ZCOOL KuaiLe 14px 或系统圆体）+ 墨色 | 14-16px |
-| 辅助小字 | 同正文，淡墨色 | 11-12px |
-| 英文/数字点缀 | Caveat / Patrick Hand | 手写 |
+| App 标题 / 导航栏 | 站酷快乐体（ZCOOL KuaiLe）或系统圆体 | 22–26px |
+| 金额大字（视觉主角） | 龙藏体（Long Cang）手写 | 36–44px |
+| 正文内容 | 手写感楷体（站酷快乐体 14px，或系统圆体）搭配墨色渲染 | 14–16px |
+| 辅助小字 | 与正文字体一致，使用淡墨色 | 11–12px |
+| 英文 / 数字点缀 | Caveat 或 Patrick Hand 手写字体 | 手写 |
 
-**回退方案**（字体加载失败时）：`Kaiti / STKaiti / KaiTi`（系统楷体，Windows/macOS 自带，保证手写感不崩塌）。
-
-**排印规则**：
-- 金额：`¥` 用小号上标，数字用大号龙藏体，如 **¥**220.00
-- 禁止斜体、禁止特大字重；行高 1.5
-- 正文尽量不用手写体，只用于标题/金额/强调，保证可读性
+**执行标准**：所有规则以严格还原 `docs/ui-demo/index.html`（Demo）为最终执行标准——各页面具体字号、字体与 Demo 逐页保持一致（如金额大字 42px、群账 34px、列表行金额 22–24px 等均沿用 Demo 内联值）。
 
 ---
 
@@ -135,13 +132,34 @@
 
 - **涂鸦线性图标**：2.5px 墨色描边、圆头端点、轻微抖动曲线（不是复制粘贴的规整几何图形）
 - 尺寸档位：Tab 26px / 列表 24px / 行内 18px
-- 常用图标（全部手绘 SVG）：房子·人像群·铅笔·铃铛·人像·�为钱袋·小票·相机·星星·爱心·印章·箭头
+- 常用图标（全部手绘 SVG）：房子·人像群·铅笔·铃铛·人像·钱袋·小票·相机·星星·爱心·印章·箭头
 
 ### 6.2 插画规范
 
 - 简笔线条 + 平涂淡彩（不超过4色）
 - 空状态插画统一：`团团 + 场景道具`（如团团爬梯子数钱、团团抱小票叹气）
 - 插画不做投影、不做渐变，保持"纸贴画"感
+
+### 6.3 图标素材系统（docs/pic → app/assets/icons）
+
+界面 icon/插画素材统一由 `docs/pic/` 维护，**文件命名约定：文件名 = 对应 emoji**（如 `🔍.png`、`⚙️.png`、`🧾.png`），新增素材只需按此命名放入目录。
+
+**处理流水线**（一条命令，可重复执行）：
+
+```bash
+powershell -ExecutionPolicy Bypass -File scripts/process-icons.ps1
+```
+
+处理步骤：① 白色背景洪水填充抠透明 → ② 仅保留最大连通域（清除"AI生成"水印等孤立像素）→ ③ 内容包围盒裁剪居中 → 512×512 透明底 PNG → `app/assets/icons/*.png`；同脚本将 `app图标.png` 同步到 Android 全密度启动图标（传统 + 自适应）。
+
+**语义命名映射**（emoji 文件名 → 资产名，脚本内 `$map` 维护）：⚙️→settings、🔔→notify、👥→group、✏️→edit、📢→broadcast、📤→export、🧾→receipt、🪙→coin、💌→mail、📮→inbox、📱→phone、💻→laptop、🔑→key、🔒→lock、🔐→locked、📡→signal、🎉→party、🔥→flame、🌙→moon、😴→sleep、☀️→sun、📒→notebook、🎧→headphone、🎒→bag、🌸→flower、🥺→sad、🕵️→detective、✨→sparkle、🍲→food、👑→crown、💡→bulb、📅→calendar、⏰→clock、📊→chart、📋→clipboard、📜→scroll、📦→box、📷→camera、🔍→search、🧮→abacus。
+
+**Dart 侧接入**：
+
+- `AaIconImage(asset, size)`：通用图标组件（`app/lib/widgets/common.dart`）
+- `AaAppBar` 支持 `headIcon`（标题前图）与 `iconImage`（右侧图）；列表行支持 `leadImage`（行首图）
+- `EmptyState(artImage:)`：空状态插画使用素材图；`SectionTitle(emojiImage:)`：分组徽标使用素材图
+- 素材按语义逐一替换界面 emoji 插画与系统图标（接入清单见 `docs/开发进度.md`）
 
 ---
 

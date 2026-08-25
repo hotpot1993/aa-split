@@ -26,14 +26,11 @@ class _RegularBillScreenState extends ConsumerState<RegularBillScreen> {
     final regulars = ref.watch(regularBillsProvider).value ?? const <RegularBill>[];
 
     return AaScaffold(
-      appBar: AppBar(
-        title: const Text('定期账单'),
-        actions: [
-          IconButton(
-            onPressed: _create,
-            icon: const Icon(Icons.add, color: AAColors.ink, size: 26),
-          ),
-        ],
+      appBar: AaAppBar(
+        title: '定期账单',
+        headIcon: 'assets/icons/clock.png',
+        iconImage: 'assets/icons/calendar.png',
+        onIconTap: _create,
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
@@ -41,11 +38,16 @@ class _RegularBillScreenState extends ConsumerState<RegularBillScreen> {
           if (regulars.any((r) => r.active))
             _Banner(),
           if (regulars.isEmpty)
-            EmptyState(
-              title: '还没有定期账单',
-              subtitle: '房租、水电、会员费…交给团团记着',
-              buttonLabel: '＋ 新建定期账单',
-              onButtonTap: _create,
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: EmptyState(
+                title: '还没有定期账单',
+                subtitle: '房租、水电、会员费…交给团团记着',
+                tag: 'P34 定期账单',
+                artImage: 'assets/icons/receipt.png',
+                buttonLabel: '＋ 新建定期账单',
+                onButtonTap: _create,
+              ),
             )
           else
             ...regulars.map((r) => _RegularCard(
@@ -55,6 +57,7 @@ class _RegularBillScreenState extends ConsumerState<RegularBillScreen> {
                     ref.read(refreshProvider.notifier).bump();
                   },
                 )),
+          const SizedBox(height: 16),
         ],
       ),
     );
@@ -85,22 +88,17 @@ class _RegularBillScreenState extends ConsumerState<RegularBillScreen> {
 class _Banner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: AAColors.lemon.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AAColors.coral, width: 1.5),
-      ),
-      child: const Row(
+    return PaperCard(
+      withTape: true,
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Column(
         children: [
-          Text('⏰', style: TextStyle(fontSize: 20)),
-          SizedBox(width: 8),
-          Expanded(
-            child: Text('交给团团记着！到点自动生成账单',
-                style: TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 14, color: AAColors.ink)),
-          ),
+          const Image(image: AssetImage('assets/icons/calendar.png'), width: 44, height: 44),
+          const Text('房租水电，每月一次记好多遍？',
+              style: TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 16, color: AAColors.ink)),
+          const SizedBox(height: 2),
+          const HighlightText('交给团团记着！',
+              style: TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 16, color: AAColors.ink)),
         ],
       ),
     );
@@ -134,9 +132,9 @@ class _RegularCard extends StatelessWidget {
             children: [
               HandAmount(amountCents: regular.amountCents, color: AAColors.ink, size: 22),
               const SizedBox(width: 10),
-              HandTag(label: Cat.label(regular.category), icon: Icons.repeat),
+              HandTag.label(label: Cat.label(regular.category)),
               const SizedBox(width: 6),
-              HandTag(label: _cycleText(regular), color: AAColors.lilac),
+              HandTag.label(label: _cycleText(regular), color: AAColors.lilac),
             ],
           ),
         ],
@@ -234,10 +232,10 @@ class _CreateRegularSheetState extends ConsumerState<_CreateRegularSheet> {
             final on = _category == c;
             return GestureDetector(
               onTap: () => setState(() => _category = c),
-              child: HandTag(
+              child: HandTag.label(
                 label: '${Cat.emoji(c)} ${Cat.label(c)}',
-                color: on ? AAColors.coral : AAColors.inkSoft,
-                textColor: on ? AAColors.coral : AAColors.ink,
+                selected: on,
+                fontSize: on ? 13 : 12,
               ),
             );
           }).toList(),
@@ -325,7 +323,7 @@ class _CalendarTear extends StatelessWidget {
       child: const Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.calendar_month, color: AAColors.ink, size: 30),
+          Image(image: AssetImage('assets/icons/calendar.png'), width: 28, height: 28),
           SizedBox(width: 8),
           Text('选个周期，到点自动生成', style: TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 14, color: AAColors.ink)),
         ],

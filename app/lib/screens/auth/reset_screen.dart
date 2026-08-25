@@ -7,10 +7,11 @@ import 'package:aa_design/aa_design.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/repositories.dart';
+import '../../widgets/common.dart';
 import '../../widgets/sheet.dart';
 import 'auth_widgets.dart';
 
-/// P05 重设密码（成功后强制重新登录）
+/// P05 重设密码 —— 对齐 docs/ui-demo/index.html
 class ResetScreen extends ConsumerStatefulWidget {
   const ResetScreen({super.key});
   @override
@@ -43,84 +44,94 @@ class _ResetScreenState extends ConsumerState<ResetScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    return Scaffold(
-      backgroundColor: const Color(0xFFF4E8D3),
-      appBar: AppBar(),
-      body: SketchPaper(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
-          child: _ok ? _Success(onLogin: () {
-            showAaToast(context, '密码已重置，请登录');
-            context.go('/login');
-          }) : _Form(
-            newPassword: _newPassword,
-            confirm: _confirm,
-            error: _error,
-            onReset: _reset,
-            text: text,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _Form extends StatelessWidget {
-  const _Form({
-    required this.newPassword,
-    required this.confirm,
-    required this.error,
-    required this.onReset,
-    required this.text,
-  });
-
-  final TextEditingController newPassword;
-  final TextEditingController confirm;
-  final String? error;
-  final VoidCallback onReset;
-  final TextTheme text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const SizedBox(height: 12),
-        Text('重设密码', style: text.headlineLarge, textAlign: TextAlign.center),
-        const SizedBox(height: 20),
-        Text('新密码', style: text.bodyMedium),
-        HandTextField(controller: newPassword, hint: '至少6位，含字母和数字'),
-        const SizedBox(height: 14),
-        Text('确认新密码', style: text.bodyMedium),
-        HandTextField(controller: confirm, hint: '再输一次'),
-        const SizedBox(height: 10),
-        FieldError(message: error),
-        const SizedBox(height: 12),
-        DoodleButton(label: '重设密码', expand: true, onPressed: onReset),
-        const SizedBox(height: 24),
-      ],
-    );
-  }
-}
-
-class _Success extends StatelessWidget {
-  const _Success({required this.onLogin});
-  final VoidCallback onLogin;
-  @override
-  Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const TuanTuan(size: 150, emotion: TuanTuanEmotion.celebrate),
-          const SizedBox(height: 12),
-          HighlightText('密码已重置！', style: text.headlineMedium),
-          const SizedBox(height: 24),
-          DoodleButton(label: '去登录 →', expand: true, onPressed: onLogin),
-        ],
-      ),
+    return AuthScaffold(
+      children: _ok
+          ? [
+              const SizedBox(height: 120),
+              const Center(child: TuanTuanPanda(size: 110)),
+              const SizedBox(height: 12),
+              const Center(
+                child: Text('密码已重置！',
+                    style: TextStyle(
+                        fontFamily: 'ZCOOLKuaiLe', fontSize: 22, color: AAColors.ink)),
+              ),
+              const SizedBox(height: 20),
+              DoodleButton(
+                label: '去登录 →',
+                expand: true,
+                onPressed: () {
+                  showAaToast(context, '密码已重置，请登录');
+                  context.go('/login');
+                },
+              ),
+            ]
+          : [
+              const AaAppBar(title: '🔑 重设密码', icon: '✔️'),
+              const SizedBox(height: 26),
+              PaperCard(
+                padding: const EdgeInsets.fromLTRB(14, 4, 14, 4),
+                child: Column(
+                  children: [
+                    AaLine(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('新密码',
+                              style: TextStyle(
+                                  fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.inkSoft)),
+                          SizedBox(
+                            width: 200,
+                            child: HandTextField(
+                              controller: _newPassword,
+                              hint: '••••••••',
+                              textAlign: TextAlign.end,
+                              obscure: true,
+                              onChanged: (_) => setState(() => _error = null),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    AaLine(
+                      showBorder: false,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('确认新密码',
+                              style: TextStyle(
+                                  fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.inkSoft)),
+                          SizedBox(
+                            width: 200,
+                            child: HandTextField(
+                              controller: _confirm,
+                              hint: '••••••••',
+                              textAlign: TextAlign.end,
+                              obscure: true,
+                              onChanged: (_) => setState(() => _error = null),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+              FieldError(message: _error),
+              const SizedBox(height: 8),
+              DoodleButton(
+                label: '重置密码并去登录 👍',
+                big: true,
+                onPressed: _reset,
+              ),
+              const SizedBox(height: 14),
+              const Center(
+                child: Text('💪 新密码要字母+数字哦',
+                    style: TextStyle(
+                        fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
+              ),
+              const SizedBox(height: 16),
+            ],
     );
   }
 }

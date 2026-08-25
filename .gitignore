@@ -42,6 +42,9 @@ app/android/keystore/
 docs/store/screenshots/raw/
 dist/
 
+# --- 本地测试失败产物（勿提交，可重新生成） ---
+app/test/failures/
+
 # --- OS / IDE ---
 .DS_Store
 Thumbs.db

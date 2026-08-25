@@ -7,6 +7,7 @@ import 'package:aa_design/aa_design.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/repositories.dart';
+import '../../widgets/common.dart';
 import 'auth_widgets.dart';
 
 const _questions = [
@@ -76,127 +77,169 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    Widget label(String s) => Padding(
-          padding: const EdgeInsets.only(top: 16, bottom: 4),
-          child: Text(s, style: text.bodyMedium),
-        );
-
     return AuthScaffold(
-      title: '注册',
       children: [
-        label('设置你的账户名'),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Expanded(
-              child: HandTextField(
-                controller: _account,
-                hint: '如 tuanzi',
-                keyboardType: TextInputType.text,
-                onChanged: (_) => setState(() {
-                  _accountErr = null;
-                  _checkAccount();
-                }),
-              ),
-            ),
-            const SizedBox(width: 8),
-            if (_account.text.trim().isNotEmpty)
-              _AvailabilityStamp(available: !_accountTaken),
-          ],
-        ),
-        FieldError(message: _accountErr),
-
-        label('自定义昵称'),
-        HandTextField(controller: _nickname, hint: '选填，默认等于账户名'),
-        const SizedBox(height: 8),
-
-        label('密码（至少6位，含字母和数字）'),
-        TextField(
-          controller: _password,
-          obscureText: _obscure,
-          onChanged: (_) => setState(() {
-            _passwordErr = _password.text.length < 6
-                ? '密码至少6位哦'
-                : (!_hasLetterAndDigit(_password.text) ? '要含字母和数字' : null);
-          }),
-          style: text.titleMedium,
-          decoration: InputDecoration(
-            hintText: '密码',
-            hintStyle: text.titleMedium,
-            border: InputBorder.none,
-            suffixIcon: IconButton(
-              icon: Icon(_obscure ? Icons.visibility_off : Icons.visibility, size: 20),
-              onPressed: () => setState(() => _obscure = !_obscure),
-            ),
-          ),
-        ),
-        FieldError(message: _passwordErr),
-
-        label('确认密码'),
-        HandTextField(
-          controller: _confirm,
-          hint: '再输一次',
-          onChanged: (_) => setState(() {
-            _confirmErr = _confirm.text != _password.text ? '两次密码不一致' : null;
-          }),
-        ),
-        FieldError(message: _confirmErr),
-
-        label('安全问题：$_question'),
-        DropdownButtonHideUnderline(
-          child: DropdownButton<String>(
-            value: _question,
-            isExpanded: true,
-            items: _questions
-                .map((q) =>
-                    DropdownMenuItem(value: q, child: Text(q, style: text.bodyMedium)))
-                .toList(),
-            onChanged: (v) => setState(() => _question = v ?? _question),
-          ),
-        ),
-        const SizedBox(height: 6),
-        HandTextField(
-          controller: _answer,
-          hint: '填写答案（用于找回密码）',
-          onChanged: (_) => setState(() {
-            _answerErr = _answer.text.trim().isEmpty ? '还是要填一下答案哦' : null;
-          }),
-        ),
-        FieldError(message: _answerErr),
-
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            InkWell(
-              onTap: () => setState(() => _agree = !_agree),
-              child: Container(
-                width: 22,
-                height: 22,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: AAColors.cardWhite,
-                  border: Border.all(color: AAColors.ink, width: 2),
-                  borderRadius: BorderRadius.circular(5),
+        const AaAppBar(title: '✏️ 注册新账户'),
+        // 🐾 涂鸦装饰（Demo .doodle）
+        const SizedBox(height: 34),
+        // 账户信息卡（Demo .card padding:4px 14px 的 .line 行）
+        PaperCard(
+          padding: const EdgeInsets.fromLTRB(14, 4, 14, 4),
+          child: Column(
+            children: [
+              _RegLine(
+                label: '账户名',
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: 160,
+                      child: HandTextField(
+                        controller: _account,
+                        hint: 'tuanzi_t',
+                        keyboardType: TextInputType.text,
+                        textAlign: TextAlign.end,
+                        onChanged: (_) => setState(() {
+                          _accountErr = null;
+                          _checkAccount();
+                        }),
+                      ),
+                    ),
+                    if (_account.text.trim().isNotEmpty) ...[
+                      const SizedBox(width: 6),
+                      StampBadge(
+                        text: _accountTaken ? '占用' : '✅ 可用',
+                        rotate: -8,
+                        color: _accountTaken ? AAColors.berry : AASemantic.stampDone,
+                      ),
+                    ],
+                  ],
                 ),
-                child: _agree
-                    ? const Icon(Icons.check, size: 16, color: AAColors.coral)
-                    : null,
               ),
+              _RegLine(
+                label: '昵称（选填）',
+                child: SizedBox(
+                  width: 160,
+                  child: HandTextField(
+                    controller: _nickname,
+                    hint: '团子酱',
+                    textAlign: TextAlign.end,
+                  ),
+                ),
+              ),
+              _RegLine(
+                label: '密码（≥6位）',
+                child: SizedBox(
+                  width: 160,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: HandTextField(
+                          controller: _password,
+                          hint: '••••••••',
+                          textAlign: TextAlign.end,
+                          obscure: _obscure,
+                          onChanged: (_) => setState(() {
+                            _passwordErr = _password.text.length < 6
+                                ? '密码至少6位哦'
+                                : (!_hasLetterAndDigit(_password.text) ? '要含字母和数字' : null);
+                          }),
+                        ),
+                      ),
+                      IconButton(
+                        icon: Text(_obscure ? '🙈' : '👁️',
+                            style: const TextStyle(fontSize: 15)),
+                        onPressed: () => setState(() => _obscure = !_obscure),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              _RegLine(
+                label: '确认密码',
+                showBorder: false,
+                child: SizedBox(
+                  width: 160,
+                  child: HandTextField(
+                    controller: _confirm,
+                    hint: '••••••••',
+                    textAlign: TextAlign.end,
+                    obscure: true,
+                    onChanged: (_) => setState(() {
+                      _confirmErr = _confirm.text != _password.text ? '两次密码不一致' : null;
+                    }),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        PaperCard(
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('🔐 找回密码用（忘记手机号也不怕）',
+                  style: TextStyle(
+                      fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
+              const SizedBox(height: 4),
+              _RegLine(
+                label: '安全问题',
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: _question,
+                    icon: const Text('▾',
+                        style: TextStyle(fontSize: 16, color: AAColors.inkSoft, height: 1)),
+                    items: _questions
+                        .map((q) => DropdownMenuItem(value: q, child: Text(q)))
+                        .toList(),
+                    onChanged: (v) => setState(() => _question = v ?? _question),
+                  ),
+                ),
+              ),
+              _RegLine(
+                label: '答案',
+                showBorder: false,
+                child: SizedBox(
+                  width: 160,
+                  child: HandTextField(
+                    controller: _answer,
+                    hint: '小虎',
+                    textAlign: TextAlign.end,
+                    onChanged: (_) => setState(() {
+                      _answerErr = _answer.text.trim().isEmpty ? '还是要填一下答案哦' : null;
+                    }),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        FieldError(message: _accountErr),
+        FieldError(message: _passwordErr),
+        FieldError(message: _confirmErr),
+        FieldError(message: _answerErr),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            AaCheckbox(
+              value: _agree,
+              onChanged: () => setState(() => _agree = !_agree),
             ),
             const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                '已阅读并同意《用户协议》《隐私政策》',
-                style: text.bodySmall,
-              ),
+            Text(
+              '已阅读并同意《用户协议》《隐私政策》',
+              style: const TextStyle(
+                  fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.ink),
             ),
           ],
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 14),
         DoodleButton(
-          label: '注册并开始',
-          expand: true,
+          label: '注册并开始 🎉',
+          big: true,
           onPressed: _canSubmit ? _submit : null,
         ),
         const SizedBox(height: 12),
@@ -207,7 +250,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 style: TextStyle(color: AAColors.sky, fontFamily: 'ZCOOLKuaiLe')),
           ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 16),
       ],
     );
   }
@@ -226,16 +269,51 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       s.contains(RegExp('[a-zA-Z]')) && s.contains(RegExp('[0-9]'));
 }
 
-class _AvailabilityStamp extends StatelessWidget {
-  const _AvailabilityStamp({required this.available});
-  final bool available;
+/// 注册表单行 —— Demo `.line`：左标签 + 右输入，底部虚线
+class _RegLine extends StatelessWidget {
+  const _RegLine({required this.label, required this.child, this.showBorder = true});
+  final String label;
+  final Widget child;
+  final bool showBorder;
+
   @override
   Widget build(BuildContext context) {
-    return StampBadge(
-      text: available ? '可用' : '占用',
-      size: 46,
-      rotate: -8,
-      color: available ? AAColors.mint : AAColors.berry,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 2),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text(label,
+                  style: const TextStyle(
+                      fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.inkSoft)),
+              child,
+            ],
+          ),
+        ),
+        if (showBorder)
+          CustomPaint(size: const Size(double.infinity, 2.5), painter: _RegDash()),
+      ],
     );
   }
+}
+
+class _RegDash extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final p = Paint()
+      ..color = AAColors.ink
+      ..strokeWidth = 2.5;
+    var x = 0.0;
+    while (x < size.width) {
+      canvas.drawLine(Offset(x, 1.25), Offset(x + 7, 1.25), p);
+      x += 14;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter old) => false;
 }

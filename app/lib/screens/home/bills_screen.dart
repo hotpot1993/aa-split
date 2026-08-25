@@ -12,7 +12,7 @@ import '../../widgets/common.dart';
 
 enum _Filter { all, mine, toMe, pending }
 
-/// P12 账单记录列表页
+/// P12 账单记录列表页 —— 对齐 docs/ui-demo/index.html
 class BillsScreen extends ConsumerStatefulWidget {
   const BillsScreen({super.key});
   @override
@@ -47,41 +47,49 @@ class _BillsScreenState extends ConsumerState<BillsScreen> {
     }
     final months = groups.keys.toList()..sort((a, b) => b.compareTo(a));
 
+    final monthEmoji = [
+      'assets/icons/sun.png',
+      'assets/icons/flower.png',
+      'assets/icons/coin.png',
+    ];
+
     return AaScaffold(
-      appBar: AppBar(
-        title: const Text('账单记录'),
-        actions: [
-          TextButton(
-            onPressed: () => context.push('/stats'),
-            child: const Text('统计',
-                style: TextStyle(color: AAColors.sky, fontFamily: 'ZCOOLKuaiLe', fontSize: 15)),
-          ),
-        ],
+      appBar: AaAppBar(
+        title: '📒 全部账单',
+        icon: '📊',
+        onIconTap: () => context.push('/stats'),
       ),
-      body: Column(
-        children: [
-          _FilterChips(selected: _filter, onChanged: (f) => setState(() => _filter = f)),
-          Expanded(
-            child: filtered.isEmpty
-                ? EmptyState(
-                    title: '还没有记录',
-                    subtitle: '账本空空如也，记一笔吧！',
-                    buttonLabel: '✏️ 记一笔',
-                    onButtonTap: () => context.push('/add'),
-                  )
-                : ListView(
-                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-                    children: [
-                      for (final m in months) ...[
-                        _MonthTag(label: m),
-                        for (final b in groups[m]!)
-                          _BillRow(bill: b, onTap: () => context.push('/bills/${b.id}')),
-                      ],
-                    ],
+      body: filtered.isEmpty
+          ? ListView(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+              children: [
+                _FilterChips(selected: _filter, onChanged: (f) => setState(() => _filter = f)),
+                const SizedBox(height: 12),
+                EmptyState(
+                  title: '账本空空如也，记一笔吧！',
+                  subtitle: '30秒搞定，以后回头翻账可开心了',
+                  tag: 'P11/P12 账单列表',
+                  artImage: 'assets/icons/notebook.png',
+                  buttonLabel: '✏️ 记一笔',
+                  onButtonTap: () => context.push('/add'),
+                ),
+              ],
+            )
+          : ListView(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+              children: [
+                _FilterChips(selected: _filter, onChanged: (f) => setState(() => _filter = f)),
+                for (var i = 0; i < months.length; i++) ...[
+                  SectionTitle(
+                    '${int.parse(months[i].split('-').last)}月',
+                    emojiImage: monthEmoji[i % monthEmoji.length],
                   ),
-          ),
-        ],
-      ),
+                  for (final b in groups[months[i]]!)
+                    _BillRow(bill: b, onTap: () => context.push('/bills/${b.id}')),
+                ],
+                const SizedBox(height: 16),
+              ],
+            ),
     );
   }
 }
@@ -92,68 +100,30 @@ class _FilterChips extends StatelessWidget {
   final ValueChanged<_Filter> onChanged;
 
   static const _items = [
-    (_Filter.all, '全部'),
-    (_Filter.mine, '我付款的'),
-    (_Filter.toMe, '摊给我的'),
-    (_Filter.pending, '待结算'),
+    (_Filter.all, '全部', ChipVariant.selected),
+    (_Filter.mine, '我付款的', ChipVariant.plain),
+    (_Filter.toMe, '摊给我的', ChipVariant.plain),
+    (_Filter.pending, '待结算', ChipVariant.orange),
   ];
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: _items
-            .map((it) => Expanded(
+            .map((it) => Padding(
+                  padding: const EdgeInsets.only(right: 8),
                   child: GestureDetector(
                     onTap: () => onChanged(it.$1),
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 3),
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: selected == it.$1
-                            ? AAColors.lemon.withValues(alpha: 0.55)
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(
-                          color: selected == it.$1 ? AAColors.coral : Colors.transparent,
-                          width: 2,
-                        ),
-                      ),
-                      child: Text(
-                        it.$2,
-                        style: TextStyle(
-                          fontFamily: 'ZCOOLKuaiLe',
-                          fontSize: 13,
-                          color: selected == it.$1 ? AAColors.coral : AAColors.inkSoft,
-                        ),
-                      ),
+                    child: HandTag(
+                      it.$2,
+                      selected: selected == it.$1,
+                      fontSize: 12,
                     ),
                   ),
                 ))
             .toList(),
-      ),
-    );
-  }
-}
-
-class _MonthTag extends StatelessWidget {
-  const _MonthTag({required this.label});
-  final String label;
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 18, 4, 8),
-      child: Row(
-        children: [
-          const Icon(Icons.calendar_today, size: 14, color: AAColors.inkSoft),
-          const SizedBox(width: 6),
-          Text('${label.split('-').last}月',
-              style: const TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 14, color: AAColors.inkSoft)),
-          const SizedBox(width: 8),
-          const Expanded(child: Divider(color: AAColors.inkSoft, height: 1)),
-        ],
       ),
     );
   }
@@ -166,51 +136,42 @@ class _BillRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    final statusColor = bill.fullySettled
-        ? AASemantic.settled
-        : (bill.hasUnpaid ? AAColors.coral : AAColors.mint);
-    return GestureDetector(
+    return PaperCard(
       onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 4),
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        decoration: BoxDecoration(
-          color: (!bill.fullySettled)
-              ? AAColors.berry.withValues(alpha: 0.08)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Row(
-          children: [
-            CategoryIcon(category: bill.category, size: 38),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(bill.title, style: text.titleMedium, maxLines: 1, overflow: TextOverflow.ellipsis),
-                  Text(
-                    '${bill.groupName} · ${Fmt.dateShort(bill.billDate)} · ${SplitText.label(bill.splitType)}',
-                    style: text.bodySmall,
+      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        children: [
+          CategoryIcon(category: bill.category, size: 44),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(bill.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                HandAmount(amountCents: -bill.amountCents, color: statusColor, size: 18),
+                    style: const TextStyle(
+                        fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.ink)),
+                const SizedBox(height: 2),
                 Text(
-                  bill.fullySettled ? '已结清' : '待结算',
-                  style: const TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 11, color: AAColors.inkSoft),
+                  '${bill.groupName} · ${Fmt.dateShort(bill.billDate)}',
+                  style: const TextStyle(
+                      fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
-          ],
-        ),
+          ),
+          const SizedBox(width: 8),
+          HandAmount(amountCents: bill.amountCents, size: 22, trimZero: true),
+          const SizedBox(width: 10),
+          StampBadge(
+            text: bill.fullySettled ? '已结清' : '待结算',
+            color: bill.fullySettled ? AASemantic.stampDone : AASemantic.stampMoney,
+          ),
+        ],
       ),
     );
   }

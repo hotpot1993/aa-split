@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:aa_design/aa_design.dart';
 
-/// 行内红章错误提示（UI规范 §9.3：草莓粉小印章，不弹窗打断）
+/// 行内红章错误提示（Demo 异常态：小印章，不弹窗打断）
 class FieldError extends StatelessWidget {
   const FieldError({super.key, this.message});
 
@@ -16,7 +16,7 @@ class FieldError extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const StampBadge(text: '!' , size: 18, color: AAColors.berry, rotate: -8),
+          const StampBadge(text: '!', color: AAColors.berry, rotate: -8),
           const SizedBox(width: 6),
           Text(
             message!,
@@ -32,50 +32,23 @@ class FieldError extends StatelessWidget {
   }
 }
 
-/// 接入层页面公共骨架（深纸米底 + 顶部 Logo 区）
+/// 接入层页面公共骨架（纸米底 + 点阵纸 + 内容列）
 class AuthScaffold extends StatelessWidget {
-  const AuthScaffold({super.key, required this.title, required this.children});
+  const AuthScaffold({super.key, this.children = const []});
 
-  final String title;
   final List<Widget> children;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF4E8D3),
+      backgroundColor: AAColors.paper,
       body: SketchPaper(
         child: SafeArea(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+            padding: const EdgeInsets.fromLTRB(16, 24, 16, 32),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const SizedBox(height: 12),
-                Center(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const TuanTuan(size: 54, emotion: TuanTuanEmotion.happy),
-                      const SizedBox(width: 12),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            title,
-                            style: Theme.of(context).textTheme.headlineLarge,
-                          ),
-                          Text(
-                            '记清楚 · 算明白 · 催到位',
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 28),
-                ...children,
-              ],
+              children: children,
             ),
           ),
         ),

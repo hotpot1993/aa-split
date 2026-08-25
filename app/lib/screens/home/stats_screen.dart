@@ -9,14 +9,22 @@ import '../../providers/data_providers.dart';
 import '../../widgets/avatar.dart';
 import '../../widgets/common.dart';
 
-/// P13 统计页
+/// P13 统计页 —— 对齐 docs/ui-demo/index.html
 class StatsScreen extends ConsumerWidget {
   const StatsScreen({super.key});
+
+  /// Demo 甜甜圈配色：珊瑚橙34% 柠檬18% 薄荷22% 天空14% 藕芋12%
+  static const _demoPalette = [
+    AAColors.coral,
+    AAColors.lemon,
+    AAColors.mint,
+    AAColors.sky,
+    AAColors.lilac,
+  ];
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final bills = ref.watch(billsProvider).value ?? const <Bill>[];
-    final text = Theme.of(context).textTheme;
 
     // 分类占比
     final catMap = <BillCategory, int>{};
@@ -24,9 +32,17 @@ class StatsScreen extends ConsumerWidget {
       catMap[b.category] = (catMap[b.category] ?? 0) + b.amountCents;
     }
     final totalCents = catMap.values.fold<int>(0, (s, e) => s + e);
-    final sections = catMap.entries.map((e) {
-      return CrayonDonutSection(Cat.label(e.key), (e.value / 100).toDouble(), _catColor(e.key));
-    }).toList();
+    final entries = catMap.entries.toList();
+    // 按金额排序 + Demo 配色（未覆盖分类循环使用）
+    entries.sort((a, b) => b.value.compareTo(a.value));
+    final sections = [
+      for (var i = 0; i < entries.length; i++)
+        CrayonDonutSection(
+          Cat.label(entries[i].key),
+          entries[i].value / 100,
+          _demoPalette[i % _demoPalette.length],
+        ),
+    ];
 
     // 月度趋势（近 6 个月）
     final labels = <String>[];
@@ -40,80 +56,148 @@ class StatsScreen extends ConsumerWidget {
           .fold<int>(0, (s, b) => s + b.amountCents);
       values.add((total / 100).toDouble());
     }
-
-    // 排行：前 5 笔大额
-    final top = List.of(bills)..sort((a, b) => b.amountCents.compareTo(a.amountCents));
-    final top5 = top.take(5).toList();
+    var hi = 0;
+    for (var i = 1; i < values.length; i++) {
+      if (values[i] > values[hi]) hi = i;
+    }
 
     return AaScaffold(
-      appBar: AppBar(title: const Text('统计')),
+      appBar: AaAppBar(
+        title: '统计',
+        headIcon: 'assets/icons/chart.png',
+        icon: '🌗',
+        backLabel: '‹ 返回',
+      ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: [
-          SectionTitle('月度趋势'),
-          PaperCard(
-            padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-            child: CrayonBarChart(labels: labels, values: values),
+          Row(
+            children: [
+              const HandTag('本季', fontSize: 12),
+              const SizedBox(width: 8),
+              const HandTag('本年', fontSize: 12, selected: true),
+            ],
           ),
-          const SizedBox(height: 16),
-          SectionTitle('分类占比'),
           PaperCard(
-            child: Row(
+            withTape: true,
+            tapeColor: AATokens.tapeMint,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (sections.isNotEmpty)
-                  CrayonDonutChart(sections: sections, centerLabel: '共${bills.length}笔')
-                else
-                  const Spacer(),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: sections
-                        .map((s) => Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 3),
-                              child: Row(
-                                children: [
-                                  Container(width: 12, height: 12, color: s.color, child: const SizedBox()),
-                                  const SizedBox(width: 6),
-                                  Text(s.label, style: text.bodySmall),
-                                  const Spacer(),
-                                  Text(
-                                    totalCents == 0
-                                        ? '0%'
-                                        : '${(s.value / (totalCents / 100) * 100).toStringAsFixed(0)}%',
-                                    style: text.bodySmall,
-                                  ),
-                                ],
-                              ),
-                            ))
-                        .toList(),
-                  ),
+                const Text('🗓 月度消费趋势',
+                    style: TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 14, color: AAColors.ink)),
+                const SizedBox(height: 4),
+                CrayonBarChart(
+                  labels: labels,
+                  values: values,
+                  highlightIndex: hi,
                 ),
               ],
             ),
           ),
           const SizedBox(height: 16),
-          SectionTitle('我的大额账单 TOP5'),
-          if (top5.isEmpty)
-            const EmptyState(title: '还没有账单', compact: true)
-          else
-            ...top5.map((b) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Row(
+          PaperCard(
+            withTape: true,
+            tapeColor: AATokens.tapeSky,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('🍩 分类占比（甜甜圈）',
+                    style: TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 14, color: AAColors.ink)),
+                const SizedBox(height: 10),
+                if (sections.isEmpty)
+                  const SizedBox(height: 132)
+                else
+                  Row(
                     children: [
-                      CategoryIcon(category: b.category, size: 34),
-                      const SizedBox(width: 10),
+                      CrayonDonutChart(
+                        sections: sections,
+                        centerLabel: centerLabel(totalCents),
+                      ),
+                      const SizedBox(width: 14),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Text(b.title, style: text.titleMedium, maxLines: 1, overflow: TextOverflow.ellipsis),
-                            Text('${b.groupName} · ${Fmt.dateShort(b.billDate)}', style: text.bodySmall),
+                            for (var i = 0; i < entries.length; i++)
+                              Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 1),
+                                child: Row(
+                                  children: [
+                                    Text(
+                                      '${Cat.emoji(entries[i].key)} ${Cat.label(entries[i].key)}',
+                                      style: const TextStyle(
+                                          fontFamily: 'ZCOOLKuaiLe',
+                                          fontSize: 12,
+                                          color: AAColors.ink,
+                                          height: 2),
+                                    ),
+                                    const Spacer(),
+                                    Text(
+                                      totalCents == 0
+                                          ? '0%'
+                                          : '${(entries[i].value / totalCents * 100).toStringAsFixed(0)}%',
+                                      style: const TextStyle(
+                                          fontFamily: 'ZCOOLKuaiLe',
+                                          fontSize: 12,
+                                          color: AAColors.ink,
+                                          height: 2),
+                                    ),
+                                  ],
+                                ),
+                              ),
                           ],
                         ),
                       ),
-                      HandAmount(amountCents: b.amountCents, color: AAColors.ink, size: 18),
                     ],
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          SectionTitle('我的大额账单', emojiImage: 'assets/icons/crown.png'),
+          if (top5(bills).isEmpty)
+            const EmptyState(
+              title: '还没有账单',
+              tag: 'P13 统计',
+              art: '📊😴',
+              compact: true,
+            )
+          else
+            ...top5(bills).map((b) => Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: PaperCard(
+                    onTap: null,
+                    padding: const EdgeInsets.all(12),
+                    child: Row(
+                      children: [
+                        CategoryIcon(category: b.category, size: 44),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(b.title,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                      fontFamily: 'ZCOOLKuaiLe',
+                                      fontSize: 15,
+                                      color: AAColors.ink)),
+                              const SizedBox(height: 2),
+                              Text('${b.groupName} · ${Fmt.dateShort(b.billDate)}',
+                                  style: const TextStyle(
+                                      fontFamily: 'ZCOOLKuaiLe',
+                                      fontSize: 12,
+                                      color: AAColors.inkSoft)),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        HandAmount(amountCents: b.amountCents, size: 22, trimZero: true),
+                      ],
+                    ),
                   ),
                 )),
         ],
@@ -121,12 +205,30 @@ class StatsScreen extends ConsumerWidget {
     );
   }
 
-  Color _catColor(BillCategory c) => switch (c) {
-        BillCategory.food => AAColors.coral,
-        BillCategory.traffic => AAColors.sky,
-        BillCategory.hotel => AAColors.lilac,
-        BillCategory.shopping => AAColors.lemon,
-        BillCategory.fun => AAColors.berry,
-        BillCategory.other => AAColors.mint,
-      };
+  static List<Bill> top5(List<Bill> bills) {
+    final top = List.of(bills)..sort((a, b) => b.amountCents.compareTo(a.amountCents));
+    return top.take(5).toList();
+  }
+
+  /// 中心金额（Demo：「¥3,420」）
+  static String centerLabel(int totalCents) {
+    final yuan = totalCents / 100;
+    final s = totalCents % 100 == 0
+        ? yuan.toStringAsFixed(0)
+        : yuan.toStringAsFixed(2);
+    return '¥${_thousands(s)}';
+  }
+
+  static String _thousands(String s) {
+    final dot = s.indexOf('.');
+    final intPart = dot < 0 ? s : s.substring(0, dot);
+    final dec = dot < 0 ? '' : s.substring(dot);
+    final buf = StringBuffer();
+    for (var i = 0; i < intPart.length; i++) {
+      buf.write(intPart[i]);
+      final remain = intPart.length - i - 1;
+      if (remain > 0 && remain % 3 == 0) buf.write(',');
+    }
+    return '$buf$dec';
+  }
 }

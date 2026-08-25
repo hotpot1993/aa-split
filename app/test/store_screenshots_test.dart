@@ -42,6 +42,10 @@ Future<void> _loadAllFonts() async {
   // 显式 family（aa_design 主题使用）
   await _loadFont('ZCOOLKuaiLe', ['$base/ZCOOLKuaiLe-Regular.ttf']);
   await _loadFont('LongCang', ['$base/LongCang-Regular.ttf']);
+  // 品牌字（知音漫兴体）
+  await _loadFont('ZhiMangXing', ['$base/ZhiMangXing-Regular.ttf']);
+  // 英文/数字点缀（Caveat 手写体）
+  await _loadFont('Caveat', ['$base/Caveat-VariableFont_wght.ttf']);
   // emoji 家族（系统 emoji 字体），通过 fontFamilyFallback 兜底头像/分类图标
   await _loadFont('Emoji', [r'C:\Windows\Fonts\seguiemj.ttf']);
 }
@@ -68,7 +72,9 @@ Future<void> _pump(WidgetTester tester, Widget screen) async {
       ),
     ),
   );
-  await tester.pumpAndSettle();
+  // 页面含无限循环动效（.wob 摇晃等），固定推进到稳定帧而不是等待 settle
+  await tester.pump(const Duration(milliseconds: 300));
+  await tester.pump(const Duration(milliseconds: 500));
 }
 
 Future<void> _shot(WidgetTester tester, String name) async {

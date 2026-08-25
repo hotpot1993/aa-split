@@ -8,10 +8,11 @@ import 'package:aa_design/aa_design.dart';
 
 import '../../core/config.dart';
 import '../../providers/auth_provider.dart';
+import '../../widgets/common.dart';
 
-/// P01 启动页：深纸米底 + 大号手写标题 + 团团 + 散落星星/硬币。
+/// P01 启动页 —— 对齐 docs/ui-demo/index.html：
+/// 150px 团团 + 48px AA分账 + mini「团团正在数钱…」+ · · · + 四枚涂鸦。
 /// 2s 后按登录态跳转（未登录 → /login，已登录 → /home）。
-/// 真实模式：先尝试从本地存储恢复会话（/auth/me 校验），再决定跳转。。
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
   @override
@@ -54,28 +55,60 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF4E8D3),
+      backgroundColor: AAColors.paper,
       body: Stack(
         children: [
           const Positioned.fill(child: CustomPaint(painter: _SplashPainter())),
+          // 散落涂鸦（Demo .doodle）—— 替换为匹配素材
+          const Positioned(top: 130, left: 36, child: Text('⭐', style: TextStyle(fontSize: 18, color: AAColors.ink))),
+          const Positioned(top: 230, right: 40, child: Text('💛', style: TextStyle(fontSize: 18, color: AAColors.ink))),
+          const Positioned(
+            top: 400,
+            left: 56,
+            child: Opacity(opacity: 0.55, child: AaIconImage('assets/icons/coin.png', size: 22)),
+          ),
+          const Positioned(
+            top: 470,
+            right: 56,
+            child: Opacity(opacity: 0.55, child: AaIconImage('assets/icons/edit.png', size: 22)),
+          ),
           Center(
             child: FadeTransition(
               opacity: _fade,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const TuanTuan(size: 150, emotion: TuanTuanEmotion.celebrate),
-                  const SizedBox(height: 8),
-                  Text(
-                    'AA分账',
-                    style: Theme.of(context).textTheme.displayLarge,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '记清楚 · 算明白 · 催到位',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                ],
+              child: GestureDetector(
+                onTap: _go,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const SizedBox(height: 30),
+                    const TuanTuanPanda(size: 150),
+                    const SizedBox(height: 16),
+                    // 品牌字：知音漫兴体（Demo P01：Zhi Mang Xing 48px）
+                    const Text(
+                      'AA分账',
+                      style: TextStyle(
+                          fontFamily: 'ZhiMangXing',
+                          fontSize: 48,
+                          color: AAColors.ink,
+                          height: 1.1),
+                    ),
+                    const SizedBox(height: 6),
+                    const Text('团团正在数钱…',
+                        style: TextStyle(
+                            fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
+                    const SizedBox(height: 24),
+                    const Text('· · ·',
+                        style: TextStyle(
+                            fontFamily: 'ZCOOLKuaiLe',
+                            fontSize: 22,
+                            color: AAColors.inkSoft,
+                            letterSpacing: 6)),
+                    const SizedBox(height: 60),
+                    const Text('（点击屏幕进入登录）',
+                        style: TextStyle(
+                            fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
+                  ],
+                ),
               ),
             ),
           ),
@@ -85,18 +118,17 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   }
 }
 
+/// 散落星星/硬币（Demo 背景涂鸦）
 class _SplashPainter extends CustomPainter {
   const _SplashPainter();
   @override
   void paint(Canvas canvas, Size size) {
-    final lemon = Paint()..color = AAColors.lemon.withValues(alpha: 0.9);
     final ink = Paint()
-      ..color = AAColors.ink.withValues(alpha: 0.4)
+      ..color = AAColors.ink.withValues(alpha: 0.25)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2
       ..strokeCap = StrokeCap.round;
     final rnd = _FixedRandom(7);
-    // 散落星星
     for (var i = 0; i < 8; i++) {
       final x = rnd.next() * size.width;
       final y = rnd.next() * size.height;
@@ -107,13 +139,6 @@ class _SplashPainter extends CustomPainter {
       canvas.drawLine(Offset(-r, 0), Offset(r, 0), ink);
       canvas.drawLine(Offset(0, -r), Offset(0, r), ink);
       canvas.restore();
-    }
-    // 散落硬币
-    for (var i = 0; i < 5; i++) {
-      final x = rnd.next() * size.width;
-      final y = rnd.next() * size.height;
-      canvas.drawCircle(Offset(x, y), 9, lemon);
-      canvas.drawCircle(Offset(x, y), 9, ink);
     }
   }
 

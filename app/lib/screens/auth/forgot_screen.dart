@@ -5,9 +5,10 @@ import 'package:go_router/go_router.dart';
 import 'package:aa_design/aa_design.dart';
 
 import '../../providers/repositories.dart';
+import '../../widgets/common.dart';
 import 'auth_widgets.dart';
 
-/// P04 忘记密码（回答安全问题）
+/// P04 忘记密码 —— 对齐 docs/ui-demo/index.html
 class ForgotScreen extends ConsumerStatefulWidget {
   const ForgotScreen({super.key});
   @override
@@ -59,70 +60,122 @@ class _ForgotScreenState extends ConsumerState<ForgotScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    return Scaffold(
-      backgroundColor: const Color(0xFFF4E8D3),
-      appBar: AppBar(),
-      body: SketchPaper(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+    return AuthScaffold(
+      children: [
+        const AaAppBar(title: '忘记密码', headIcon: 'assets/icons/search.png', iconImage: 'assets/icons/detective.png'),
+        const SizedBox(height: 26),
+        PaperCard(
+          withTape: true,
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  TuanTuan(emotion: TuanTuanEmotion.excited, size: 70),
-                  Icon(Icons.search, color: AAColors.ink, size: 40),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text('忘记密码', style: text.headlineLarge, textAlign: TextAlign.center),
-              const SizedBox(height: 20),
-              HandTextField(
-                controller: _account,
-                hint: '输入账户名',
-                onChanged: (_) => setState(() => _error = null),
-              ),
-              const SizedBox(height: 8),
-              if (_question.isEmpty)
-                DoodleButton(label: '查询安全问题', expand: true, onPressed: _lookup)
-              else ...[
-                PaperCard(
-                  withTape: true,
-                  tiltSeed: 'question',
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('答题卡', style: text.titleSmall),
-                      const SizedBox(height: 6),
-                      Text(_question, style: text.titleMedium),
-                      const SizedBox(height: 8),
-                      HandTextField(
-                        controller: _answer,
-                        hint: '填写你的答案',
+              const Image(image: AssetImage('assets/icons/detective.png'), width: 48, height: 48),
+              const Text('团团侦探出马！',
+                  style: TextStyle(
+                      fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.ink)),
+              const SizedBox(height: 2),
+              const Text('回答注册时的安全问题即可找回',
+                  style: TextStyle(
+                      fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        PaperCard(
+          padding: const EdgeInsets.fromLTRB(14, 4, 14, 4),
+          child: Column(
+            children: [
+              AaLine(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('账户名',
+                        style: TextStyle(
+                            fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.inkSoft)),
+                    SizedBox(
+                      width: 200,
+                      child: HandTextField(
+                        controller: _account,
+                        hint: 'tuanzi_t',
+                        textAlign: TextAlign.end,
                         onChanged: (_) => setState(() => _error = null),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 6),
+              DoodleButton(
+                label: '查询安全问题',
+                mini: true,
+                onPressed: _lookup,
+              ),
+              const SizedBox(height: 6),
+            ],
+          ),
+        ),
+        if (_question.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          PaperCard(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 4),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    AaIconImage('assets/icons/clipboard.png', size: 16),
+                    SizedBox(width: 6),
+                    Text('你的安全问题',
+                        style: TextStyle(
+                            fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(_question,
+                    style: const TextStyle(
+                        fontFamily: 'ZCOOLKuaiLe', fontSize: 16, color: AAColors.ink)),
+                const SizedBox(height: 8),
+                AaLine(
+                  showBorder: false,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('答案',
+                          style: TextStyle(
+                              fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.inkSoft)),
+                      SizedBox(
+                        width: 200,
+                        child: HandTextField(
+                          controller: _answer,
+                          hint: '小虎',
+                          textAlign: TextAlign.end,
+                          onChanged: (_) => setState(() => _error = null),
+                        ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
-                FieldError(message: _error),
-                const SizedBox(height: 8),
-                DoodleButton(label: '验证并继续', expand: true, onPressed: _verify),
               ],
-              const SizedBox(height: 8),
-              Center(
-                child: TextButton(
-                  onPressed: () => context.pop(),
-                  child: const Text('返回登录',
-                      style: TextStyle(color: AAColors.sky, fontFamily: 'ZCOOLKuaiLe')),
-                ),
-              ),
-            ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          FieldError(message: _error),
+          const SizedBox(height: 8),
+          DoodleButton(
+            label: '下一步：验证答案 →',
+            big: true,
+            onPressed: _verify,
+          ),
+        ],
+        const SizedBox(height: 12),
+        Center(
+          child: TextButton(
+            onPressed: () => context.pop(),
+            child: const Text('返回登录',
+                style: TextStyle(color: AAColors.sky, fontFamily: 'ZCOOLKuaiLe')),
           ),
         ),
-      ),
+        const SizedBox(height: 16),
+      ],
     );
   }
 }

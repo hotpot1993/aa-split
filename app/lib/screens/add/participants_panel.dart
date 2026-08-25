@@ -5,7 +5,8 @@ import 'package:aa_design/aa_design.dart';
 import '../../models/group_member.dart';
 import '../../widgets/avatar.dart';
 
-/// 选择参与人面板（P32）—— 多选 + [全选/反选/仅我]，返回选中 userId 集合
+/// 选择参与人面板（P32）—— 对齐 docs/ui-demo/index.html：
+/// `.chip` 快捷操作 + `.line` 名单行（`.cbx` 勾选）+ 底部说明 + 大按钮
 class ParticipantsPanel extends StatefulWidget {
   const ParticipantsPanel({
     super.key,
@@ -27,112 +28,175 @@ class ParticipantsPanel extends StatefulWidget {
 class _ParticipantsPanelState extends State<ParticipantsPanel> {
   late final Set<String> _selected = {...widget.initialSelected};
 
+  static const _tints = [
+    Color(0xFFFFF1EA),
+    Color(0xFFEDF7EE),
+    Color(0xFFF0F6FB),
+    Color(0xFFF7F0FB),
+    Color(0xFFF4E8D3),
+  ];
+
+  bool get _allSelected =>
+      widget.members.isNotEmpty && _selected.length == widget.members.length;
+
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text('选择参与人', style: text.headlineSmall),
-        const SizedBox(height: 4),
-        Text('已选 ${_selected.length} / ${widget.members.length} 人',
-            style: text.bodySmall),
-        const SizedBox(height: 8),
+        const Text('👥 选择参与人',
+            style: TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 18, color: AAColors.ink)),
+        const SizedBox(height: 10),
         Row(
           children: [
-            _quick('全选', () => setState(() => _selected.addAll(widget.members.map((m) => m.userId)))),
+            _quick(
+              '全选',
+              () => setState(() => _selected.addAll(widget.members.map((m) => m.userId))),
+              selected: _allSelected,
+            ),
             const SizedBox(width: 8),
             _quick('反选', () => setState(() {
-                  final reversed = widget.members
-                      .map((m) => m.userId)
-                      .where((id) => !_selected.contains(id))
-                      .toSet();
-                  _selected
-                    ..clear()
-                    ..addAll(reversed);
-                })),
+              final reversed = widget.members
+                  .map((m) => m.userId)
+                  .where((id) => !_selected.contains(id))
+                  .toSet();
+              _selected
+                ..clear()
+                ..addAll(reversed);
+            })),
             const SizedBox(width: 8),
             _quick('仅我', () => setState(() => _selected..clear()..add(widget.myId))),
           ],
         ),
-        const SizedBox(height: 12),
-        ConstrainedBox(
-          constraints: const BoxConstraints(maxHeight: 320),
-          child: ListView(
-            shrinkWrap: true,
-            children: widget.members.map((m) {
-              final on = _selected.contains(m.userId);
-              return GestureDetector(
-                onTap: () => setState(() {
-                  if (on) {
-                    _selected.remove(m.userId);
-                  } else {
-                    _selected.add(m.userId);
-                  }
-                }),
-                child: Container(
-                  margin: const EdgeInsets.symmetric(vertical: 3),
-                  padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
-                  child: Row(
-                    children: [
-                      SketchAvatar(emoji: m.avatarUrl, size: 40, name: m.nickname),
-                      const SizedBox(width: 10),
-                      Expanded(child: Text(m.nickname, style: text.titleMedium)),
-                      Icon(
-                        on ? Icons.check_circle : Icons.circle_outlined,
-                        color: on ? AAColors.mint : AAColors.inkSoft,
-                        size: 22,
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }).toList(),
+        const SizedBox(height: 10),
+        // 名单卡（Demo：.line 行 + .cbx）
+        PaperCard(
+          padding: const EdgeInsets.fromLTRB(14, 4, 14, 4),
+          child: Column(
+            children: [
+              for (var i = 0; i < widget.members.length; i++)
+                _memberLine(i, widget.members[i]),
+            ],
           ),
         ),
-        const SizedBox(height: 16),
-        ProgressPencil(progress: _selected.length / (widget.members.isEmpty ? 1 : widget.members.length)),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: DoodleButton(
-                label: '确定',
-                expand: true,
-                onPressed: _selected.isNotEmpty
-                    ? () {
-                        if (widget.onApply != null) {
-                          widget.onApply!(_selected);
-                        } else {
-                          Navigator.of(context).pop(_selected);
-                        }
-                      }
-                    : null,
-              ),
-            ),
-          ],
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Row(
+            children: [
+              Text('已选 ${_selected.length}人',
+                  style: const TextStyle(
+                      fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
+              const SizedBox(width: 6),
+              if (widget.members.length > _selected.length)
+                const Text('· 还有小伙伴不参与',
+                    style: TextStyle(
+                        fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+        DoodleButton(
+          label: '确定（${_selected.length}人参加）✓',
+          big: true,
+          onPressed: _selected.isNotEmpty
+              ? () {
+                  if (widget.onApply != null) {
+                    widget.onApply!(_selected);
+                  } else {
+                    Navigator.of(context).pop(_selected);
+                  }
+                }
+              : null,
         ),
         const SizedBox(height: 8),
       ],
     );
   }
 
-  Widget _quick(String label, VoidCallback onTap) {
+  Widget _memberLine(int index, GroupMember m) {
+    final on = _selected.contains(m.userId);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        GestureDetector(
+          onTap: () => setState(() {
+            if (on) {
+              _selected.remove(m.userId);
+            } else {
+              _selected.add(m.userId);
+            }
+          }),
+          behavior: HitTestBehavior.opaque,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 2),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    SketchAvatar(
+                      emoji: m.avatarUrl,
+                      size: 34,
+                      name: m.nickname,
+                      background: _tints[index % _tints.length],
+                      dimmed: !on,
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      m.nickname,
+                      style: TextStyle(
+                        fontFamily: 'ZCOOLKuaiLe',
+                        fontSize: 15,
+                        color: on ? AAColors.ink : AAColors.inkSoft,
+                      ),
+                    ),
+                  ],
+                ),
+                AaCheckbox(
+                  value: on,
+                  size: 22,
+                  onChanged: () => setState(() {
+                    if (on) {
+                      _selected.remove(m.userId);
+                    } else {
+                      _selected.add(m.userId);
+                    }
+                  }),
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (index != widget.members.length - 1)
+          CustomPaint(size: const Size(double.infinity, 2.5), painter: _OptDash()),
+      ],
+    );
+  }
+
+  Widget _quick(String label, VoidCallback onTap, {bool selected = false}) {
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: AAColors.cardWhite,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AAColors.ink, width: 1.5),
-          ),
-          child: Text(label,
-              style: const TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 13, color: AAColors.ink)),
-        ),
+        child: HandTag(label, selected: selected, fontSize: 12),
       ),
     );
   }
+}
+
+class _OptDash extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final p = Paint()
+      ..color = AAColors.ink
+      ..strokeWidth = 2.5;
+    var x = 0.0;
+    while (x < size.width) {
+      canvas.drawLine(Offset(x, 1.25), Offset(x + 7, 1.25), p);
+      x += 14;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter old) => false;
 }

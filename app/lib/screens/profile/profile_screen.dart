@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -9,10 +11,11 @@ import '../../models/bill.dart';
 import '../../models/group.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/data_providers.dart';
+import '../../widgets/avatar.dart';
 import '../../widgets/common.dart';
 import '../../widgets/sheet.dart';
 
-/// P50 个人主页
+/// P50 个人主页 —— 对齐 docs/ui-demo/index.html
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
@@ -25,77 +28,146 @@ class ProfileScreen extends ConsumerWidget {
     final groups = ref.watch(groupsProvider).value ?? const <Group>[];
     final bills = ref.watch(billsProvider).value ?? const <Bill>[];
     final totalAA = bills.fold<int>(0, (s, b) => s + b.amountCents);
-    final text = Theme.of(context).textTheme;
 
     return AaScaffold(
-      appBar: AppBar(
-        title: const Text('我的'),
-        actions: [
-          IconButton(
-            onPressed: () => context.push('/settings'),
-            icon: const Icon(Icons.settings, size: 24, color: AAColors.ink),
-          ),
-        ],
+      appBar: AaAppBar(
+        title: '我的',
+        back: false,
+        iconImage: 'assets/icons/edit.png',
+        onIconTap: () => _editProfile(context, ref),
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: [
-          // 头像 + 资料
-          Row(
-            children: [
-              GestureDetector(
-                onTap: () => _editProfile(context, ref),
-                child: const TuanTuan(size: 92, emotion: TuanTuanEmotion.happy),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          // 头像 + 昵称（Demo：86px 大头像 + 📷 角标 + 22px 昵称 + @账户名）
+          const SizedBox(height: 6),
+          Center(
+            child: Column(
+              children: [
+                Stack(
+                  clipBehavior: Clip.none,
                   children: [
-                    Text(user.nickname, style: text.headlineMedium),
-                    Text('@${user.accountName}', style: text.bodySmall),
-                    if (user.bio.isNotEmpty) ...[
-                      const SizedBox(height: 6),
-                      Text(user.bio, style: text.bodySmall),
-                    ],
+                    _Wobble(
+                      child: SketchAvatar(
+                        emoji: user.avatarUrl,
+                        size: 86,
+                        name: user.nickname,
+                        background: const Color(0xFFFFF1EA),
+                      ),
+                    ),
+                    const Positioned(right: -6, bottom: -2, child: Text('📷', style: TextStyle(fontSize: 18))),
                   ],
                 ),
-              ),
-            ],
+                const SizedBox(height: 8),
+                Text(user.nickname,
+                    style: const TextStyle(
+                        fontFamily: 'ZCOOLKuaiLe', fontSize: 22, color: AAColors.ink)),
+                const SizedBox(height: 2),
+                // 英文点缀（规范 §4 第五级：Caveat 手写体）
+                Text('@${user.accountName}',
+                    style: const TextStyle(
+                        fontFamily: 'Caveat',
+                        fontSize: 15,
+                        color: AAColors.inkSoft)),
+              ],
+            ),
           ),
-          const SizedBox(height: 20),
-          // 数据卡
-          Row(
-            children: [
-              _DataCard(label: '我的群组', value: '${groups.length}', emoji: '👥'),
-              const SizedBox(width: 10),
-              _DataCard(label: '账单笔数', value: '${bills.length}', emoji: '🧾'),
-              const SizedBox(width: 10),
-              _DataCard(label: '累计AA', value: Fmt.yuanNoSymbol(totalAA), emoji: '💰'),
-            ],
+          const SizedBox(height: 16),
+          // 数据卡（Demo：三列，中间列左右虚线分隔）
+          PaperCard(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(child: _StatCell(value: '${groups.length}', label: '群组', size: 26)),
+                Expanded(
+                  child: CustomPaint(
+                    painter: const _DashedVerticalsPainter(),
+                    child: _StatCell(value: '${bills.length}', label: '账单', size: 26),
+                  ),
+                ),
+                Expanded(child: _StatCell(value: Fmt.yuan(totalAA, trimZero: true), label: '累计AA', size: 22, isYen: true)),
+              ],
+            ),
           ),
-          const SizedBox(height: 20),
-          _MenuRow(
-            icon: Icons.download,
-            emoji: '📦',
-            label: '数据导出',
-            onTap: () => context.push('/export'),
+          const SizedBox(height: 16),
+          // 菜单卡（Demo .line 行）
+          PaperCard(
+            padding: const EdgeInsets.fromLTRB(14, 2, 14, 2),
+            child: Column(
+              children: [
+                AaLine(
+                  child: _menuRow('数据导出',
+                      image: 'assets/icons/export.png',
+                      onTap: () => context.push('/export')),
+                  onTap: () => context.push('/export'),
+                ),
+                AaLine(
+                  child: _menuRow('账号安全',
+                      image: 'assets/icons/lock.png',
+                      onTap: () => context.push('/security')),
+                  onTap: () => context.push('/security'),
+                ),
+                AaLine(
+                  child: _menuRow('设置',
+                      image: 'assets/icons/settings.png',
+                      onTap: () => context.push('/settings')),
+                  onTap: () => context.push('/settings'),
+                ),
+                AaLine(
+                  showBorder: false,
+                  child: _menuRow('关于我们',
+                      image: 'assets/icons/mail.png',
+                      onTap: () => context.push('/about')),
+                  onTap: () => context.push('/about'),
+                ),
+              ],
+            ),
           ),
-          _MenuRow(
-            icon: Icons.person,
-            emoji: '👤',
-            label: '编辑昵称 / 头像',
-            onTap: () => _editProfile(context, ref),
+          const SizedBox(height: 10),
+          DoodleButton(
+            label: '退出登录「下次再来玩呀」',
+            type: DoodleButtonType.danger,
+            big: true,
+            onPressed: () => _logout(context, ref),
           ),
-          _MenuRow(
-            icon: Icons.settings,
-            emoji: '⚙️',
-            label: '设置',
-            onTap: () => context.push('/settings'),
-          ),
+          const SizedBox(height: 16),
         ],
       ),
     );
+  }
+
+  Widget _menuRow(String label, {String? image, VoidCallback? onTap}) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Row(
+          children: [
+            if (image != null) ...[
+              AaIconImage(image, size: 18),
+              const SizedBox(width: 8),
+            ],
+            Text(label,
+                style: const TextStyle(
+                    fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.ink)),
+          ],
+        ),
+        const Text('→', style: TextStyle(fontSize: 15, color: AAColors.ink)),
+      ],
+    );
+  }
+
+  Future<void> _logout(BuildContext context, WidgetRef ref) async {
+    final ok = await showAaConfirm(
+      context,
+      title: '要退出登录吗？',
+      subtitle: '下次来还要把这些账算清楚哦',
+      confirmLabel: '退出',
+    );
+    if (ok == true && context.mounted) {
+      await ref.read(authProvider.notifier).logout();
+      if (context.mounted) context.go('/login');
+    }
   }
 
   void _editProfile(BuildContext context, WidgetRef ref) {
@@ -125,53 +197,89 @@ class ProfileScreen extends ConsumerWidget {
   }
 }
 
-class _DataCard extends StatelessWidget {
-  const _DataCard({required this.label, required this.value, required this.emoji});
-  final String label;
+class _StatCell extends StatelessWidget {
+  const _StatCell({required this.value, required this.label, required this.size, this.isYen = false});
   final String value;
-  final String emoji;
+  final String label;
+  final double size;
+  final bool isYen;
+
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    return Expanded(
-      child: PaperCard(
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
-        tiltSeed: label,
-        child: Column(
-          children: [
-            Text(emoji, style: const TextStyle(fontSize: 22)),
-            const SizedBox(height: 4),
-            Text(value, style: const TextStyle(fontFamily: 'LongCang', fontSize: 22, color: AAColors.ink)),
-            Text(label, style: text.bodySmall),
-          ],
-        ),
-      ),
+    return Column(
+      children: [
+        if (isYen)
+          HandAmount(
+            amountCents: _parseCents(value),
+            size: size,
+            color: AAColors.ink,
+            trimZero: true,
+          )
+        else
+          Text(
+            value,
+            style: TextStyle(
+                fontFamily: 'LongCang', fontSize: size, color: AAColors.ink, height: 1),
+          ),
+        Text(label,
+            style: const TextStyle(
+                fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
+      ],
     );
+  }
+
+  int _parseCents(String s) {
+    final v = double.tryParse(s.replaceAll('¥', '')) ?? 0;
+    return (v * 100).round();
   }
 }
 
-class _MenuRow extends StatelessWidget {
-  const _MenuRow({required this.icon, required this.emoji, required this.label, required this.onTap});
-  final IconData icon;
-  final String emoji;
-  final String label;
-  final VoidCallback onTap;
+/// 中间列左右虚线（Demo：border-left/right:2px dashed var(--ink)）
+class _DashedVerticalsPainter extends CustomPainter {
+  const _DashedVerticalsPainter();
+  @override
+  void paint(Canvas canvas, Size size) {
+    final p = Paint()
+      ..color = AAColors.ink
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.butt;
+    for (final x in [0.0, size.width]) {
+      var y = 0.0;
+      while (y < size.height) {
+        canvas.drawLine(Offset(x, y), Offset(x, y + 6), p);
+        y += 12;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter old) => false;
+}
+
+/// `.wob` 摇晃：±3° · 2.4s
+class _Wobble extends StatefulWidget {
+  const _Wobble({required this.child});
+  final Widget child;
+  @override
+  State<_Wobble> createState() => _WobbleState();
+}
+
+class _WobbleState extends State<_Wobble> with SingleTickerProviderStateMixin {
+  late final AnimationController _c =
+      AnimationController(vsync: this, duration: const Duration(milliseconds: 2400))..repeat();
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    return GestureDetector(
-      onTap: onTap,
-      child: PaperCard(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        child: Row(
-          children: [
-            Text(emoji, style: const TextStyle(fontSize: 22)),
-            const SizedBox(width: 12),
-            Expanded(child: Text(label, style: text.titleMedium)),
-            const Icon(Icons.arrow_forward, color: AAColors.inkSoft, size: 20),
-          ],
-        ),
+    return AnimatedBuilder(
+      animation: _c,
+      builder: (_, _) => Transform.rotate(
+        angle: (-3 + 6 * (1 - (2 * _c.value - 1).abs())) * pi / 180,
+        child: widget.child,
       ),
     );
   }

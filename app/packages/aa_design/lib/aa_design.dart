@@ -5,6 +5,7 @@ library;
 export 'src/animations/doodle_animations.dart';
 export 'src/mascot/tuan_tuan.dart';
 export 'src/shapes/sketchy_border.dart';
+export 'src/shapes/wonky_border.dart';
 export 'src/sketch/crayon_chart.dart';
 export 'src/sketch/grid_paper.dart';
 export 'src/theme/aa_fonts.dart';

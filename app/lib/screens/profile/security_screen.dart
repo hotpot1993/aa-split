@@ -10,7 +10,7 @@ import '../../providers/repositories.dart';
 import '../../widgets/common.dart';
 import '../../widgets/sheet.dart';
 
-/// P52 账号安全页
+/// P52 账号安全 —— 对齐 docs/ui-demo/index.html
 class SecurityScreen extends ConsumerStatefulWidget {
   const SecurityScreen({super.key});
   @override
@@ -20,20 +20,27 @@ class SecurityScreen extends ConsumerStatefulWidget {
 class _SecurityScreenState extends ConsumerState<SecurityScreen> {
   final _current = TextEditingController();
   final _newPwd = TextEditingController();
+  final _confirmPwd = TextEditingController();
 
   @override
   void dispose() {
     _current.dispose();
     _newPwd.dispose();
+    _confirmPwd.dispose();
     super.dispose();
   }
 
   void _changePassword() {
+    if (_newPwd.text != _confirmPwd.text) {
+      showAaToast(context, '两次新密码不一致');
+      return;
+    }
     try {
       ref.read(authRepositoryProvider).changePassword(_current.text, _newPwd.text);
-      showAaToast(context, '密码已修改');
+      showAaToast(context, '🛡 密码已修改，记得保管好新密码哦');
       _current.clear();
       _newPwd.clear();
+      _confirmPwd.clear();
     } on AuthException catch (e) {
       showAaToast(context, e.message);
     }
@@ -41,30 +48,13 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
 
   /// 注销账号（应用商店合规：应用内删除账号）。二次确认后删除并回到登录页。
   Future<void> _deleteAccount() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('注销账号', style: TextStyle(fontFamily: 'ZCOOLKuaiLe')),
-        content: Text(
-          '确定要注销账号吗？\n\n删除后将无法再用该账号登录；'
-          '您的昵称/头像/签名等个人资料会被清空，'
-          '所在群组您会退出（群主身份自动转移），历史账单留给群内其他成员。\n\n此操作不可恢复。',
-          style: Theme.of(ctx).textTheme.bodyMedium,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('再想想', style: TextStyle(fontFamily: 'ZCOOLKuaiLe')),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('确认注销',
-                style: TextStyle(color: AAColors.berry, fontFamily: 'ZCOOLKuaiLe')),
-          ),
-        ],
-      ),
+    final ok = await showAaConfirm(
+      context,
+      title: '要注销账号吗？',
+      subtitle: '删除后个人资料清空、退出全部群组，此操作不可恢复',
+      confirmLabel: '确认注销',
     );
-    if (confirmed != true) return;
+    if (ok != true) return;
     try {
       await ref.read(authRepositoryProvider).deleteAccount();
       // 清除推送 alias 并重置登录态 → 回登录页
@@ -82,116 +72,188 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
     return AaScaffold(
-      appBar: AppBar(title: const Text('账号安全')),
+      appBar: AaAppBar(
+        title: '账号安全',
+        headIcon: 'assets/icons/lock.png',
+        icon: '🛡',
+      ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: [
-          SectionTitle('修改密码'),
+          // 🔑 修改密码（Demo .line 三行）
           PaperCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _label('当前密码'),
-                HandTextField(controller: _current, hint: '当前密码'),
-                const SizedBox(height: 10),
-                _label('新密码'),
-                HandTextField(controller: _newPwd, hint: '至少6位，含字母和数字'),
-                const SizedBox(height: 14),
-                DoodleButton(
-                  label: '确认修改',
-                  type: DoodleButtonType.secondary,
-                  expand: true,
-                  onPressed: _changePassword,
-                ),
-              ],
-            ),
-          ),
-          SectionTitle('修改安全问题'),
-          PaperCard(
-            child: Row(
-              children: [
-                const Icon(Icons.help_outline, color: AAColors.inkSoft),
-                const SizedBox(width: 10),
-                Expanded(child: Text('需要当前密码验证', style: text.titleSmall)),
-                const SizedBox(width: 8),
-                DoodleButton(
-                  label: '去修改',
-                  type: DoodleButtonType.secondary,
-                  onPressed: () => showAaToast(context, '演示：需当前密码验证'),
-                ),
-              ],
-            ),
-          ),
-          SectionTitle('登录设备'),
-          _DeviceRow(emoji: '📱', name: 'iPhone 15', where: '当前设备 · 本机'),
-          _DeviceRow(emoji: '💻', name: 'Windows 电脑', where: '昨天 · 北京'),
-          const SizedBox(height: 12),
-          Center(
-            child: TextButton(
-              onPressed: () => showAaToast(context, '已清除其他设备登录态'),
-              child: const Text('退出其他设备',
-                  style: TextStyle(color: AAColors.berry, fontFamily: 'ZCOOLKuaiLe', fontSize: 13)),
-            ),
-          ),
-          SectionTitle('注销账号'),
-          PaperCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  '删除账号：个人资料清空、退出全部群组（群主自动转移）、'
-                  '其他成员的群账单历史保留，此操作不可恢复。',
-                  style: text.bodySmall,
-                ),
-                const SizedBox(height: 12),
-                DoodleButton(
-                  label: '注销账号',
-                  type: DoodleButtonType.secondary,
-                  expand: true,
-                  onPressed: _deleteAccount,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _label(String s) => Padding(
-        padding: const EdgeInsets.only(bottom: 6),
-        child: Text(s, style: Theme.of(context).textTheme.bodySmall),
-      );
-}
-
-class _DeviceRow extends StatelessWidget {
-  const _DeviceRow({required this.emoji, required this.name, required this.where});
-  final String emoji;
-  final String name;
-  final String where;
-  @override
-  Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    return PaperCard(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          Text(emoji, style: const TextStyle(fontSize: 22)),
-          const SizedBox(width: 12),
-          Expanded(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 4),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name, style: text.titleMedium),
-                Text(where, style: text.bodySmall),
+                const Row(
+                  children: [
+                    AaIconImage('assets/icons/key.png', size: 16),
+                    SizedBox(width: 6),
+                    Text('修改密码',
+                        style: TextStyle(
+                            fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                _pwdLine('当前密码', _current, showBorder: true),
+                _pwdLine('新密码', _newPwd, showBorder: true),
+                _pwdLine('确认新密码', _confirmPwd, showBorder: false),
               ],
             ),
           ),
-          const Icon(Icons.check_circle, color: AAColors.mint, size: 20),
+          const SizedBox(height: 16),
+          PaperCard(
+            padding: const EdgeInsets.fromLTRB(14, 4, 14, 4),
+            child: Column(
+              children: [
+                _tapLine(
+                  '修改安全问题',
+                  value: '你第一个朋友的名字？ ▾',
+                  onTap: () => showAaToast(context, '演示：需当前密码验证'),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          PaperCard(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 4),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    AaIconImage('assets/icons/phone.png', size: 16),
+                    SizedBox(width: 6),
+                    Text('登录设备',
+                        style: TextStyle(
+                            fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Column(
+                  children: [
+                    _tapLine(
+                      'iPhone 15 · 本机',
+                      leadImage: 'assets/icons/phone.png',
+                      trailing: const HandTag('当前', dense: true, variant: ChipVariant.green),
+                      showBorder: true,
+                    ),
+                    _tapLine(
+                      'Mac Safari · 昨晚',
+                      leadImage: 'assets/icons/laptop.png',
+                      trailing: const HandTag('删除', dense: true, variant: ChipVariant.orange),
+                      showBorder: false,
+                      onTap: () => showAaToast(context, '已退出该设备'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          DoodleButton(
+            label: '保存修改',
+            big: true,
+            onPressed: _changePassword,
+          ),
+          const SizedBox(height: 10),
+          DoodleButton(
+            label: '注销账号',
+            type: DoodleButtonType.danger,
+            big: true,
+            onPressed: _deleteAccount,
+          ),
+          const SizedBox(height: 16),
         ],
       ),
     );
   }
+
+  Widget _pwdLine(String label, TextEditingController ctrl, {bool showBorder = true}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 2),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(label,
+                  style: const TextStyle(
+                      fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.inkSoft)),
+              SizedBox(
+                width: 170,
+                child: HandTextField(
+                  controller: ctrl,
+                  hint: '••••••••',
+                  textAlign: TextAlign.end,
+                  obscure: true,
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (showBorder)
+          CustomPaint(size: const Size(double.infinity, 2.5), painter: _SecDash()),
+      ],
+    );
+  }
+
+  Widget _tapLine(String label,
+      {String? value, Widget? trailing, VoidCallback? onTap, String? leadImage, bool showBorder = true}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        GestureDetector(
+          onTap: onTap,
+          behavior: HitTestBehavior.opaque,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 2),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    if (leadImage != null) ...[
+                      AaIconImage(leadImage, size: 16),
+                      const SizedBox(width: 6),
+                    ],
+                    Text(label,
+                        style: const TextStyle(
+                            fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.inkSoft)),
+                  ],
+                ),
+                if (value != null)
+                  Text(value,
+                      style: const TextStyle(
+                          fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.ink)),
+                ?trailing,
+              ],
+            ),
+          ),
+        ),
+        if (showBorder)
+          CustomPaint(size: const Size(double.infinity, 2.5), painter: _SecDash()),
+      ],
+    );
+  }
+}
+
+class _SecDash extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final p = Paint()
+      ..color = AAColors.ink
+      ..strokeWidth = 2.5;
+    var x = 0.0;
+    while (x < size.width) {
+      canvas.drawLine(Offset(x, 1.25), Offset(x + 7, 1.25), p);
+      x += 14;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter old) => false;
 }

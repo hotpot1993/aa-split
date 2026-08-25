@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 
 import 'package:aa_design/aa_design.dart';
 
-/// 自定义底部导航（UI规范 §7.5）：
-/// 白纸底 + 顶部墨线；选中项 = 珊瑚橙涂鸦圆包围 + 图标上扬；
-/// 中央 ➕ 为放大版铅笔涂鸦按钮，凸起于栏上，不选中任何 Tab。
+/// 底部导航 —— 严格照搬 Demo `.tabbar`：
+/// `height:78px;background:#FFFDF6;border-top:3px solid var(--ink)`
+/// `.tab`：`font-size:11px;color:var(--ink2)`，图标 25x25 手绘线条（stroke 2.4）；
+/// 选中 `.tab.cur`：珊瑚橙 + `bounce .28s`（0→-5→0）；
+/// 中央 `.tab.plus`：34px 珊瑚橙圆 + 2.5px 墨线 + 白色铅笔 + 3px 实心墨影，上浮 20px。
 class AppBottomNav extends StatelessWidget {
   const AppBottomNav({
     super.key,
@@ -19,54 +21,44 @@ class AppBottomNav extends StatelessWidget {
   final VoidCallback onAdd;
   final int unreadCount;
 
-  static const _tabs = [
-    (icon: Icons.home, iconOut: Icons.home_outlined, label: '总览'),
-    (icon: Icons.group, iconOut: Icons.group_outlined, label: '群组'),
-    (icon: Icons.notifications, iconOut: Icons.notifications_none, label: '消息'),
-    (icon: Icons.person, iconOut: Icons.person_outline, label: '我的'),
-  ];
+  static const _labels = ['总览', '群组', '', '消息', '我的'];
 
   @override
   Widget build(BuildContext context) {
-    final surface = Theme.of(context).colorScheme.surface;
     return Container(
-      decoration: BoxDecoration(
-        color: surface,
-        border: const Border(top: BorderSide(color: AAColors.ink, width: 2)),
+      decoration: const BoxDecoration(
+        color: AAColors.cardWhite,
+        border: Border(top: BorderSide(color: AAColors.ink, width: 3)),
       ),
       child: SafeArea(
         top: false,
         child: SizedBox(
-          height: 62,
+          height: 78,
           child: Row(
             children: [
               _TabItem(
-                icon: _tabs[0].icon,
-                iconOut: _tabs[0].iconOut,
-                label: _tabs[0].label,
+                icon: const _HomeIcon(),
+                label: _labels[0],
                 selected: currentIndex == 0,
                 onTap: () => onTap(0),
               ),
               _TabItem(
-                icon: _tabs[1].icon,
-                iconOut: _tabs[1].iconOut,
-                label: _tabs[1].label,
+                icon: const _GroupIcon(),
+                label: _labels[1],
                 selected: currentIndex == 1,
                 onTap: () => onTap(1),
               ),
               _AddButton(onTap: onAdd),
               _TabItem(
-                icon: _tabs[2].icon,
-                iconOut: _tabs[2].iconOut,
-                label: _tabs[2].label,
+                icon: const _BellIcon(),
+                label: _labels[3],
                 selected: currentIndex == 2,
                 onTap: () => onTap(2),
                 badge: unreadCount,
               ),
               _TabItem(
-                icon: _tabs[3].icon,
-                iconOut: _tabs[3].iconOut,
-                label: _tabs[3].label,
+                icon: const _PersonIcon(),
+                label: _labels[4],
                 selected: currentIndex == 3,
                 onTap: () => onTap(3),
               ),
@@ -78,6 +70,8 @@ class AppBottomNav extends StatelessWidget {
   }
 }
 
+/// 中央 ➕（记一笔）：68px 珊瑚橙圆（34px 的两倍）+ 2.5px 墨线 + 白色铅笔，
+/// 垂直居中放置于导航栏内（不再上浮出栏），提升视觉平衡与点击区域。
 class _AddButton extends StatelessWidget {
   const _AddButton({required this.onTap});
 
@@ -92,27 +86,23 @@ class _AddButton extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Transform.translate(
-              offset: const Offset(0, -16),
-              child: Container(
-                width: 58,
-                height: 58,
-                alignment: Alignment.center,
-                decoration: ShapeDecoration(
-                  color: AAColors.coral,
-                  shape: SketchyBorder(
-                    side: const BorderSide(color: AAColors.ink, width: AATokens.stroke),
-                    seed: 47,
-                    bow: 5,
-                  ),
-                  shadows: const [
-                    BoxShadow(color: AAColors.ink, offset: AATokens.shadowOffset),
-                  ],
+            Container(
+              width: 68,
+              height: 68,
+              alignment: Alignment.center,
+              padding: const EdgeInsets.all(8),
+              decoration: ShapeDecoration(
+                color: AAColors.coral,
+                shape: const CircleBorder(
+                  side: BorderSide(color: AAColors.ink, width: 2.5),
                 ),
-                child: const Icon(Icons.edit, color: Colors.white, size: 28),
+                shadows: const [AATokens.buttonShadow],
+              ),
+              child: const CustomPaint(
+                size: Size(52, 52),
+                painter: _PencilIconPainter(),
               ),
             ),
-            const SizedBox(height: 2),
           ],
         ),
       ),
@@ -123,15 +113,13 @@ class _AddButton extends StatelessWidget {
 class _TabItem extends StatelessWidget {
   const _TabItem({
     required this.icon,
-    required this.iconOut,
     required this.label,
     required this.selected,
     required this.onTap,
     this.badge = 0,
   });
 
-  final IconData icon;
-  final IconData iconOut;
+  final Widget icon;
   final String label;
   final bool selected;
   final VoidCallback onTap;
@@ -145,9 +133,9 @@ class _TabItem extends StatelessWidget {
         onTap: onTap,
         behavior: HitTestBehavior.opaque,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
+          duration: const Duration(milliseconds: 280),
           curve: springCurve,
-          transform: Matrix4.translationValues(0, selected ? -4 : 0, 0),
+          transform: Matrix4.translationValues(0, selected ? -5 : 0, 0),
           alignment: Alignment.center,
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -155,27 +143,14 @@ class _TabItem extends StatelessWidget {
               Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  Container(
-                    width: 40,
-                    height: 30,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: selected ? AAColors.coral : Colors.transparent,
-                        width: 2,
-                      ),
-                    ),
-                    child: Icon(
-                      selected ? icon : iconOut,
-                      color: color,
-                      size: 24,
-                    ),
+                  IconTheme(
+                    data: IconThemeData(color: color),
+                    child: SizedBox(width: 25, height: 25, child: icon),
                   ),
                   if (badge > 0)
                     Positioned(
-                      right: 2,
-                      top: 0,
+                      right: -5,
+                      top: -3,
                       child: Container(
                         padding: const EdgeInsets.all(3),
                         constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
@@ -193,13 +168,14 @@ class _TabItem extends StatelessWidget {
                     ),
                 ],
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 3),
               Text(
                 label,
                 style: TextStyle(
                   fontFamily: 'ZCOOLKuaiLe',
                   fontSize: 11,
-                  color: selected ? AAColors.coral : AAColors.inkSoft,
+                  color: color,
+                  height: 1.2,
                 ),
               ),
             ],
@@ -208,4 +184,161 @@ class _TabItem extends StatelessWidget {
       ),
     );
   }
+}
+
+/// 手绘 Tab 图标基类（Demo `<svg viewBox="0 0 24 24">` 线条，stroke 2.4）
+abstract class _SketchIconPainter extends CustomPainter {
+  const _SketchIconPainter();
+
+  Paint get _paint => Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 2.4
+    ..strokeCap = StrokeCap.round
+    ..strokeJoin = StrokeJoin.round;
+
+  /// 在 24x24 坐标系内构建路径
+  Path get canvasPath;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.save();
+    final s = size.width / 24;
+    canvas.scale(s);
+    canvas.drawPath(canvasPath, _paint);
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _HomeIcon extends StatelessWidget {
+  const _HomeIcon();
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(painter: _HomeIconPainter(), size: const Size(25, 25));
+  }
+}
+
+class _HomeIconPainter extends _SketchIconPainter {
+  @override
+  Path get canvasPath => Path()
+    ..moveTo(4.6, 11.8)
+    ..quadraticBezierTo(8.5, 8, 12, 4.9)
+    ..quadraticBezierTo(15.6, 8, 19.4, 11.6)
+    ..moveTo(7, 10.6)
+    ..lineTo(7, 18)
+    ..lineTo(17, 18)
+    ..lineTo(17, 10.6)
+    ..moveTo(10.2, 18)
+    ..lineTo(10.2, 13.6)
+    ..lineTo(13.8, 13.6)
+    ..lineTo(13.8, 18);
+}
+
+class _GroupIcon extends StatelessWidget {
+  const _GroupIcon();
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(painter: _GroupIconPainter(), size: const Size(25, 25));
+  }
+}
+
+class _GroupIconPainter extends _SketchIconPainter {
+  @override
+  Path get canvasPath => Path()
+    ..addOval(Rect.fromCircle(center: const Offset(8.8, 7), radius: 2.5))
+    ..addOval(Rect.fromCircle(center: const Offset(15.8, 8.4), radius: 2.1))
+    ..moveTo(4.8, 14.6)
+    ..quadraticBezierTo(8.8, 10.6, 12.8, 14.6)
+    ..moveTo(12.6, 14.2)
+    ..quadraticBezierTo(15.4, 11.4, 18.4, 14.2);
+}
+
+class _BellIcon extends StatelessWidget {
+  const _BellIcon();
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(painter: _BellIconPainter(), size: const Size(25, 25));
+  }
+}
+
+class _BellIconPainter extends _SketchIconPainter {
+  @override
+  Path get canvasPath => Path()
+    ..moveTo(12, 4.4)
+    ..quadraticBezierTo(15.8, 6.2, 15.8, 11.4)
+    ..lineTo(15.8, 14)
+    ..lineTo(18, 16.4)
+    ..lineTo(6, 16.4)
+    ..lineTo(8.2, 14)
+    ..lineTo(8.2, 11.4)
+    ..quadraticBezierTo(8.2, 6.2, 12, 4.4)
+    ..close()
+    ..moveTo(12, 4.4)
+    ..lineTo(12, 3.2)
+    ..addOval(Rect.fromCircle(center: const Offset(12, 18.4), radius: 1.3));
+}
+
+class _PersonIcon extends StatelessWidget {
+  const _PersonIcon();
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(painter: _PersonIconPainter(), size: const Size(25, 25));
+  }
+}
+
+class _PersonIconPainter extends _SketchIconPainter {
+  @override
+  Path get canvasPath => Path()
+    ..addOval(Rect.fromCircle(center: const Offset(12, 7.4), radius: 3.1))
+    ..moveTo(5.8, 18.2)
+    ..quadraticBezierTo(6.2, 12.4, 12, 12.4)
+    ..quadraticBezierTo(17.8, 12.4, 18.2, 18.2);
+}
+
+/// 中央铅笔（.tab.plus svg：`M5 19 L5 15.4 L15.4 5 L19 8.6 L8.6 19 Z M13.2 7.2 L16.8 10.8`）
+///
+/// Demo 路径只占 viewBox 24 的 5..19 区域（约 58%），直接缩放会显得
+/// 偏小且视觉不平衡；这里把该区域归一化放大到 1.2..22.8，保证铅笔在
+/// 珊瑚橙圆内居中且与其余 25px 图标尺寸统一（stroke 2.2 同步略增）。
+class _PencilIconPainter extends CustomPainter {
+  const _PencilIconPainter();
+
+  // 将 Demo 路径坐标 5..19 映射到 1.2..22.8（21.6/14 = 1.542857 倍）
+  static double _x(double v) => (v - 5) * 1.542857 + 1.2;
+  static double _y(double v) => (v - 5) * 1.542857 + 1.2;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final s = size.width / 24;
+    canvas.save();
+    canvas.scale(s);
+    final p = Paint()
+      ..style = PaintingStyle.stroke
+      ..color = Colors.white
+      ..strokeWidth = 2.1
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    canvas.drawPath(
+      Path()
+        ..moveTo(_x(5), _y(19))
+        ..lineTo(_x(5), _y(15.4))
+        ..lineTo(_x(15.4), _y(5))
+        ..lineTo(_x(19), _y(8.6))
+        ..lineTo(_x(8.6), _y(19))
+        ..close()
+        ..moveTo(_x(13.2), _y(7.2))
+        ..lineTo(_x(16.8), _y(10.8)),
+      p,
+    );
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

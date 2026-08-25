@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../tokens/aa_colors.dart';
 
-/// 荧光笔划重点（UI规范 §5：background: linear-gradient(transparent 55%, #FFE8A3 55%)）
+/// 荧光笔划重点 —— 严格照搬 Demo `.hl`：
+/// `background:linear-gradient(transparent 55%, var(--marker) 55%)`
+/// 即：只在文字下 45% 高度画荧光条（贴住文字底部），而不是整盒背景。
 class HighlightText extends StatelessWidget {
   const HighlightText(
     this.text, {
@@ -19,22 +21,36 @@ class HighlightText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: (style ?? const TextStyle(fontSize: 14)).copyWith(
-        backgroundColor: highlightAll
-            ? markerColor.withValues(alpha: 0.75)
-            : null,
-      ),
+    final st = style ?? const TextStyle(fontSize: 14, color: AAColors.ink);
+    final painter = TextPainter(
+      text: TextSpan(text: text, style: st),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    final lineH = painter.preferredLineHeight;
+    painter.dispose();
+    final fh = st.fontSize ?? 14;
+
+    return Stack(
+      children: [
+        if (highlightAll)
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: lineH * 0.45 + fh * 0.12,
+            child: ColoredBox(color: markerColor),
+          ),
+        Text(text, style: st),
+      ],
     );
   }
 }
 
-/// 仅对子字符串高亮（如搜索结果命中词）
+/// 仅对子字符串高亮（如搜索结果命中词）—— 同样只划底部荧光条
 class HighlightPartText extends StatelessWidget {
-  const HighlightPartText({
+  const HighlightPartText(
+    this.text, {
     super.key,
-    required this.text,
     required this.parts,
     this.style,
   });
@@ -45,9 +61,9 @@ class HighlightPartText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final s = style ?? const TextStyle(fontSize: 14, color: AAColors.ink);
-    final base = s;
+    final base = style ?? const TextStyle(fontSize: 14, color: AAColors.ink);
     final spans = <TextSpan>[];
+
     var idx = 0;
     while (idx < text.length) {
       int next = text.length;
@@ -65,14 +81,74 @@ class HighlightPartText extends StatelessWidget {
         break;
       }
       if (next > idx) spans.add(TextSpan(text: text.substring(idx, next)));
-      spans.add(TextSpan(
-        text: hit,
-        style: base.copyWith(
-          backgroundColor: AAColors.marker.withValues(alpha: 0.75),
-        ),
-      ));
+      spans.add(TextSpan(text: hit));
       idx = next + hit!.length;
     }
-    return Text.rich(TextSpan(style: base, children: spans));
+
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: CustomPaint(
+            painter: _HighlightUnderPainter(
+              text: text,
+              style: base,
+              parts: parts,
+            ),
+          ),
+        ),
+        Text.rich(TextSpan(style: base, children: spans)),
+      ],
+    );
   }
+}
+
+/// 在匹配子串下方画荧光条（基于 TextPainter 计算出的字形包围盒）
+class _HighlightUnderPainter extends CustomPainter {
+  _HighlightUnderPainter({
+    required this.text,
+    required this.style,
+    required this.parts,
+  });
+
+  final String text;
+  final TextStyle style;
+  final List<String> parts;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final tp = TextPainter(
+      text: TextSpan(text: text, style: style),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    final lineH = tp.preferredLineHeight;
+    for (final p in parts) {
+      if (p.isEmpty) continue;
+      var from = 0;
+      while (true) {
+        final start = text.indexOf(p, from);
+        if (start < 0) break;
+        final end = start + p.length;
+        final boxes = tp.getBoxesForSelection(
+          TextSelection(baseOffset: start, extentOffset: end),
+        );
+        for (final b in boxes) {
+          canvas.drawRect(
+            Rect.fromLTRB(
+              b.left,
+              b.top + lineH * 0.55,
+              b.right,
+              b.bottom,
+            ),
+            Paint()..color = AAColors.marker,
+          );
+        }
+        from = end;
+      }
+    }
+    tp.dispose();
+  }
+
+  @override
+  bool shouldRepaint(covariant _HighlightUnderPainter old) =>
+      old.text != text || old.parts != parts;
 }

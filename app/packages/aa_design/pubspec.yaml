@@ -23,3 +23,9 @@ flutter:
     - family: LongCang
       fonts:
         - asset: assets/fonts/LongCang-Regular.ttf
+    - family: ZhiMangXing
+      fonts:
+        - asset: assets/fonts/ZhiMangXing-Regular.ttf
+    - family: Caveat
+      fonts:
+        - asset: assets/fonts/Caveat-VariableFont_wght.ttf
