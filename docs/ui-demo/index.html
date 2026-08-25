@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AA分账 · 手绘风UI原型 Demo（31页全量）</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&family=Long+Cang&family=Zhi+Mang+Xing&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&family=Long+Cang&family=Zhi+Mang+Xing&family=JetBrains+Mono&display=swap" rel="stylesheet">
 <style>
 :root{
   --paper:#FBF3E4; --paper2:#F4E8D3; --ink:#443A32; --ink2:#8A7A68;
@@ -71,7 +71,8 @@ body{
 .hl{background:linear-gradient(transparent 55%, var(--marker) 55%)}
 .hl.minty{background:linear-gradient(transparent 55%, rgba(143,206,159,.6) 55%)}
 .amount{font-family:'Long Cang','STKaiti','KaiTi',cursive;font-size:42px;line-height:1;letter-spacing:1px}
-.amount .yen{font-size:20px;vertical-align:6px;margin-right:2px}
+.amount .yen{font-family:'JetBrains Mono',Consolas,monospace;font-size:20px;vertical-align:6px;margin-right:2px}
+.amount .sign{font-family:'JetBrains Mono',Consolas,monospace;font-size:26px;vertical-align:6px;margin-right:1px}
 .amount.pos{color:#5FA876}
 .amount.neg{color:var(--coral)}
 .dim{color:var(--ink2)}
@@ -246,6 +247,9 @@ body{
   <button data-target="s-p52" onclick="go('s-p52')">52 · 账号安全 P52</button>
   <button data-target="s-p53" onclick="go('s-p53')">53 · 数据导出 P53</button>
   <button data-target="s-p54" onclick="go('s-p54')">54 · 关于页 P54</button>
+  <button data-target="s-p54a" onclick="go('s-p54a')">54a · 用户协议</button>
+  <button data-target="s-p54b" onclick="go('s-p54b')">54b · 隐私政策</button>
+  <button data-target="s-p54c" onclick="go('s-p54c')">54c · 开源声明</button>
 
   <div class="gh">H 公共</div>
   <button data-target="s-p60" onclick="go('s-p60')">60 · 全局搜索 P60</button>
@@ -421,7 +425,7 @@ body{
   <div class="card tilt">
     <div class="tape"></div>
     <div style="font-size:13px" class="dim">我的净额</div>
-    <div class="amount neg"><span class="yen">¥</span>-86.50</div>
+    <div class="amount neg"><span class="sign">-</span><span class="yen">¥</span>86.50</div>
     <div style="display:flex;gap:10px;margin:6px 0 10px">
       <span class="chip g">应收 +¥120.00</span><span class="chip o">应付 -¥206.50</span>
     </div>
@@ -543,7 +547,7 @@ body{
     <div class="mini dim">2025-06-01 · 饭友群 · 餐饮</div>
   </div>
   <div style="display:flex;justify-content:center;gap:14px;margin:14px 0">
-    <div class="polaroid"><div class="img">🍲</div><div class="mini dim" style="text-align:center;margin-top:4px">06-01 小票📷</div></div>
+    <div class="polaroid" style="cursor:pointer" onclick="toast('🔍 小票预览：全屏查看 / 重新拍照 / 相册换图')"><div class="img">🍲</div><div class="mini dim" style="text-align:center;margin-top:4px">06-01 小票📷</div></div>
     <div class="polaroid" style="transform:rotate(2deg)"><div class="img">🧾</div><div class="mini dim" style="text-align:center;margin-top:4px">结账单</div></div>
   </div>
   <div class="card" style="padding:4px 14px">
@@ -566,10 +570,18 @@ body{
 <!-- 20 群组列表 -->
 <section class="screen" id="s-p20">
   <div class="nav"><h2>👥 我的群组</h2><span class="ic" onclick="go('s-p60')">🔍</span></div>
-  <div class="card tap" style="padding:10px 12px;display:flex;align-items:center;gap:10px" onclick="go('s-p22')">
-    <div class="ava" style="background:#FFF1EA">📮</div>
-    <div style="flex:1"><b>邀请朋友来AA</b><div class="mini dim">发送邀请链接/二维码</div></div>
-    <span class="arrow-r">→</span>
+  <div class="sect"><span>加入群组</span><em>🎒</em></div>
+  <div style="display:flex;gap:10px">
+    <div class="card tap" style="flex:1;padding:12px 10px;text-align:center" onclick="go('s-scan')">
+      <div class="ava" style="background:#F0F6FB">📷</div>
+      <div style="font-size:15px;margin-top:8px"><b>扫一扫</b></div>
+      <div class="mini dim" style="margin-top:2px">扫群组二维码入群</div>
+    </div>
+    <div class="card tap" style="flex:1;padding:12px 10px;text-align:center" onclick="go('s-link')">
+      <div class="ava" style="background:#EDF7EE">🔗</div>
+      <div style="font-size:15px;margin-top:8px"><b>邀请链接</b></div>
+      <div class="mini dim" style="margin-top:2px">粘贴链接加入群组</div>
+    </div>
   </div>
   <div class="sect"><span>最近</span><em>📔</em></div>
   <div class="card tap" style="padding:12px;display:flex;align-items:center;gap:10px" onclick="go('s-group')">
@@ -588,6 +600,45 @@ body{
     <span class="stamp money">1笔待清</span>
   </div>
   <button class="btn primary big" style="margin-top:12px" onclick="go('s-p21')">＋ 创建群组</button>
+</section>
+
+<!-- 20.1 扫一扫入群 -->
+<section class="screen" id="s-scan">
+  <div class="nav"><span class="back" onclick="go('s-p20')">‹ 返回</span><h2>📷 扫一扫</h2><span class="ic">🔦</span></div>
+  <div class="card" style="text-align:center">
+    <div class="tape" style="background:rgba(143,206,159,.8)"></div>
+    <div style="font-size:14px;margin-bottom:10px">对准群组邀请二维码</div>
+    <div style="position:relative;background:#443A32;border-radius:10px 4px 12px 5px;height:230px;overflow:hidden">
+      <svg style="position:absolute;inset:34px" viewBox="0 0 100 100" preserveAspectRatio="none">
+        <path d="M2 22 L2 2 L22 2 M78 2 L98 2 L98 22 M2 78 L2 98 L22 98 M98 78 L98 98 L78 98" stroke="#FBF3E4" stroke-width="4" fill="none" stroke-linecap="round"/>
+      </svg>
+      <div class="mini" style="color:#FBF3E4;position:absolute;bottom:12px;left:0;right:0">📷 相机启动中…</div>
+    </div>
+    <div class="mini dim" style="margin:10px 0">识别到群组邀请码后会自动加入</div>
+    <div style="display:flex;gap:8px;justify-content:center">
+      <button class="btn ghost mini" onclick="toast('🖼 从相册选择二维码…')">🖼 从相册扫</button>
+      <button class="btn ghost mini" onclick="go('s-link')">🔗 粘贴链接</button>
+    </div>
+  </div>
+  <div class="card" style="padding:10px 14px;margin-top:14px">
+    <div class="mini dim">怎么拿到邀请码？让群主在群组里点「邀请成员」，把邀请二维码发给你；或直接把邀请链接复制给你。</div>
+  </div>
+</section>
+
+<!-- 20.2 邀请链接入群 -->
+<section class="screen" id="s-link">
+  <div class="nav"><span class="back" onclick="go('s-p20')">‹ 返回</span><h2>🔗 邀请链接入群</h2><span class="ic">🎁</span></div>
+  <div class="card" style="text-align:center">
+    <div class="tape"></div>
+    <div style="font-size:14px">粘贴群主发来的邀请链接</div>
+    <div class="mini dim" style="margin-bottom:10px">也可以直接输入群码，确认后自动加入</div>
+    <div class="line"><span class="dim">邀请链接</span><b style="font-family:Caveat,cursive">aafen://join/FAN12345</b></div>
+    <div style="text-align:left;margin:10px 2px"><span class="chip g">已识别 群码：FAN12345</span></div>
+    <button class="btn primary big" onclick="toast('✅ 已加入「饭友群」');setTimeout(function(){go('s-group')},900)">确认加入 →</button>
+  </div>
+  <div class="card" style="padding:10px 14px;margin-top:14px">
+    <div class="mini dim">小提示：邀请链接长这样 → aafen://join/群码。没收到链接？让群主在群组页点「邀请成员」即可。</div>
+  </div>
 </section>
 
 <!-- 21 创建群组 -->
@@ -744,6 +795,7 @@ body{
     <button class="btn ghost mini" style="flex:1" onclick="toast('📱 收款码卡片已生成')">📱 收款码卡片</button>
   </div>
   <button class="btn primary big" onclick="go('s-p26')">📢 开始催款</button>
+  <button class="btn danger big" style="margin-top:10px" onclick="toast('🎉 已全部标记为已付');setTimeout(function(){go('s-group')},900)">✅ 一键结清（全部标记已付）</button>
   <div style="text-align:center;margin-top:8px" class="mini dim">🔀 已选：最少笔数模式 · 切换到逐笔结算</div>
 </section>
 
@@ -774,7 +826,6 @@ body{
   <div class="card" style="padding:4px 14px">
     <div class="line"><span class="dim">群组信息</span><b>✏️ 头像/名称/简介</b></div>
     <div class="line"><span class="dim">默认分摊方式</span><b>均摊 ▾</b></div>
-    <div class="line"><span class="dim">新账单@全部成员</span><span class="swt on" onclick="this.classList.toggle('on')"></span></div>
     <div class="line"><span class="dim">免分摊人员默认</span><b>无 ▾</b></div>
   </div>
   <button class="btn big" onclick="toast('💾 已保存设置');setTimeout(function(){go('s-group')},800)">保存设置</button>
@@ -786,13 +837,14 @@ body{
   <div class="nav"><h2>✏️ 记一笔</h2><span class="ic" onclick="go('s-p33')">📷</span></div>
   <span class="doodle" style="top:70px;right:10px">💰</span>
   <div style="text-align:center;margin:18px 0 6px">
-    <span style="font-family:'Zhi Mang Xing','STKaiti','KaiTi',cursive;font-size:40px;margin-right:6px">¥</span>
+    <span style="font-family:'JetBrains Mono',Consolas,monospace;font-size:40px;margin-right:6px">¥</span>
     <span class="amount" style="font-size:58px">220</span><span class="amount" style="font-size:58px">.00</span>
     <div style="width:60%;height:3px;margin:2px auto 10px;background:repeating-linear-gradient(90deg,var(--ink) 0 10px,transparent 10px 15px);border-radius:2px"></div>
     <span class="chip o" style="font-size:13px">4人 × <span class="hl">¥55.00</span> 均摊</span>
   </div>
   <div class="card" style="padding:4px 14px;margin-top:16px">
     <div class="line"><span class="dim">标题</span><b>今晚聚餐</b></div>
+    <div class="line"><span class="dim">货币</span><b>人民币 ▾</b></div>
     <div class="line"><span class="dim">日期</span><b>6月1日 ▾</b></div>
     <div class="line"><span class="dim">群组</span><b>饭友群 ▾</b></div>
     <div class="line"><span class="dim">分类</span><b>🍜 餐饮 ▾</b></div>
@@ -803,6 +855,7 @@ body{
       <span class="cbx"></span><span class="mini">⏰ 设为定期账单（每月自动生成）</span>
     </div>
   </div>
+  <div style="text-align:center;margin-top:6px" class="mini dim">🌍 选外币（美元/欧元/日元…）→ 按当日汇率自动折算成人民币入账</div>
   <button class="btn primary big" style="margin-top:8px" onclick="toast('🧾 已保存，等TA们摊钱咯~');setTimeout(function(){go('s-group')},900)">收下这张小票！✓</button>
   <div style="text-align:center;margin-top:10px" class="mini dim">📷 拍照凭证 · 只要30秒就记好啦</div>
 </section>
@@ -933,7 +986,6 @@ body{
 <section class="screen" id="s-p41">
   <div class="nav"><span class="back" onclick="go('s-msg')">‹ 返回</span><h2>🔔 提醒设置</h2><span class="ic">🌙</span></div>
   <div class="card" style="padding:4px 14px">
-    <div class="line"><span>🧾 新账单提醒</span><span class="swt on" onclick="this.classList.toggle('on')"></span></div>
     <div class="line"><span>📢 催款提醒</span><span class="swt on" onclick="this.classList.toggle('on')"></span></div>
     <div class="line"><span>⏰ 定期账单提醒</span><span class="swt on" onclick="this.classList.toggle('on')"></span></div>
     <div class="line"><span>👥 群组动态@我</span><span class="swt" onclick="this.classList.toggle('on')"></span></div>
@@ -1044,15 +1096,191 @@ body{
       <ellipse cx="67" cy="52" rx="4.5" ry="2.8" fill="#F49CB4" opacity=".75"/>
     </svg>
     <div style="font-size:24px;margin-top:6px">AA分账</div>
-    <div class="mini dim">v1.0.0 · 由团团和程序员们一起做 💕</div>
+    <div class="mini dim">v1.0.2 · 构建 2003 · 由团团和程序员们一起做 💕</div>
   </div>
   <div class="card" style="padding:4px 14px;margin-top:20px">
-    <div class="line tap"><span>📜 用户协议</span><span class="arrow-r">→</span></div>
-    <div class="line tap"><span>🔐 隐私政策</span><span class="arrow-r">→</span></div>
-    <div class="line tap"><span>🧾 开源声明</span><span class="arrow-r">→</span></div>
-    <div class="line tap" style="border-bottom:none"><span>📮 联系我们</span><b>hi@aafen.app</b></div>
+    <div class="line tap" onclick="go('s-p54a')"><span>📜 用户协议</span><span class="arrow-r">→</span></div>
+    <div class="line tap" onclick="go('s-p54b')"><span>🔐 隐私政策</span><span class="arrow-r">→</span></div>
+    <div class="line tap" onclick="go('s-p54c')"><span>🧾 开源声明</span><span class="arrow-r">→</span></div>
+    <div class="line tap" style="border-bottom:none"><span>📮 联系我们</span><b style="font-size:13px">davedefy@163.com</b></div>
   </div>
-  <div style="text-align:center;margin-top:6px" class="mini dim">© 2025 AA分账 · 手绘风小团队</div>
+  <div style="text-align:center;margin-top:6px" class="mini dim">© 2026 AA分账 · DeepSeek Harness</div>
+</section>
+
+<!-- 54a 用户协议 -->
+<section class="screen" id="s-p54a">
+  <div class="nav"><span class="back" onclick="go('s-p54')">‹ 返回</span><h2>📜 用户协议</h2><span class="ic">⭕</span></div>
+  <div class="card" style="padding:10px 14px">
+    <div class="mini dim">生效日期：2026-08-24 · 版本 V1.0.0 · 首次发布（无更新内容）</div>
+  </div>
+  <div class="card">
+    <div class="tape"></div>
+    <div class="mini" style="line-height:1.85">欢迎使用「AA分账」（以下简称"本 App"）。在使用本 App 前，请您仔细阅读并理解本《用户协议》的全部内容。<b>本 App 是一款帮助朋友之间 AA 分账的记账与提醒工具，不托管资金、不代收代付，不包含支付、贷款、理财等任何资金交易与金融服务。</b>您注册、登录并使用本 App，即视为您已阅读并同意本协议。</div>
+  </div>
+  <div class="sect"><span>一、服务描述</span></div>
+  <div class="card"><div class="mini" style="line-height:1.85">
+    1. 服务性质：好友间核算与提醒的记账工具，含多群组记账、四种分摊方式（均摊 / 按人数 / 按比例 / 自定义金额）、最少转账笔数结算方案、催款提醒、凭证拍照上传、定期账单、收支统计、数据导出、消息中心与实时推送等功能。<br>
+    2. 非资金服务：<b>不托管资金、不代收代付</b>，用户之间的真实转账行为应通过微信、支付宝等第三方支付 / 转账工具自行完成。<br>
+    3. 服务范围：金额计算、分摊建议、结算方案、统计与提醒均为参考性信息，不构成法律、财务建议，也不作为资金往来的依据。
+  </div></div>
+  <div class="sect"><span>二、账号规则</span></div>
+  <div class="card"><div class="mini" style="line-height:1.85">
+    1. 注册方式：自定义账户名 + 密码注册登录，可设置昵称、头像、个性签名与找回密码安全问题。<br>
+    2. 账号安全：请妥善保管账户名、密码及验证信息，因保管不当造成的损失由您自行承担。<br>
+    3. 账号所有权与使用：账号仅限本人使用，不得出售、出借、转让；您对账号下的所有操作行为负责。<br>
+    4. 注销：可在「设置 → 账号安全 → 注销」发起，或通过联系邮箱联系我们手动注销。<br>
+    5. 行为规范：承诺不利用本 App 从事违法违规、侵犯他人权益或破坏其正常运行的行为。
+  </div></div>
+  <div class="sect"><span>三、用户内容</span></div>
+  <div class="card"><div class="mini" style="line-height:1.85">
+    1. 内容归属：您创建、上传的内容（群组、成员、账单、分摊明细、凭证图片等）归您或相应权利人所有。<br>
+    2. 内容授权：为提供记账与提醒服务，您同意授予必要的处理与存储权限。<br>
+    3. 内容规范：承诺不上传违法、侵权、虚假、含敏感信息或违背公序良俗的内容，我们有权依法处理。<br>
+    4. 凭证图片：主动上传的凭证图片存储于服务端，请确保不涉及他人隐私或敏感信息。
+  </div></div>
+  <div class="sect"><span>四、免责声明</span></div>
+  <div class="card"><div class="mini" style="line-height:1.85">
+    1. 真实转账纠纷由用户自担：本 App 仅为记录、核算与提醒工具，<b>不介入、不担保、不参与用户之间的真实资金往来</b>，纠纷由用户自行协商或通过法律途径解决。<br>
+    2. 信息准确性与第三方：计算基于您的录入，因录入错误、第三方服务故障或政策调整导致的损失，本 App 不承担责任。<br>
+    3. 服务可用性：受不可抗力、网络故障、第三方服务异常等影响可能中断，由此造成的损失不承担责任。<br>
+    4. 风险自担：全部支出与资金往来由您自行决策并承担后果。
+  </div></div>
+  <div class="sect"><span>五、知识产权</span></div>
+  <div class="card"><div class="mini" style="line-height:1.85">
+    1. 本 App 及其软件、界面、素材、手绘设计、吉祥物「团团」等知识产权归【开发者主体名称】或其合法权利人所有。<br>
+    2. 字体（站酷快乐体、龙藏体等）均为可免费商用的授权字体；吉祥物「团团」为原创形象。<br>
+    3. 未经书面许可，不得复制、修改、传播、出售、反编译或用于任何商业目的。
+  </div></div>
+  <div class="sect"><span>六、服务变更与终止</span></div>
+  <div class="card"><div class="mini" style="line-height:1.85">
+    1. 服务变更：可能对功能、界面、参数等进行调整，并通过 App 内提示等方式通知；重大变更依法征得同意。<br>
+    2. 服务终止：您可随时停止使用或注销账号；违反协议或法律法规时，我们有权限制或终止服务。<br>
+    3. 通知：通过 App 内公告、推送、站内信或电子邮件等方式发送。
+  </div></div>
+  <div class="sect"><span>七、争议解决</span></div>
+  <div class="card"><div class="mini" style="line-height:1.85">
+    1. 适用中华人民共和国法律（不含冲突法规则）。<br>
+    2. 争议先友好协商；协商不成的，向【开发者主体名称】所在地有管辖权的人民法院起诉。<br>
+    3. 部分条款无效不影响其余条款效力。
+  </div></div>
+  <div class="sect"><span>八、未成年人保护</span></div>
+  <div class="card"><div class="mini" style="line-height:1.85">
+    1. 面向年满 14 周岁的用户；未满 14 周岁应在监护人阅读并同意本协议及《隐私政策》后使用。<br>
+    2. 监护人对使用行为负责，并引导未成年人合理、合规使用。
+  </div></div>
+  <div class="sect"><span>九、其他</span></div>
+  <div class="card"><div class="mini" style="line-height:1.85">
+    1. 本协议与《隐私政策》共同构成完整约定。<br>
+    2. 自 2026-08-24 起生效；修订后在本页面公布，继续使用即视为接受。<br>
+    3. 如有疑问请联系：<b>davedefy@163.com</b>
+  </div></div>
+</section>
+
+<!-- 54b 隐私政策 -->
+<section class="screen" id="s-p54b">
+  <div class="nav"><span class="back" onclick="go('s-p54')">‹ 返回</span><h2>🔐 隐私政策</h2><span class="ic">⭕</span></div>
+  <div class="card" style="padding:10px 14px">
+    <div class="mini dim">生效日期：2026-08-24 · 版本 V1.0.0 · 首次发布（无更新内容）</div>
+  </div>
+  <div class="card">
+    <div class="tape mint"></div>
+    <div class="mini" style="line-height:1.85">本政策适用于「AA分账」所提供的信息收集、使用、存储、共享与保护等活动。我们非常重视您的个人隐私与数据安全。本 App 为记账提醒工具，<b>不托管资金、不代收代付，不涉及支付、贷款、理财等任何资金交易与金融服务</b>。</div>
+  </div>
+  <div class="sect"><span>一、我们收集哪些信息</span></div>
+  <div class="card"><div class="mini" style="line-height:1.85">
+    遵循"最小必要"原则，仅收集服务所必需的信息；<b>不收集</b>通讯录、位置、短信、通话记录及金融账户信息。<br>
+    您主动提供：账号信息（账户名 + 密码，bcrypt 哈希存储）、昵称/头像/签名、安全问题、群组与账单数据、凭证图片（存储于服务端）。<br>
+    自动收集：极光推送设备标识（用于通知）、基础日志（IP、设备型号、系统版本，用于安全与排查）。
+  </div></div>
+  <div class="sect"><span>二、我们如何使用这些信息</span></div>
+  <div class="card"><div class="mini" style="line-height:1.85">
+    提供与维护核心服务；账号与安全（登录、找回密码、风控审计）；消息推送（可随时关闭）；改进与排查（基础日志）；履行法律义务。<br>
+    <b>不会</b>用于无关目的，<b>不会</b>用于广告投放或画像分析。
+  </div></div>
+  <div class="sect"><span>三、如何共享、转让与公开披露</span></div>
+  <div class="card"><div class="mini" style="line-height:1.85">
+    不出售、不出租、不主动向第三方共享个人信息，仅在以下情形进行：<br>
+    · 第三方服务（极光推送 JPush）：唯一接入的 SDK，仅用于账单 / 催款提醒等通知；<br>
+    · 法律法规要求时依法配合披露；<br>
+    · 保护合法权益所必需时在合理必要限度内处理。
+  </div></div>
+  <div class="sect"><span>四、第三方 SDK 清单</span></div>
+  <div class="card"><div class="mini" style="line-height:1.85">
+    · 极光推送 JPush（jpush_flutter，深圳市和讯华谷信息技术有限公司）：推送通知；收集设备标识、系统信息、推送注册 ID 等；共享：是（仅用于推送）<br>
+    · image_picker（系统相册 / 相机）：凭证图片；仅主动选择时使用；共享：否（本地能力）<br>
+    · SharedPreferences：本地保存登录态；共享：否（仅存于设备本地）
+  </div></div>
+  <div class="sect"><span>五、信息的存储与保护</span></div>
+  <div class="card"><div class="mini" style="line-height:1.85">
+    数据存储于【开发者主体名称】自行部署的服务器；传输加密（HTTPS）；密码 bcrypt 单向哈希；账单仅参与者 / 群主可读；数据库每日快照备份；关键操作留存日志；请您妥善保管账户与密码。
+  </div></div>
+  <div class="sect"><span>六、保存期限</span></div>
+  <div class="card"><div class="mini" style="line-height:1.85">
+    仅在实现目的所必需的期限内保留；注销后删除或匿名化处理；法定义务留存的数据在法定保留期届满后删除。
+  </div></div>
+  <div class="sect"><span>七、您的权利</span></div>
+  <div class="card"><div class="mini" style="line-height:1.85">
+    访问、更正、删除（含「删除我的数据」，30 天内物理删除）、撤回同意（关闭推送 / 相机 / 相册权限）、注销账号。<br>
+    行使权利请联系我们，15 个工作日内响应。
+  </div></div>
+  <div class="sect"><span>八、账号注销</span></div>
+  <div class="card"><div class="mini" style="line-height:1.85">
+    「设置 → 账号安全 → 注销」；或通过联系邮箱人工注销。注销为不可逆操作，数据将被删除或匿名化处理，请先导出需要保留的数据。
+  </div></div>
+  <div class="sect"><span>九、未成年人保护</span></div>
+  <div class="card"><div class="mini" style="line-height:1.85">
+    面向年满 14 周岁的用户；未满 14 周岁应在监护人同意后使用，如需删除数据请及时联系我们。
+  </div></div>
+  <div class="sect"><span>十、Cookie 与本地存储</span></div>
+  <div class="card"><div class="mini" style="line-height:1.85">
+    SharedPreferences 仅在设备本地保存登录态等偏好，不上传、不追踪；不使用用于广告追踪或跨应用画像的 Cookie 或类似技术。
+  </div></div>
+  <div class="sect"><span>十一、本政策的更新</span></div>
+  <div class="card"><div class="mini" style="line-height:1.85">
+    修订后在本页面公布，重大变更通过 App 内提示或推送通知；继续使用即视为接受更新。
+  </div></div>
+  <div class="sect"><span>十二、联系我们</span></div>
+  <div class="card"><div class="mini" style="line-height:1.85">
+    开发者主体名称：【开发者主体名称】<br>
+    联系邮箱：<b>davedefy@163.com</b><br>
+    App 备案号：【App备案号】<br>
+    收到请求后 15 个工作日内予以响应。
+  </div></div>
+</section>
+
+<!-- 54c 开源声明 -->
+<section class="screen" id="s-p54c">
+  <div class="nav"><span class="back" onclick="go('s-p54')">‹ 返回</span><h2>🧾 开源声明</h2><span class="ic">⭕</span></div>
+  <div class="card" style="padding:10px 14px">
+    <div class="mini dim">生效日期：2026-08-24 · 版本 V1.0.0 · 首次发布（无更新内容）</div>
+  </div>
+  <div class="card">
+    <div class="tape pink"></div>
+    <div class="mini" style="line-height:1.85">「AA分账」的开发与技术实现大量使用了优秀开源软件，我们在此对每一位开源贡献者致以诚挚感谢。各项目的版权归其权利人所有，许可条款以各项目随附的 LICENSE 文件为准。</div>
+  </div>
+  <div class="sect"><span>一、客户端（Flutter 应用）</span></div>
+  <div class="card"><div class="mini" style="line-height:1.85">
+    · Flutter 框架与 Dart 语言：Google 及社区贡献者维护（BSD-3-Clause）<br>
+    · flutter_riverpod / go_router / dio / shared_preferences / qr_flutter / intl / image_picker / device_info_plus / jpush_flutter / permission_handler / mobile_scanner / cupertino_icons 等（MIT / BSD-3-Clause / Apache-2.0 等，以各自 LICENSE 为准）
+  </div></div>
+  <div class="sect"><span>二、服务端</span></div>
+  <div class="card"><div class="mini" style="line-height:1.85">
+    · NestJS 10（TypeScript，MIT）与 Node.js<br>
+    · PostgreSQL 16（PostgreSQL License）、Redis（BSD-3-Clause）、BullMQ（MIT）<br>
+    · MinIO（AGPLv3）、Docker Compose、Nginx 等遵循各自开源许可
+  </div></div>
+  <div class="sect"><span>三、字体</span></div>
+  <div class="card"><div class="mini" style="line-height:1.85">
+    站酷快乐体（ZCOOL KuaiLe）、龙藏体（Long Cang）、知音漫兴体（Zhi Mang Xing）、Caveat、JetBrains Mono、Noto Sans SC，均按 SIL Open Font License 1.1 等可免费商用的授权使用，版权归各字体作者所有。
+  </div></div>
+  <div class="sect"><span>四、原创内容与版权说明</span></div>
+  <div class="card"><div class="mini" style="line-height:1.85">
+    界面设计、手绘风格、图标素材与吉祥物「团团」均为原创，著作权归开发者所有；自有代码当前未开放源码；未经书面许可不得复制、改编、传播或用于商业用途。
+  </div></div>
+  <div class="sect"><span>五、致谢与联系</span></div>
+  <div class="card"><div class="mini" style="line-height:1.85">
+    再次感谢所有开源社区与贡献者。如有任何疑问，请联系：<b>davedefy@163.com</b>
+  </div></div>
 </section>
 
 <!-- 60 全局搜索 -->

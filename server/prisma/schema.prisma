@@ -69,6 +69,7 @@ enum NotificationType {
   invite // 群邀请
   regular // 定期账单生成
   settled // 结清
+  member // 新成员加入（SSE 触发客户端刷新成员列表）
 }
 
 // -------- 用户 --------
@@ -96,8 +97,30 @@ model User {
   regularBills     RegularBill[]
   settlementsFrom  Settlement[]     @relation("SettlementFrom")
   settlementsTo    Settlement[]     @relation("SettlementTo")
+  devices          UserDevice[]
 
   @@map("users")
+}
+
+// -------- 登录设备 --------
+// 客户端登录/注册时上报设备快照，服务端按 userId+deviceId 唯一记录
+// （同一设备重复登录只更新 lastLoginAt 与机型信息；删除 = 退出该设备）。
+model UserDevice {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  deviceId    String   @map("device_id") @db.VarChar(64) // 客户端持久化生成的设备标识
+  platform    String   @map("platform") @db.VarChar(16) // android / ios / windows ...
+  deviceName  String   @map("device_name") @db.VarChar(64) // 机型（如 Xiaomi 2509FPN0BC）
+  osVersion   String   @map("os_version") @db.VarChar(32)
+  ip          String?  @map("ip") @db.VarChar(45) // 最近一次登录 IP（v4/v6）
+  lastLoginAt DateTime @default(now()) @map("last_login_at") @db.Timestamptz
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, deviceId], map: "user_devices_user_id_device_id_key")
+  @@index([userId])
+  @@map("user_devices")
 }
 
 // -------- 群组 --------

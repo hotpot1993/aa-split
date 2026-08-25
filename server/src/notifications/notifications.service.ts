@@ -51,7 +51,19 @@ export class NotificationsService {
     return n;
   }
 
-  /** 批量创建（可选并合理：给多个参与者写 new_bill） */
+  /** 数据变更信号（静默）：只推 SSE，不写通知库、不触极光。
+   *  客户端收到后仅用于刷新数据（如对方添加/修改账单后列表实时更新）。 */
+  pushDataEvent(userId: string, input: { refType?: string; refId?: string }) {
+    this.sse.push(userId, {
+      type: 'data',
+      title: '',
+      body: '',
+      refType: input.refType ?? null,
+      refId: input.refId ?? null,
+    });
+  }
+
+  /** 批量创建（给多个接收者写同一条通知） */
   async createMany(userIds: string[], input: CreateNotificationInput) {
     const created = [];
     for (const userId of userIds) {

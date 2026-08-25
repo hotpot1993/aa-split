@@ -62,6 +62,18 @@ export class BillsController {
     return this.billsService.uploadReceipt(user.sub, id, file);
   }
 
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(FileInterceptor('file'))
+  @Post(':id/receipts/:receiptId/replace')
+  replaceReceipt(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+    @Param('receiptId') receiptId: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.billsService.replaceReceipt(user.sub, id, receiptId, file);
+  }
+
   @Post(':id/mark-paid')
   markPaid(
     @CurrentUser() user: JwtPayload,
@@ -95,5 +107,14 @@ export class GroupBillsController {
     @Query() query: PaginationQueryDto,
   ) {
     return this.billsService.listBills(user.sub, groupId, query.page, query.pageSize);
+  }
+
+  /** 一键结清：群内全部未结清账单统一标记已付 */
+  @Post('settle-all')
+  settleAll(
+    @CurrentUser() user: JwtPayload,
+    @Param('groupId') groupId: string,
+  ) {
+    return this.billsService.settleAll(user.sub, groupId);
   }
 }

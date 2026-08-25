@@ -5,6 +5,7 @@ import '../../models/group_member.dart';
 import '../../models/notification_item.dart';
 import '../../models/regular_bill.dart';
 import '../../models/user.dart';
+import '../../models/user_device.dart';
 
 /// 内存假数据（Demo 模式）
 ///
@@ -33,6 +34,26 @@ class MockStore {
   final List<Bill> bills = [];
   final List<NotificationItem> notifications = [];
   final List<RegularBill> regularBills = [];
+  final List<UserDevice> devices = [
+    UserDevice(
+      id: 'demo-dev-1',
+      deviceId: 'demo-current',
+      platform: 'android',
+      deviceName: '演示设备 · Android',
+      osVersion: '15',
+      ip: '127.0.0.1',
+      lastLoginAt: DateTime.now(),
+    ),
+    UserDevice(
+      id: 'demo-dev-2',
+      deviceId: 'demo-old',
+      platform: 'ios',
+      deviceName: '旧手机 · iPhone 15',
+      osVersion: '18',
+      ip: '127.0.0.1',
+      lastLoginAt: DateTime.now().subtract(const Duration(days: 1)),
+    ),
+  ];
 
   // ---------- 查询 ----------
 
@@ -355,16 +376,6 @@ class MockStore {
         isRead: false,
         refType: 'bill',
         refId: 'b1',
-      ),
-      NotificationItem(
-        id: 'n2',
-        type: NotifyType.newBill,
-        title: '合租小分队新增了账单',
-        body: '7月房租 ¥1,500.00 · 昨天',
-        createdAt: now.subtract(const Duration(days: 1)),
-        isRead: false,
-        refType: 'bill',
-        refId: 'b5',
       ),
       NotificationItem(
         id: 'n3',

@@ -62,52 +62,52 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         Stack(
           clipBehavior: Clip.none,
           children: [
-            const SizedBox(height: 0),
-            const Positioned(top: -16, right: 8, child: Text('⭐', style: TextStyle(fontSize: 18, color: AAColors.ink))),
-            const Positioned(top: 70, left: 0, child: Text('💛', style: TextStyle(fontSize: 18, color: AAColors.ink))),
+            SizedBox(height: 0),
+            Positioned(top: -16, right: 8, child: Text('⭐', style: TextStyle(fontSize: 18, color: AAColors.ink))),
+            Positioned(top: 70, left: 0, child: Text('💛', style: TextStyle(fontSize: 18, color: AAColors.ink))),
             const SizedBox.shrink(),
           ],
         ),
-        const SizedBox(height: 46),
+        SizedBox(height: 46),
         // 品牌区：团团 + AA分账
-        const Center(child: TuanTuanPanda(size: 110)),
-        const SizedBox(height: 8),
+        Center(child: TuanTuanPanda(size: 110)),
+        SizedBox(height: 8),
         // 品牌字：知音漫兴体（Demo P02：Zhi Mang Xing 44px）
-        const Center(
+        Center(
           child: Text('AA分账',
               style: TextStyle(
-                  fontFamily: 'ZhiMangXing',
+                  fontFamily: AAFonts.brand,
                   fontSize: 44,
                   color: AAColors.ink,
                   height: 1.1)),
         ),
-        const Center(
+        Center(
           child: Text('一起吃饭，轻松AA～',
               style: TextStyle(
-                  fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
+                  fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft)),
         ),
-        const SizedBox(height: 44),
+        SizedBox(height: 44),
         // 账户名 / 密码（Demo .line：虚线 + 左右分隔）
         AaLine(
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const Text('账户名',
+              Text('账户名',
                   style: TextStyle(
-                      fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.inkSoft)),
+                      fontFamily: AAFonts.title, fontSize: 15, color: AAColors.inkSoft)),
               SizedBox(
                 width: 200,
                 child: TextField(
                   controller: _account,
                   textAlign: TextAlign.end,
                   onChanged: (_) => setState(() => _error = null),
-                  style: const TextStyle(
-                      fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.ink),
-                  decoration: const InputDecoration(
+                  style: TextStyle(
+                      fontFamily: AAFonts.title, fontSize: 15, color: AAColors.ink),
+                  decoration: InputDecoration(
                     hintText: 'tuanzi_t',
                     hintStyle: TextStyle(
-                        fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.inkSoft),
+                        fontFamily: AAFonts.title, fontSize: 15, color: AAColors.inkSoft),
                     border: InputBorder.none,
                     isDense: true,
                     contentPadding: EdgeInsets.zero,
@@ -122,9 +122,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const Text('密码',
+              Text('密码',
                   style: TextStyle(
-                      fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.inkSoft)),
+                      fontFamily: AAFonts.title, fontSize: 15, color: AAColors.inkSoft)),
               SizedBox(
                 width: 200,
                 child: TextField(
@@ -132,18 +132,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   obscureText: _obscure,
                   textAlign: TextAlign.end,
                   onChanged: (_) => setState(() => _error = null),
-                  style: const TextStyle(
-                      fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.ink),
+                  style: TextStyle(
+                      fontFamily: AAFonts.title, fontSize: 15, color: AAColors.ink),
                   decoration: InputDecoration(
                     hintText: '••••••••',
-                    hintStyle: const TextStyle(
-                        fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.inkSoft),
+                    hintStyle: TextStyle(
+                        fontFamily: AAFonts.title, fontSize: 15, color: AAColors.inkSoft),
                     border: InputBorder.none,
                     isDense: true,
                     contentPadding: EdgeInsets.zero,
                     suffixIcon: IconButton(
                       icon: Text(_obscure ? '🙈' : '👁️',
-                          style: const TextStyle(fontSize: 15)),
+                          style: TextStyle(fontSize: 15)),
                       onPressed: () => setState(() => _obscure = !_obscure),
                     ),
                   ),
@@ -152,27 +152,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ],
           ),
         ),
-        const SizedBox(height: 10),
+        SizedBox(height: 10),
         Row(
           children: [
             AaCheckbox(
               value: _remember,
               onChanged: () => setState(() => _remember = !_remember),
             ),
-            const SizedBox(width: 8),
-            const Text('记住我',
+            SizedBox(width: 8),
+            Text('记住我',
                 style: TextStyle(
-                    fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.ink)),
+                    fontFamily: AAFonts.title, fontSize: 12, color: AAColors.ink)),
           ],
         ),
         FieldError(message: _error),
-        const SizedBox(height: 10),
+        SizedBox(height: 10),
         DoodleButton(
           label: _submitting ? '登录中…' : '登 录🐾',
           big: true,
           onPressed: _canSubmit && !_submitting ? _submit : null,
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -180,33 +180,33 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               onTap: () => context.push('/forgot'),
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   border: Border(
                     bottom: BorderSide(color: AAColors.marker, width: 2),
                   ),
                 ),
-                child: const Text('忘记密码？',
+                child: Text('忘记密码？',
                     style: TextStyle(
-                        fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.ink)),
+                        fontFamily: AAFonts.title, fontSize: 12, color: AAColors.ink)),
               ),
             ),
             InkWell(
               onTap: () => context.push('/register'),
-              child: const Text('注册新账户 →',
+              child: Text('注册新账户 →',
                   style: TextStyle(
-                      fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.ink)),
+                      fontFamily: AAFonts.title, fontSize: 12, color: AAColors.ink)),
             ),
           ],
         ),
-        const SizedBox(height: 24),
+        SizedBox(height: 24),
         Center(
           child: TextButton(
             onPressed: () => showAaToast(context, '演示账号：tuanzi / 任意密码'),
-            child: const Text('演示一下',
-                style: TextStyle(color: AAColors.inkSoft, fontFamily: 'ZCOOLKuaiLe')),
+            child: Text('演示一下',
+                style: TextStyle(color: AAColors.inkSoft, fontFamily: AAFonts.title)),
           ),
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
       ],
     );
   }

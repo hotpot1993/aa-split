@@ -5,7 +5,10 @@ import {
   Matches,
   MaxLength,
   MinLength,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
+import { DeviceInfoDto } from './device-info.dto';
 
 export class RegisterDto {
   @IsString()
@@ -32,4 +35,9 @@ export class RegisterDto {
   @IsString()
   @MaxLength(100)
   securityAnswer!: string;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => DeviceInfoDto)
+  deviceInfo?: DeviceInfoDto;
 }

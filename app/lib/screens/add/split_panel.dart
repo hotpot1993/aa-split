@@ -69,15 +69,15 @@ class _SplitPanelState extends State<SplitPanel> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _TypeRowWidget(selected: _type, onSelect: (t) => setState(() => _type = t)),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         _body(),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         DoodleButton(
           label: '生效',
           expand: true,
           onPressed: _apply,
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
       ],
     );
   }
@@ -94,16 +94,16 @@ class _SplitPanelState extends State<SplitPanel> {
           children: [
             if (widget.members.length > 1)
               Center(child: _PizzaPreview(slices: widget.members.length)),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text('每人均摊', textAlign: TextAlign.center, style: text.titleSmall),
-            const SizedBox(height: 4),
+            SizedBox(height: 4),
             Center(
               child: HighlightText(
                 '¥${(per ~/ 100)}.${(per % 100).toString().padLeft(2, '0')}/人',
-                style: const TextStyle(fontFamily: 'LongCang', fontSize: 30, color: AAColors.ink),
+                style: TextStyle(fontFamily: AAFonts.hand, fontSize: 30, color: AAColors.ink),
               ),
             ),
-            const SizedBox(height: 4),
+            SizedBox(height: 4),
             Text('共 ${widget.members.length} 人 · 追加免分摊人员请切到"免分摊"',
                 textAlign: TextAlign.center, style: text.bodySmall),
           ],
@@ -112,7 +112,7 @@ class _SplitPanelState extends State<SplitPanel> {
         return Column(
           children: [
             for (final m in widget.members) _customRow(m),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(
               '合计 ${Fmt.yuan(_customSum())} ${_customSum() == widget.amountCents ? '' : '（需等于总额 ${Fmt.yuan(widget.amountCents)}）'}',
               style: text.bodySmall,
@@ -128,25 +128,25 @@ class _SplitPanelState extends State<SplitPanel> {
                 child: Row(
                   children: [
                     Text(m.nickname, style: text.titleMedium),
-                    const Spacer(),
+                    Spacer(),
                     SizedBox(
                       width: 80,
                       child: TextField(
                         controller: TextEditingController(text: _percent[m.userId]?.toStringAsFixed(0) ?? '0'),
                         keyboardType: TextInputType.number,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(fontFamily: 'LongCang', fontSize: 20),
+                        style: TextStyle(fontFamily: AAFonts.hand, fontSize: 20),
                         onChanged: (v) => setState(() {
                           _percent[m.userId] = double.tryParse(v) ?? 0;
                         }),
-                        decoration: const InputDecoration(isDense: true),
+                        decoration: InputDecoration(isDense: true),
                       ),
                     ),
-                    const Text('%', style: TextStyle(fontSize: 12)),
+                    Text('%', style: TextStyle(fontSize: 12)),
                   ],
                 ),
               ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text('总占比 ${_totalPercent().toStringAsFixed(0)}%', style: text.bodySmall),
           ],
         );
@@ -155,7 +155,7 @@ class _SplitPanelState extends State<SplitPanel> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('勾选要免摊的人（请客者/司机等）', style: text.bodySmall),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -171,16 +171,16 @@ class _SplitPanelState extends State<SplitPanel> {
                   }),
                   child: Chip(
                     avatar: Text(on ? '🏅' : ''),
-                    label: Text(m.nickname, style: const TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 13, color: AAColors.ink)),
+                    label: Text(m.nickname, style: TextStyle(fontFamily: AAFonts.title, fontSize: 13, color: AAColors.ink)),
                     backgroundColor: on ? AAColors.lemon : AAColors.cardWhite,
-                    side: const BorderSide(color: AAColors.ink, width: 1.5),
+                    side: BorderSide(color: AAColors.ink, width: 1.5),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
                   ),
                 );
               }).toList(),
             ),
-            const SizedBox(height: 8),
-            const Text('免摊人金额清零，其余人重新平均', style: TextStyle(fontSize: 12, color: AAColors.inkSoft)),
+            SizedBox(height: 8),
+            Text('免摊人金额清零，其余人重新平均', style: TextStyle(fontSize: 12, color: AAColors.inkSoft)),
           ],
         );
     }
@@ -193,19 +193,19 @@ class _SplitPanelState extends State<SplitPanel> {
       child: Row(
         children: [
           Text(m.nickname, style: text.titleMedium),
-          const Spacer(),
+          Spacer(),
           SizedBox(
             width: 90,
             child: TextField(
               controller: _ctrl[m.userId],
               keyboardType: TextInputType.number,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontFamily: 'LongCang', fontSize: 20),
+              style: TextStyle(fontFamily: AAFonts.hand, fontSize: 20),
               onChanged: (_) => setState(() {}),
               decoration: InputDecoration(
                 isDense: true,
                 prefixText: '¥',
-                prefixStyle: const TextStyle(fontSize: 14),
+                prefixStyle: TextStyle(fontSize: 14, fontFamily: AAFonts.currency),
               ),
             ),
           ),
@@ -296,23 +296,23 @@ class _TypeRowWidget extends StatelessWidget {
               decoration: ShapeDecoration(
                 color: selected == it.$1 ? AAColors.marker : AAColors.cardWhite,
                 shape: WonkyBorder(radius: AARadii.opt),
-                shadows: const [AATokens.optShadow],
+                shadows: [AATokens.optShadow],
               ),
               child: Row(
                 children: [
-                  Text(it.$2, style: const TextStyle(fontSize: 26)),
-                  const SizedBox(width: 12),
+                  Text(it.$2, style: TextStyle(fontSize: 26)),
+                  SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(it.$3,
-                            style: const TextStyle(
-                                fontFamily: 'ZCOOLKuaiLe', fontSize: 14, color: AAColors.ink)),
-                        const SizedBox(height: 2),
+                            style: TextStyle(
+                                fontFamily: AAFonts.title, fontSize: 14, color: AAColors.ink)),
+                        SizedBox(height: 2),
                         Text(it.$4,
-                            style: const TextStyle(
-                                fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
+                            style: TextStyle(
+                                fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft)),
                       ],
                     ),
                   ),
@@ -333,7 +333,7 @@ class _PizzaPreview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CustomPaint(
-      size: const Size(120, 120),
+      size: Size(120, 120),
       painter: _PizzaPainter(slices),
     );
   }

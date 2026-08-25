@@ -5,6 +5,8 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Ip,
+  Param,
   Patch,
   Post,
   Query,
@@ -22,6 +24,7 @@ import { ForgotResetDto } from './dto/forgot-reset.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { SecurityQuestionQueryDto } from './dto/security-question.dto';
+import { DeviceInfoDto } from './dto/device-info.dto';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -30,16 +33,16 @@ export class AuthController {
 
   @Public()
   @Post('register')
-  register(@Body() dto: RegisterDto) {
-    return this.authService.register(dto);
+  register(@Body() dto: RegisterDto, @Ip() ip: string) {
+    return this.authService.register(dto, ip);
   }
 
   @Public()
   @Throttle({ default: { limit: 5, ttl: 600000 } }) // 登录单独限流 5 次 / 10 分钟
   @HttpCode(HttpStatus.OK)
   @Post('login')
-  login(@Body() dto: LoginDto) {
-    return this.authService.login(dto);
+  login(@Body() dto: LoginDto, @Ip() ip: string) {
+    return this.authService.login(dto, ip);
   }
 
   @Public()
@@ -77,6 +80,38 @@ export class AuthController {
   @Get('me')
   me(@CurrentUser() user: JwtPayload) {
     return this.authService.me(user.sub);
+  }
+
+  // ---------- 登录设备（P52 账号安全：真实数据） ----------
+
+  /** 上报当前设备（幂等 upsert；打开「账号安全」页时调用，保证本机在列） */
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @Post('devices')
+  ensureDevice(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: DeviceInfoDto,
+    @Ip() ip: string,
+  ) {
+    return this.authService.recordDevice(user.sub, dto, ip);
+  }
+
+  /** 登录设备列表（最近登录在前） */
+  @ApiBearerAuth()
+  @Get('devices')
+  devices(@CurrentUser() user: JwtPayload) {
+    return this.authService.listDevices(user.sub);
+  }
+
+  /** 退出某台设备（移除记录；不存在也视为成功） */
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @Delete('devices/:deviceId')
+  removeDevice(
+    @CurrentUser() user: JwtPayload,
+    @Param('deviceId') deviceId: string,
+  ) {
+    return this.authService.removeDevice(user.sub, deviceId);
   }
 
   /** P50：编辑个人资料（昵称 / 头像 / 个性签名） */

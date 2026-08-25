@@ -6,8 +6,11 @@ import 'package:go_router/go_router.dart';
 import 'package:aa_design/aa_design.dart';
 
 import '../../core/utils/format.dart';
+import '../../models/bill.dart';
 import '../../models/transfer.dart';
 import '../../providers/data_providers.dart';
+import '../../providers/refresh_provider.dart';
+import '../../providers/repositories.dart';
 import '../../widgets/avatar.dart';
 import '../../widgets/common.dart';
 import '../../widgets/sheet.dart';
@@ -22,6 +25,7 @@ class SettlementScreen extends ConsumerStatefulWidget {
 
 class _SettlementScreenState extends ConsumerState<SettlementScreen> {
   bool _perBill = false;
+  bool _settling = false;
 
   static const _tints = [
     Color(0xFFF0F6FB),
@@ -38,7 +42,10 @@ class _SettlementScreenState extends ConsumerState<SettlementScreen> {
             const <Transfer>[];
 
     final transfers = _perBill ? perBillTransfers : (plan?.transfers ?? const <Transfer>[]);
-    final members = (ref.watch(groupMembersProvider).value ?? const {})[widget.groupId] ?? [];
+    final members = (ref.watch(groupMembersProvider).value ?? {})[widget.groupId] ?? [];
+    final bills = ref.watch(billsProvider).value ?? const <Bill>[];
+    final hasUnsettled = bills.any(
+        (b) => b.groupId == widget.groupId && !b.fullySettled);
 
     return AaScaffold(
       appBar: AaAppBar(
@@ -57,32 +64,32 @@ class _SettlementScreenState extends ConsumerState<SettlementScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text.rich(TextSpan(children: [
-                  const TextSpan(
+                  TextSpan(
                       text: '🎉 最少 ',
                       style: TextStyle(
-                          fontFamily: 'ZCOOLKuaiLe', fontSize: 26, color: AAColors.ink)),
+                          fontFamily: AAFonts.title, fontSize: 26, color: AAColors.ink)),
                   TextSpan(
                     text: '${transfers.length}',
-                    style: const TextStyle(
-                        fontFamily: 'LongCang',
+                    style: TextStyle(
+                        fontFamily: AAFonts.hand,
                         fontSize: 30,
                         color: AASemantic.amountNeg),
                   ),
-                  const TextSpan(
+                  TextSpan(
                       text: ' 笔清账！',
                       style: TextStyle(
-                          fontFamily: 'ZCOOLKuaiLe', fontSize: 26, color: AAColors.ink)),
+                          fontFamily: AAFonts.title, fontSize: 26, color: AAColors.ink)),
                 ])),
-                const SizedBox(height: 4),
-                const Text('团团帮你算好了，按这个转就行',
+                SizedBox(height: 4),
+                Text('团团帮你算好了，按这个转就行',
                     style: TextStyle(
-                        fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
+                        fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft)),
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           if (transfers.isEmpty)
-            const EmptyState(
+            EmptyState(
               title: '全群已清账，两不相欠啦 🎉',
               subtitle: '这笔不用再转了',
               tag: 'P23/P25 已清账 🎉',
@@ -105,7 +112,7 @@ class _SettlementScreenState extends ConsumerState<SettlementScreen> {
                 toAvatar: avat(e.value.toUserId),
               );
             }),
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           Row(
             children: [
               Expanded(
@@ -117,7 +124,7 @@ class _SettlementScreenState extends ConsumerState<SettlementScreen> {
                   onPressed: () => _copyPlan(transfers),
                 ),
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: 10),
               Expanded(
                 child: DoodleButton(
                   label: '📱 收款码卡片',
@@ -129,13 +136,20 @@ class _SettlementScreenState extends ConsumerState<SettlementScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           DoodleButton(
             label: '📢 开始催款',
             big: true,
             onPressed: () => context.push('/groups/${widget.groupId}/remind'),
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
+          DoodleButton(
+            label: _settling ? '结清中…' : '✅ 一键结清（全部标记已付）',
+            type: DoodleButtonType.danger,
+            big: true,
+            onPressed: hasUnsettled && !_settling ? _settleAll : null,
+          ),
+          SizedBox(height: 10),
           // 模式切换提示（Demo 底部 mini dim 文案）
           InkWell(
             onTap: () => setState(() => _perBill = !_perBill),
@@ -144,11 +158,11 @@ class _SettlementScreenState extends ConsumerState<SettlementScreen> {
                   ? '🔀 已选：逐笔结算模式 · 切换到最少笔数'
                   : '🔀 已选：最少笔数模式 · 切换到逐笔结算',
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                  fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft),
+              style: TextStyle(
+                  fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft),
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
         ],
       ),
     );
@@ -163,6 +177,28 @@ class _SettlementScreenState extends ConsumerState<SettlementScreen> {
     }
     Clipboard.setData(ClipboardData(text: sb.toString()));
     showAaToast(context, '💬 转账文案已复制');
+  }
+
+  /// 一键结清：确认后把群内全部未结清账单标记为已付
+  Future<void> _settleAll() async {
+    final ok = await showAaConfirm(
+      context,
+      title: '一键结清全部账单？',
+      subtitle: '本群所有未结清账单将统一标记为「已付」，结算方案随之清空',
+      confirmLabel: '一键结清',
+    );
+    if (ok != true || !mounted) return;
+    setState(() => _settling = true);
+    try {
+      final n = await ref.read(billRepositoryProvider).settleAll(widget.groupId);
+      if (!mounted) return;
+      ref.read(refreshProvider.notifier).bump();
+      showAaToast(context, n > 0 ? '🎉 已结清 $n 笔账单' : '本群已清账啦');
+    } catch (e) {
+      if (mounted) showAaToast(context, '结清失败：$e');
+    } finally {
+      if (mounted) setState(() => _settling = false);
+    }
   }
 }
 
@@ -190,30 +226,30 @@ class _TransferCard extends StatelessWidget {
       child: Row(
         children: [
           SketchAvatar(emoji: fromAvatar, size: 44, name: transfer.fromName, background: tint),
-          const SizedBox(width: 10),
+          SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('${transfer.fromName} → ${transfer.toName}',
-                    style: const TextStyle(
-                        fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
-                const SizedBox(height: 2),
+                    style: TextStyle(
+                        fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft)),
+                SizedBox(height: 2),
                 HandAmount(amountCents: transfer.amountCents, color: AAColors.ink, size: 30),
                 Text(
                   _note(),
-                  style: const TextStyle(
-                      fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft),
+                  style: TextStyle(
+                      fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 6),
+          SizedBox(width: 6),
           CustomPaint(
-            size: const Size(44, 26),
+            size: Size(44, 26),
             painter: _ArrowSvgPainter(),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           HandTag(
             transfer.fromUserId == 'me' ? '我去付' : '待付',
             fontSize: 12,

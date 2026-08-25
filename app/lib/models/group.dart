@@ -80,3 +80,18 @@ class Group {
         totalCents: totalCents ?? this.totalCents,
       );
 }
+
+/// 通过邀请链接 / 二维码加入群组的结果
+class GroupJoinResult {
+  const GroupJoinResult({
+    required this.id,
+    required this.name,
+    required this.alreadyJoined,
+  });
+
+  final String id;
+  final String name;
+
+  /// true = 加入前已是群成员（服务端幂等返回）
+  final bool alreadyJoined;
+}

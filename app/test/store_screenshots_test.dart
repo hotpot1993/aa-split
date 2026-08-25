@@ -51,6 +51,9 @@ Future<void> _loadAllFonts() async {
   await _loadFont('ZhiMangXing', ['$base/ZhiMangXing-Regular.ttf']);
   // 英文/数字点缀（Caveat 手写体）
   await _loadFont('Caveat', ['$base/Caveat-VariableFont_wght.ttf']);
+  // 货币符号 ¥（两种风格统一 JetBrains Mono；标准风格金额/正文）
+  await _loadFont('JetBrainsMono', ['$base/JetBrainsMono-Variable.ttf']);
+  await _loadFont('NotoSansSC', ['$base/NotoSansSC-Variable.ttf']);
   // emoji 家族（系统 emoji 字体），通过 fontFamilyFallback 兜底头像/分类图标
   await _loadFont('Emoji', [r'C:\Windows\Fonts\seguiemj.ttf']);
 }

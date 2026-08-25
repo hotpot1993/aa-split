@@ -57,7 +57,7 @@ class _RegularBillScreenState extends ConsumerState<RegularBillScreen> {
                     ref.read(refreshProvider.notifier).bump();
                   },
                 )),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
         ],
       ),
     );
@@ -93,12 +93,12 @@ class _Banner extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 16),
       child: Column(
         children: [
-          const Image(image: AssetImage('assets/icons/calendar.png'), width: 44, height: 44),
-          const Text('房租水电，每月一次记好多遍？',
-              style: TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 16, color: AAColors.ink)),
-          const SizedBox(height: 2),
-          const HighlightText('交给团团记着！',
-              style: TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 16, color: AAColors.ink)),
+          Image(image: AssetImage('assets/icons/calendar.png'), width: 44, height: 44),
+          Text('房租水电，每月一次记好多遍？',
+              style: TextStyle(fontFamily: AAFonts.title, fontSize: 16, color: AAColors.ink)),
+          SizedBox(height: 2),
+          HighlightText('交给团团记着！',
+              style: TextStyle(fontFamily: AAFonts.title, fontSize: 16, color: AAColors.ink)),
         ],
       ),
     );
@@ -123,17 +123,17 @@ class _RegularCard extends StatelessWidget {
           Row(
             children: [
               Text(regular.title, style: text.titleLarge),
-              const Spacer(),
+              Spacer(),
               HandToggle(value: regular.active, activeColor: AAColors.mint, onChanged: onToggle),
             ],
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           Row(
             children: [
               HandAmount(amountCents: regular.amountCents, color: AAColors.ink, size: 22),
-              const SizedBox(width: 10),
+              SizedBox(width: 10),
               HandTag.label(label: Cat.label(regular.category)),
-              const SizedBox(width: 6),
+              SizedBox(width: 6),
               HandTag.label(label: _cycleText(regular), color: AAColors.lilac),
             ],
           ),
@@ -178,9 +178,9 @@ class _CreateRegularSheetState extends ConsumerState<_CreateRegularSheet> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text('新建定期账单', style: text.headlineSmall),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         _CalendarTear(),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         Row(
           children: [
             for (final c in RegularCycle.values)
@@ -190,7 +190,7 @@ class _CreateRegularSheetState extends ConsumerState<_CreateRegularSheet> {
           ],
         ),
         if (_cycle == RegularCycle.monthly) ...[
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           Text('每月几号？', style: text.bodySmall),
           SizedBox(
             height: 40,
@@ -211,20 +211,20 @@ class _CreateRegularSheetState extends ConsumerState<_CreateRegularSheet> {
                       shape: BoxShape.circle,
                       border: Border.all(color: on ? AAColors.coral : AAColors.ink, width: 1.5),
                     ),
-                    child: Text('$d', style: const TextStyle(fontSize: 13)),
+                    child: Text('$d', style: TextStyle(fontSize: 13)),
                   ),
                 );
               }),
             ),
           ),
         ],
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         Text('标题', style: text.bodyMedium),
         HandTextField(controller: _title),
-        const SizedBox(height: 10),
+        SizedBox(height: 10),
         Text('金额（元）', style: text.bodyMedium),
         HandTextField(controller: _amount, keyboardType: TextInputType.number),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         Wrap(
           spacing: 8,
           runSpacing: 8,
@@ -240,13 +240,13 @@ class _CreateRegularSheetState extends ConsumerState<_CreateRegularSheet> {
             );
           }).toList(),
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
         DoodleButton(
           label: '开启自动生成',
           expand: true,
           onPressed: _open,
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
       ],
     );
   }
@@ -269,7 +269,7 @@ class _CreateRegularSheetState extends ConsumerState<_CreateRegularSheet> {
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: on ? AAColors.mint : AAColors.ink, width: 1.5),
         ),
-        child: Text(label, style: const TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 13, color: AAColors.ink)),
+        child: Text(label, style: TextStyle(fontFamily: AAFonts.title, fontSize: 13, color: AAColors.ink)),
       ),
     );
   }
@@ -320,12 +320,12 @@ class _CalendarTear extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AAColors.ink, width: 1.5),
       ),
-      child: const Row(
+      child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Image(image: AssetImage('assets/icons/calendar.png'), width: 28, height: 28),
           SizedBox(width: 8),
-          Text('选个周期，到点自动生成', style: TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 14, color: AAColors.ink)),
+          Text('选个周期，到点自动生成', style: TextStyle(fontFamily: AAFonts.title, fontSize: 14, color: AAColors.ink)),
         ],
       ),
     );

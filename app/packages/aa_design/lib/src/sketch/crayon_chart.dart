@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../tokens/aa_colors.dart';
 import '../tokens/aa_tokens.dart';
 
+import '../theme/aa_fonts.dart';
 /// 手绘蜡笔柱状图 —— 严格照搬 Demo P13 `.bars`：
 /// `.bar{border:2.5px solid var(--ink);border-radius:8px 3px 6px 4px/4px 6px 3px 8px;
 ///  background:repeating-linear-gradient(0deg,rgba(68,58,50,.10) 0 4px,transparent 4px 9px), var(--paper2)}`
@@ -49,7 +50,7 @@ class CrayonBarChart extends StatelessWidget {
                   children: [
                     Text(
                       topDoodles[i % topDoodles.length],
-                      style: const TextStyle(fontSize: 14, height: 1.2),
+                      style: TextStyle(fontSize: 14, height: 1.2),
                     ),
                     Stack(
                       clipBehavior: Clip.none,
@@ -61,12 +62,12 @@ class CrayonBarChart extends StatelessWidget {
                               : max(10.0, barMax * values[i] / maxV),
                           decoration: BoxDecoration(
                             color: i == highlightIndex
-                                ? const Color(0xFFFFE8C2)
+                                ? Color(0xFFFFE8C2)
                                 : AAColors.paperDeep,
                             border: Border.all(color: AAColors.ink, width: 2.5),
                             borderRadius: AARadii.bar,
                           ),
-                          child: CustomPaint(painter: const _StripePainter()),
+                          child: CustomPaint(painter: _StripePainter()),
                         ),
                         Positioned(
                           top: 2,
@@ -75,7 +76,7 @@ class CrayonBarChart extends StatelessWidget {
                           child: Text(
                             values[i].toStringAsFixed(0),
                             textAlign: TextAlign.center,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontWeight: FontWeight.normal,
                               fontSize: 11,
                               color: AAColors.ink,
@@ -91,12 +92,12 @@ class CrayonBarChart extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4),
                     Text(
                       labels[i],
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontFamily: 'ZCOOLKuaiLe',
+                      style: TextStyle(
+                        fontFamily: AAFonts.title,
                         fontSize: 12,
                         color: AAColors.inkSoft,
                         height: 1.2,
@@ -164,8 +165,8 @@ class CrayonDonutChart extends StatelessWidget {
               child: FittedBox(
                 child: Text(
                   centerLabel,
-                  style: const TextStyle(
-                    fontFamily: 'ZCOOLKuaiLe',
+                  style: TextStyle(
+                    fontFamily: AAFonts.title,
                     fontSize: 12,
                     color: AAColors.ink,
                     height: 1.1,

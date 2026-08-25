@@ -118,8 +118,8 @@ class AaAppBar extends StatelessWidget implements PreferredSizeWidget {
                   padding: const EdgeInsets.only(right: 12, top: 8),
                   child: Text(
                     backLabel,
-                    style: const TextStyle(
-                      fontFamily: 'ZCOOLKuaiLe',
+                    style: TextStyle(
+                      fontFamily: AAFonts.title,
                       fontSize: 18,
                       color: AAColors.ink,
                       height: 1.2,
@@ -139,8 +139,8 @@ class AaAppBar extends StatelessWidget implements PreferredSizeWidget {
                 title,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontFamily: 'ZCOOLKuaiLe',
+                style: TextStyle(
+                  fontFamily: AAFonts.title,
                   fontSize: 22,
                   color: AAColors.ink,
                   height: 1.2,
@@ -156,17 +156,17 @@ class AaAppBar extends StatelessWidget implements PreferredSizeWidget {
                   child: AaIconImage(iconImage!, size: 22),
                 ),
               ),
-              const SizedBox(width: 2),
+              SizedBox(width: 2),
             ],
             if (icon != null) ...[
               InkWell(
                 onTap: onIconTap,
                 child: Padding(
                   padding: const EdgeInsets.only(left: 10, top: 8),
-                  child: Text(icon!, style: const TextStyle(fontSize: 17)),
+                  child: Text(icon!, style: TextStyle(fontSize: 17)),
                 ),
               ),
-              const SizedBox(width: 2),
+              SizedBox(width: 2),
             ],
           ],
         ),
@@ -196,24 +196,24 @@ class SectionTitle extends StatelessWidget {
       padding: const EdgeInsets.only(top: 16, bottom: 6),
       child: Row(
         children: [
-          const Expanded(child: _DashLine()),
-          const SizedBox(width: 8),
+          Expanded(child: _DashLine()),
+          SizedBox(width: 8),
           Text(
             text,
-            style: const TextStyle(
-              fontFamily: 'ZCOOLKuaiLe',
+            style: TextStyle(
+              fontFamily: AAFonts.title,
               fontSize: 14,
               color: AAColors.ink,
               height: 1.3,
             ),
           ),
           if (emojiImage != null) ...[
-            const SizedBox(width: 6),
+            SizedBox(width: 6),
             AaIconImage(emojiImage!, size: 16),
           ],
           if (emoji != null) ...[
-            const SizedBox(width: 6),
-            Text(emoji!, style: const TextStyle(fontSize: 13)),
+            SizedBox(width: 6),
+            Text(emoji!, style: TextStyle(fontSize: 13)),
           ],
           ?trailing,
         ],
@@ -227,7 +227,7 @@ class _DashLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CustomPaint(
-      size: const Size(double.infinity, 2),
+      size: Size(double.infinity, 2),
       painter: _DashLinePainter(),
     );
   }
@@ -295,8 +295,8 @@ class AaLine extends StatelessWidget {
               if (label != null)
                 Text(
                   label!,
-                  style: const TextStyle(
-                    fontFamily: 'ZCOOLKuaiLe',
+                  style: TextStyle(
+                    fontFamily: AAFonts.title,
                     fontSize: 15,
                     color: AAColors.inkSoft,
                     height: 1.3,
@@ -313,7 +313,7 @@ class AaLine extends StatelessWidget {
       children: [
         row,
         if (showBorder)
-          CustomPaint(size: const Size(double.infinity, 2.5), painter: _DashLinePainter()),
+          CustomPaint(size: Size(double.infinity, 2.5), painter: _DashLinePainter()),
       ],
     );
     if (onTap != null) {
@@ -322,8 +322,8 @@ class AaLine extends StatelessWidget {
     return row;
   }
 
-  static const _valueStyle = TextStyle(
-    fontFamily: 'ZCOOLKuaiLe',
+  static final TextStyle _valueStyle = TextStyle(
+    fontFamily: AAFonts.title,
     fontSize: 15,
     color: AAColors.ink,
     height: 1.3,

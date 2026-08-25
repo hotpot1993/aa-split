@@ -73,13 +73,13 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: [
           // 选队徽（Demo：五枚 .ava，选中荧光笔黄底）
-          const SizedBox(height: 6),
-          const Center(
+          SizedBox(height: 6),
+          Center(
             child: Text('选一个队伍头像：',
                 style: TextStyle(
-                    fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
+                    fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft)),
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -99,7 +99,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
                 ),
             ],
           ),
-          const SizedBox(height: 14),
+          SizedBox(height: 14),
           PaperCard(
             padding: const EdgeInsets.fromLTRB(14, 4, 14, 4),
             child: Column(
@@ -108,9 +108,9 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('群组名称',
+                      Text('群组名称',
                           style: TextStyle(
-                              fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.inkSoft)),
+                              fontFamily: AAFonts.title, fontSize: 15, color: AAColors.inkSoft)),
                       SizedBox(
                         width: 180,
                         child: HandTextField(
@@ -128,9 +128,9 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('简介（选填）',
+                      Text('简介（选填）',
                           style: TextStyle(
-                              fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.inkSoft)),
+                              fontFamily: AAFonts.title, fontSize: 15, color: AAColors.inkSoft)),
                       SizedBox(
                         width: 180,
                         child: HandTextField(
@@ -149,13 +149,13 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('默认分摊',
+                      Text('默认分摊',
                           style: TextStyle(
-                              fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.inkSoft)),
+                              fontFamily: AAFonts.title, fontSize: 15, color: AAColors.inkSoft)),
                       DropdownButtonHideUnderline(
                         child: DropdownButton<GroupDefaultSplit>(
                           value: _split,
-                          icon: const Text('▾',
+                          icon: Text('▾',
                               style: TextStyle(fontSize: 16, color: AAColors.inkSoft, height: 1)),
                           items: GroupDefaultSplit.values
                               .map((s) => DropdownMenuItem(
@@ -170,13 +170,13 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           DoodleButton(
             label: '创建，拉上小伙伴 →',
             big: true,
             onPressed: _create,
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
         ],
       ),
     );

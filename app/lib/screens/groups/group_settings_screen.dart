@@ -24,7 +24,6 @@ class _GroupSettingsScreenState extends ConsumerState<GroupSettingsScreen> {
   late final TextEditingController _name;
   late final TextEditingController _intro;
   GroupDefaultSplit _split = GroupDefaultSplit.even;
-  bool _notifyAll = true;
   bool _init = false;
 
   @override
@@ -68,7 +67,7 @@ class _GroupSettingsScreenState extends ConsumerState<GroupSettingsScreen> {
       }
     }
     if (group == null) {
-      return const AaScaffold(appBar: null, body: Center(child: EmptyState(title: '群组不存在')));
+      return AaScaffold(appBar: null, body: Center(child: EmptyState(title: '群组不存在')));
     }
     final g = group;
     final me = ref.watch(currentUserProvider)?.id ?? 'me';
@@ -103,12 +102,12 @@ class _GroupSettingsScreenState extends ConsumerState<GroupSettingsScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('群组信息',
+                        Text('群组信息',
                             style: TextStyle(
-                                fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.inkSoft)),
+                                fontFamily: AAFonts.title, fontSize: 15, color: AAColors.inkSoft)),
                         Text('✏️ ${_name.text} / ${_intro.text.isEmpty ? '未写简介' : _intro.text}',
-                            style: const TextStyle(
-                                fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.ink)),
+                            style: TextStyle(
+                                fontFamily: AAFonts.title, fontSize: 15, color: AAColors.ink)),
                       ],
                     ),
                   ),
@@ -118,13 +117,13 @@ class _GroupSettingsScreenState extends ConsumerState<GroupSettingsScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('默认分摊方式',
+                      Text('默认分摊方式',
                           style: TextStyle(
-                              fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.inkSoft)),
+                              fontFamily: AAFonts.title, fontSize: 15, color: AAColors.inkSoft)),
                       DropdownButtonHideUnderline(
                         child: DropdownButton<GroupDefaultSplit>(
                           value: _split,
-                          icon: const Text('▾',
+                          icon: Text('▾',
                               style: TextStyle(fontSize: 16, color: AAColors.inkSoft, height: 1)),
                           items: GroupDefaultSplit.values
                               .map((s) => DropdownMenuItem(
@@ -136,46 +135,30 @@ class _GroupSettingsScreenState extends ConsumerState<GroupSettingsScreen> {
                     ],
                   ),
                 ),
-                // 新账单@全部成员（Demo .swt）
-                AaLine(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('新账单@全部成员',
-                          style: TextStyle(
-                              fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.inkSoft)),
-                      HandToggle(
-                        value: _notifyAll,
-                        activeColor: AAColors.mint,
-                        onChanged: (v) => setState(() => _notifyAll = v),
-                      ),
-                    ],
-                  ),
-                ),
                 AaLine(
                   showBorder: false,
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('免分摊人员默认',
+                      Text('免分摊人员默认',
                           style: TextStyle(
-                              fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.inkSoft)),
-                      const Text('无 ▾',
+                              fontFamily: AAFonts.title, fontSize: 15, color: AAColors.inkSoft)),
+                      Text('无 ▾',
                           style: TextStyle(
-                              fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.ink)),
+                              fontFamily: AAFonts.title, fontSize: 15, color: AAColors.ink)),
                     ],
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           DoodleButton(
             label: '保存设置',
             big: true,
             onPressed: _save,
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           if (isOwner)
             DoodleButton(
               label: '🔥 解散群组',
@@ -183,7 +166,7 @@ class _GroupSettingsScreenState extends ConsumerState<GroupSettingsScreen> {
               big: true,
               onPressed: () => _disband(g),
             ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
         ],
       ),
     );
@@ -206,12 +189,16 @@ class _GroupSettingsScreenState extends ConsumerState<GroupSettingsScreen> {
       subtitle: '解散后成员看不到这个群了，操作不可恢复',
       confirmLabel: '解散',
     );
-    if (ok == true) {
-      if (!mounted) return;
-      ref.read(groupRepositoryProvider).disband(widget.groupId);
+    if (ok != true || !mounted) return;
+    try {
+      // 先等服务端解散完成，再刷新列表（避免列表先于删除请求返回导致残留）
+      await ref.read(groupRepositoryProvider).disband(widget.groupId);
       ref.read(refreshProvider.notifier).bump();
+      if (!mounted) return;
       showAaToast(context, '群组已解散');
       context.go('/groups');
+    } catch (e) {
+      if (mounted) showAaToast(context, '解散失败：$e');
     }
   }
 }
@@ -229,17 +216,17 @@ class _InfoSheet extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text('✏️ 头像/名称/简介',
-            style: TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 18, color: AAColors.ink)),
-        const SizedBox(height: 12),
-        const Text('名称', style: TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 14, color: AAColors.inkSoft)),
+        Text('✏️ 头像/名称/简介',
+            style: TextStyle(fontFamily: AAFonts.title, fontSize: 18, color: AAColors.ink)),
+        SizedBox(height: 12),
+        Text('名称', style: TextStyle(fontFamily: AAFonts.title, fontSize: 14, color: AAColors.inkSoft)),
         HandTextField(controller: name),
-        const SizedBox(height: 12),
-        const Text('简介', style: TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 14, color: AAColors.inkSoft)),
+        SizedBox(height: 12),
+        Text('简介', style: TextStyle(fontFamily: AAFonts.title, fontSize: 14, color: AAColors.inkSoft)),
         HandTextField(controller: intro, maxLines: 2),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
         DoodleButton(label: '保存', expand: true, onPressed: onSave),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
       ],
     );
   }

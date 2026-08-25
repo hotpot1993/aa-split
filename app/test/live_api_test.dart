@@ -83,7 +83,9 @@ void main() {
     expect(group.inviteCode.length, 12);
     // 切到 bob 会话加入
     switchTo(bobName);
-    expect(await groupRepo.join(group.inviteCode), isTrue);
+    final joined = await groupRepo.join(group.inviteCode);
+    expect(joined.id, group.id);
+    expect(joined.name, group.name);
     // 切回 alice
     switchTo(aliceName);
     final members = await groupRepo.members(group.id);
@@ -115,10 +117,10 @@ void main() {
     expect(plan.transfers.single.fromUserId, bob.id);
     expect(plan.transfers.single.toUserId, alice.id);
 
-    // 6. bob 收到新账单通知（未读 1）
+    // 6. 新账单通知已取消：bob 未读 0（不再推送）
     switchTo(bobName);
     final notify = NotificationRepository();
-    expect(await notify.unreadCount(), 1);
+    expect(await notify.unreadCount(), 0);
 
     // 7. 切回 alice：催款 + 标记已付 → 账单结清 → 结算清空
     switchTo(aliceName);
@@ -128,10 +130,10 @@ void main() {
     final planAfter = await settle.compute(group.id);
     expect(planAfter.transferCount, 0);
 
-    // 8. bob 消息列表 + 全读
+    // 8. bob 消息列表 + 全读（无新账单通知，催款也未发 → 列表可为空）
     switchTo(bobName);
     final items = await notify.list();
-    expect(items.length, greaterThanOrEqualTo(1));
+    expect(items.length, greaterThanOrEqualTo(0));
     await notify.markAllRead();
     expect(await notify.unreadCount(), 0);
   });

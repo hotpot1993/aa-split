@@ -23,7 +23,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     with SingleTickerProviderStateMixin {
   Timer? _timer;
   late final AnimationController _c =
-      AnimationController(vsync: this, duration: const Duration(milliseconds: 900));
+      AnimationController(vsync: this, duration: Duration(milliseconds: 900));
   late final Animation<double> _fade =
       CurvedAnimation(parent: _c, curve: Curves.easeOut);
 
@@ -31,7 +31,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   void initState() {
     super.initState();
     _c.forward();
-    _timer = Timer(const Duration(seconds: 2), _go);
+    _timer = Timer(Duration(seconds: 2), _go);
   }
 
   @override
@@ -60,14 +60,14 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
         children: [
           const Positioned.fill(child: CustomPaint(painter: _SplashPainter())),
           // 散落涂鸦（Demo .doodle）—— 替换为匹配素材
-          const Positioned(top: 130, left: 36, child: Text('⭐', style: TextStyle(fontSize: 18, color: AAColors.ink))),
-          const Positioned(top: 230, right: 40, child: Text('💛', style: TextStyle(fontSize: 18, color: AAColors.ink))),
-          const Positioned(
+          Positioned(top: 130, left: 36, child: Text('⭐', style: TextStyle(fontSize: 18, color: AAColors.ink))),
+          Positioned(top: 230, right: 40, child: Text('💛', style: TextStyle(fontSize: 18, color: AAColors.ink))),
+          Positioned(
             top: 400,
             left: 56,
             child: Opacity(opacity: 0.55, child: AaIconImage('assets/icons/coin.png', size: 22)),
           ),
-          const Positioned(
+          Positioned(
             top: 470,
             right: 56,
             child: Opacity(opacity: 0.55, child: AaIconImage('assets/icons/edit.png', size: 22)),
@@ -80,33 +80,33 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const SizedBox(height: 30),
-                    const TuanTuanPanda(size: 150),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 30),
+                    TuanTuanPanda(size: 150),
+                    SizedBox(height: 16),
                     // 品牌字：知音漫兴体（Demo P01：Zhi Mang Xing 48px）
-                    const Text(
+                    Text(
                       'AA分账',
                       style: TextStyle(
-                          fontFamily: 'ZhiMangXing',
+                          fontFamily: AAFonts.brand,
                           fontSize: 48,
                           color: AAColors.ink,
                           height: 1.1),
                     ),
-                    const SizedBox(height: 6),
-                    const Text('团团正在数钱…',
+                    SizedBox(height: 6),
+                    Text('团团正在数钱…',
                         style: TextStyle(
-                            fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
-                    const SizedBox(height: 24),
-                    const Text('· · ·',
+                            fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft)),
+                    SizedBox(height: 24),
+                    Text('· · ·',
                         style: TextStyle(
-                            fontFamily: 'ZCOOLKuaiLe',
+                            fontFamily: AAFonts.title,
                             fontSize: 22,
                             color: AAColors.inkSoft,
                             letterSpacing: 6)),
-                    const SizedBox(height: 60),
-                    const Text('（点击屏幕进入登录）',
+                    SizedBox(height: 60),
+                    Text('（点击屏幕进入登录）',
                         style: TextStyle(
-                            fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
+                            fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft)),
                   ],
                 ),
               ),

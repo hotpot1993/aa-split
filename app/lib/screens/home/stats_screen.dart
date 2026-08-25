@@ -73,9 +73,9 @@ class StatsScreen extends ConsumerWidget {
         children: [
           Row(
             children: [
-              const HandTag('本季', fontSize: 12),
-              const SizedBox(width: 8),
-              const HandTag('本年', fontSize: 12, selected: true),
+              HandTag('本季', fontSize: 12),
+              SizedBox(width: 8),
+              HandTag('本年', fontSize: 12, selected: true),
             ],
           ),
           PaperCard(
@@ -84,9 +84,9 @@ class StatsScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('🗓 月度消费趋势',
-                    style: TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 14, color: AAColors.ink)),
-                const SizedBox(height: 4),
+                Text('🗓 月度消费趋势',
+                    style: TextStyle(fontFamily: AAFonts.title, fontSize: 14, color: AAColors.ink)),
+                SizedBox(height: 4),
                 CrayonBarChart(
                   labels: labels,
                   values: values,
@@ -95,18 +95,18 @@ class StatsScreen extends ConsumerWidget {
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           PaperCard(
             withTape: true,
             tapeColor: AATokens.tapeSky,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('🍩 分类占比（甜甜圈）',
-                    style: TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 14, color: AAColors.ink)),
-                const SizedBox(height: 10),
+                Text('🍩 分类占比（甜甜圈）',
+                    style: TextStyle(fontFamily: AAFonts.title, fontSize: 14, color: AAColors.ink)),
+                SizedBox(height: 10),
                 if (sections.isEmpty)
-                  const SizedBox(height: 132)
+                  SizedBox(height: 132)
                 else
                   Row(
                     children: [
@@ -114,7 +114,7 @@ class StatsScreen extends ConsumerWidget {
                         sections: sections,
                         centerLabel: centerLabel(totalCents),
                       ),
-                      const SizedBox(width: 14),
+                      SizedBox(width: 14),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -127,19 +127,19 @@ class StatsScreen extends ConsumerWidget {
                                   children: [
                                     Text(
                                       '${Cat.emoji(entries[i].key)} ${Cat.label(entries[i].key)}',
-                                      style: const TextStyle(
-                                          fontFamily: 'ZCOOLKuaiLe',
+                                      style: TextStyle(
+                                          fontFamily: AAFonts.title,
                                           fontSize: 12,
                                           color: AAColors.ink,
                                           height: 2),
                                     ),
-                                    const Spacer(),
+                                    Spacer(),
                                     Text(
                                       totalCents == 0
                                           ? '0%'
                                           : '${(entries[i].value / totalCents * 100).toStringAsFixed(0)}%',
-                                      style: const TextStyle(
-                                          fontFamily: 'ZCOOLKuaiLe',
+                                      style: TextStyle(
+                                          fontFamily: AAFonts.title,
                                           fontSize: 12,
                                           color: AAColors.ink,
                                           height: 2),
@@ -155,10 +155,10 @@ class StatsScreen extends ConsumerWidget {
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           SectionTitle('我的大额账单', emojiImage: 'assets/icons/crown.png'),
           if (top5(bills).isEmpty)
-            const EmptyState(
+            EmptyState(
               title: '还没有账单',
               tag: 'P13 统计',
               art: '📊😴',
@@ -173,7 +173,7 @@ class StatsScreen extends ConsumerWidget {
                     child: Row(
                       children: [
                         CategoryIcon(category: b.category, size: 44),
-                        const SizedBox(width: 10),
+                        SizedBox(width: 10),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -181,20 +181,20 @@ class StatsScreen extends ConsumerWidget {
                               Text(b.title,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                      fontFamily: 'ZCOOLKuaiLe',
+                                  style: TextStyle(
+                                      fontFamily: AAFonts.title,
                                       fontSize: 15,
                                       color: AAColors.ink)),
-                              const SizedBox(height: 2),
+                              SizedBox(height: 2),
                               Text('${b.groupName} · ${Fmt.dateShort(b.billDate)}',
-                                  style: const TextStyle(
-                                      fontFamily: 'ZCOOLKuaiLe',
+                                  style: TextStyle(
+                                      fontFamily: AAFonts.title,
                                       fontSize: 12,
                                       color: AAColors.inkSoft)),
                             ],
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        SizedBox(width: 8),
                         HandAmount(amountCents: b.amountCents, size: 22, trimZero: true),
                       ],
                     ),

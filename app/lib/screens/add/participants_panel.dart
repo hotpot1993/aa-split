@@ -44,9 +44,9 @@ class _ParticipantsPanelState extends State<ParticipantsPanel> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Text('👥 选择参与人',
-            style: TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 18, color: AAColors.ink)),
-        const SizedBox(height: 10),
+        Text('👥 选择参与人',
+            style: TextStyle(fontFamily: AAFonts.title, fontSize: 18, color: AAColors.ink)),
+        SizedBox(height: 10),
         Row(
           children: [
             _quick(
@@ -54,7 +54,7 @@ class _ParticipantsPanelState extends State<ParticipantsPanel> {
               () => setState(() => _selected.addAll(widget.members.map((m) => m.userId))),
               selected: _allSelected,
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             _quick('反选', () => setState(() {
               final reversed = widget.members
                   .map((m) => m.userId)
@@ -64,11 +64,11 @@ class _ParticipantsPanelState extends State<ParticipantsPanel> {
                 ..clear()
                 ..addAll(reversed);
             })),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             _quick('仅我', () => setState(() => _selected..clear()..add(widget.myId))),
           ],
         ),
-        const SizedBox(height: 10),
+        SizedBox(height: 10),
         // 名单卡（Demo：.line 行 + .cbx）
         PaperCard(
           padding: const EdgeInsets.fromLTRB(14, 4, 14, 4),
@@ -79,23 +79,23 @@ class _ParticipantsPanelState extends State<ParticipantsPanel> {
             ],
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4),
           child: Row(
             children: [
               Text('已选 ${_selected.length}人',
-                  style: const TextStyle(
-                      fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
-              const SizedBox(width: 6),
+                  style: TextStyle(
+                      fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft)),
+              SizedBox(width: 6),
               if (widget.members.length > _selected.length)
-                const Text('· 还有小伙伴不参与',
+                Text('· 还有小伙伴不参与',
                     style: TextStyle(
-                        fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
+                        fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft)),
             ],
           ),
         ),
-        const SizedBox(height: 10),
+        SizedBox(height: 10),
         DoodleButton(
           label: '确定（${_selected.length}人参加）✓',
           big: true,
@@ -109,7 +109,7 @@ class _ParticipantsPanelState extends State<ParticipantsPanel> {
                 }
               : null,
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
       ],
     );
   }
@@ -142,11 +142,11 @@ class _ParticipantsPanelState extends State<ParticipantsPanel> {
                       background: _tints[index % _tints.length],
                       dimmed: !on,
                     ),
-                    const SizedBox(width: 10),
+                    SizedBox(width: 10),
                     Text(
                       m.nickname,
                       style: TextStyle(
-                        fontFamily: 'ZCOOLKuaiLe',
+                        fontFamily: AAFonts.title,
                         fontSize: 15,
                         color: on ? AAColors.ink : AAColors.inkSoft,
                       ),
@@ -169,7 +169,7 @@ class _ParticipantsPanelState extends State<ParticipantsPanel> {
           ),
         ),
         if (index != widget.members.length - 1)
-          CustomPaint(size: const Size(double.infinity, 2.5), painter: _OptDash()),
+          CustomPaint(size: Size(double.infinity, 2.5), painter: _OptDash()),
       ],
     );
   }

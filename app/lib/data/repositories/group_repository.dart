@@ -216,20 +216,33 @@ class GroupRepository {
     await ApiClient.instance.delete('/groups/$groupId/members/$userId');
   }
 
-  Future<bool> join(String inviteCode) async {
+  /// 通过邀请码加入群（扫二维码 / 填写邀请链接均走这里；大小写宽容）
+  Future<GroupJoinResult> join(String inviteCode) async {
+    final code = inviteCode.trim().toUpperCase();
     if (AppConfig.useMock) {
       final store = MockStore.instance;
       for (final g in store.groups) {
-        if (g.inviteCode == inviteCode.trim()) return true;
+        if (g.inviteCode.toUpperCase() == code) {
+          final already =
+              store.memberOf(g.id, store.currentUser.id)?.status == 'active';
+          return GroupJoinResult(
+            id: g.id,
+            name: g.name,
+            alreadyJoined: already,
+          );
+        }
       }
-      return false;
+      throw const ApiException(404, '邀请码无效');
     }
     final res = await ApiClient.instance.post('/groups/join', body: {
-      'inviteCode': inviteCode.trim(),
+      'inviteCode': code,
     });
     final j = (res.data as Map?)?.cast<String, dynamic>() ?? const {};
-    final already = (j['alreadyJoined'] ?? false) as bool? ?? false;
-    return j['id'] != null || already;
+    return GroupJoinResult(
+      id: (j['id'] ?? '').toString(),
+      name: (j['name'] ?? '').toString(),
+      alreadyJoined: (j['alreadyJoined'] ?? false) as bool? ?? false,
+    );
   }
 
   Future<String> inviteLink(String groupId) async {

@@ -239,6 +239,93 @@ class BillRepository {
     });
   }
 
+  /// 一键结清：群内全部账单统一标记为「已付」。
+  /// 返回被结清的账单数；真实模式为服务端单事务（幂等）。
+  Future<int> settleAll(String groupId) async {
+    if (AppConfig.useMock) {
+      final store = MockStore.instance;
+      var count = 0;
+      for (final b in store.billsForGroup(groupId)) {
+        if (b.fullySettled) continue;
+        final ps =
+            b.participants.map((p) => p.copyWith(paid: true)).toList();
+        final idx = store.bills.indexWhere((x) => x.id == b.id);
+        if (idx < 0) continue;
+        store.bills[idx] = Bill(
+          id: b.id,
+          groupId: b.groupId,
+          groupName: b.groupName,
+          title: b.title,
+          amountCents: b.amountCents,
+          billDate: b.billDate,
+          location: b.location,
+          category: b.category,
+          payerId: b.payerId,
+          payerName: b.payerName,
+          participants: ps,
+          splitType: b.splitType,
+          receipts: b.receipts,
+          isRegular: b.isRegular,
+          settleStatus: billStatusOf(ps),
+          createdAt: b.createdAt,
+        );
+        count++;
+      }
+      store.refreshGroup(groupId);
+      return count;
+    }
+    final res =
+        await ApiClient.instance.post('/groups/$groupId/bills/settle-all');
+    final j = (res.data as Map?)?.cast<String, dynamic>() ?? const {};
+    return (j['updatedBills'] as num?)?.toInt() ?? 0;
+  }
+
+  /// 替换凭证图片：重新拍照/从相册选后替换原图（Demo 模式直接更新本地记录；
+  /// 真实模式 multipart 上传后服务端更新凭证记录并清理旧图）
+  Future<Receipt> replaceReceipt(
+      String billId, String receiptId, String newFilePath) async {
+    if (AppConfig.useMock) {
+      final store = MockStore.instance;
+      final idx = store.bills.indexWhere((b) => b.id == billId);
+      if (idx < 0) throw UnsupportedError('账单不存在');
+      final b = store.bills[idx];
+      if (!b.receipts.any((r) => r.id == receiptId)) {
+        throw UnsupportedError('凭证不存在');
+      }
+      store.bills[idx] = Bill(
+        id: b.id,
+        groupId: b.groupId,
+        groupName: b.groupName,
+        title: b.title,
+        amountCents: b.amountCents,
+        billDate: b.billDate,
+        location: b.location,
+        category: b.category,
+        payerId: b.payerId,
+        payerName: b.payerName,
+        participants: b.participants,
+        splitType: b.splitType,
+        receipts: [
+          for (final r in b.receipts)
+            if (r.id == receiptId)
+              Receipt(id: r.id, billId: billId, url: newFilePath)
+            else
+              r,
+        ],
+        isRegular: b.isRegular,
+        settleStatus: b.settleStatus,
+        createdAt: b.createdAt,
+      );
+      return Receipt(id: receiptId, billId: billId, url: newFilePath);
+    }
+    final res = await ApiClient.instance.upload(
+      '/bills/$billId/receipts/$receiptId/replace',
+      newFilePath,
+      field: 'file',
+    );
+    return parseReceipt(res.data);
+  }
+
   Future<void> markPaid(String billId, String userId, bool paid) async {
     if (AppConfig.useMock) {
       final store = MockStore.instance;

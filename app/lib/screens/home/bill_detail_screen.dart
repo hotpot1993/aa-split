@@ -1,3 +1,5 @@
+import 'dart:io' show File;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -38,13 +40,13 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
     final me = ref.watch(currentUserProvider)?.id ?? 'me';
     // 深链/通知点击进入时数据可能仍在加载：等待而非误报"账单不存在"
     if (bill == null && billsAsync.isLoading) {
-      return const AaScaffold(
+      return AaScaffold(
         appBar: null,
         body: Center(child: AaLoading()),
       );
     }
     if (bill == null) {
-      return const AaScaffold(
+      return AaScaffold(
         appBar: null,
         body: Center(child: EmptyState(title: '这张小票已经烧掉了🔥')),
       );
@@ -78,29 +80,29 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 22, color: AAColors.ink)),
-                const SizedBox(height: 6),
+                    style: TextStyle(fontFamily: AAFonts.title, fontSize: 22, color: AAColors.ink)),
+                SizedBox(height: 6),
                 HandAmount(amountCents: bill.amountCents, color: AASemantic.amountNeg, size: 42),
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 Text(
                   '${Fmt.date(bill.billDate)} · ${bill.groupName} · ${Cat.label(bill.category)}'
                   '${bill.location.isEmpty ? '' : ' · ${bill.location}'}',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
-                      fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft),
+                  style: TextStyle(
+                      fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft),
                 ),
               ],
             ),
           ),
           // 拍立得凭证（Demo：两张拍立得 + 小字标题）
-          const SizedBox(height: 14),
+          SizedBox(height: 14),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               if (bill.receipts.isEmpty)
                 GestureDetector(
                   onTap: () => context.push('/bills/${bill.id}/receipt'),
-                  child: const _Polaroid(
+                  child: _Polaroid(
                       emoji: '📷', image: 'assets/icons/camera.png', caption: '拍小票📷', rotate: -2),
                 )
               else ...[
@@ -115,16 +117,19 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
                       caption: i == 0 ? '小票📷' : '凭据',
                       rotate: i == 0 ? -2 : 2,
                       url: bill.receipts[i].url,
+                      // 点击缩略图：大图预览 + 重新拍照/相册换图
+                      onTap: () => context.push(
+                          '/bills/${bill.id}/receipt/preview?receipt=${bill.receipts[i].id}'),
                     ),
                   ),
               ],
-              if (bill.receipts.isEmpty) const SizedBox(width: 14),
+              if (bill.receipts.isEmpty) SizedBox(width: 14),
               if (bill.receipts.isEmpty)
-                const _Polaroid(
+                _Polaroid(
                     emoji: '🧾', image: 'assets/icons/receipt.png', caption: '结账单', rotate: 2),
             ],
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           PaperCard(
             padding: const EdgeInsets.fromLTRB(14, 4, 14, 4),
             child: Column(
@@ -135,17 +140,17 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text('垫付人',
-                          style: const TextStyle(
-                              fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.inkSoft)),
+                          style: TextStyle(
+                              fontFamily: AAFonts.title, fontSize: 15, color: AAColors.inkSoft)),
                       Text.rich(TextSpan(children: [
                         TextSpan(
                             text: '${bill.payerName} ',
-                            style: const TextStyle(
-                                fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.ink)),
+                            style: TextStyle(
+                                fontFamily: AAFonts.title, fontSize: 15, color: AAColors.ink)),
                         TextSpan(
                             text: '（已垫付 ${Fmt.yuan(bill.amountCents)}）',
-                            style: const TextStyle(
-                                fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
+                            style: TextStyle(
+                                fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft)),
                       ])),
                     ],
                   ),
@@ -158,15 +163,15 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           PaperCard(
             padding: const EdgeInsets.fromLTRB(14, 12, 14, 4),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('👥 谁还没付？',
-                    style: TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 14, color: AAColors.ink)),
-                const SizedBox(height: 4),
+                Text('👥 谁还没付？',
+                    style: TextStyle(fontFamily: AAFonts.title, fontSize: 14, color: AAColors.ink)),
+                SizedBox(height: 4),
                 ...bill.participants.map((p) => _ParticipantLine(
                       participant: p,
                       isPayer: p.userId == bill.payerId,
@@ -175,7 +180,7 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           Row(
             children: [
               Expanded(
@@ -187,7 +192,7 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
                   onPressed: () => context.push('/groups/${bill.groupId}/remind'),
                 ),
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: 10),
               Expanded(
                 child: DoodleButton(
                   label: canManage ? '✓ 标记已付' : '✓ 我付了',
@@ -199,7 +204,7 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
             ],
           ),
           if (canManage) ...[
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             DoodleButton(
               label: '删除账单',
               type: DoodleButtonType.secondary,
@@ -209,7 +214,7 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
               onPressed: () => _delete(bill),
             ),
           ],
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
         ],
       ),
     );
@@ -267,21 +272,23 @@ class _Polaroid extends StatelessWidget {
     required this.rotate,
     this.url = '',
     this.image,
+    this.onTap,
   });
   final String emoji;
   final String? image;
   final String caption;
   final double rotate;
   final String url;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Transform.rotate(
+    final card = Transform.rotate(
       angle: rotate / 180 * 3.14159265,
       child: Container(
         width: 132,
         padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: Colors.white,
           border: Border.fromBorderSide(BorderSide(color: AAColors.ink, width: 2.5)),
           borderRadius: BorderRadius.all(Radius.circular(4)),
@@ -297,29 +304,40 @@ class _Polaroid extends StatelessWidget {
                 border: Border.all(color: AAColors.inkSoft, width: 2),
                 borderRadius: BorderRadius.circular(2),
               ),
-              child: url.isEmpty
+              child: url.isEmpty || url.startsWith('🧾')
                   ? (image != null
                       ? AaIconImage(image!, size: 44)
-                      : Text(emoji, style: const TextStyle(fontSize: 40)))
-                  : url.startsWith('🧾')
-                      ? (image != null
-                          ? AaIconImage(image!, size: 44)
-                          : Text(emoji, style: const TextStyle(fontSize: 40)))
+                      : Text(emoji, style: TextStyle(fontSize: 40)))
+                  : File(url).existsSync()
+                      ? Image.file(
+                          File(url),
+                          width: 132,
+                          height: 92,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, _, _) => Text(emoji,
+                              style: TextStyle(fontSize: 40)),
+                        )
                       : Image.network(
                           absReceiptUrl(url),
                           fit: BoxFit.cover,
                           errorBuilder: (_, _, _) => Text(emoji,
-                              style: const TextStyle(fontSize: 40)),
+                              style: TextStyle(fontSize: 40)),
                         ),
             ),
-            const SizedBox(height: 4),
+            SizedBox(height: 4),
             Text(caption,
-                style: const TextStyle(
-                    fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
-            const SizedBox(height: 18),
+                style: TextStyle(
+                    fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft)),
+            SizedBox(height: 18),
           ],
         ),
       ),
+    );
+    if (onTap == null) return card;
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: card,
     );
   }
 }
@@ -344,8 +362,8 @@ class _ParticipantLine extends StatelessWidget {
           children: [
             Text(
               '${participant.paid ? '✓' : '○'} ${participant.nickname}${paid ? '（已付）' : ''}',
-              style: const TextStyle(
-                  fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.ink),
+              style: TextStyle(
+                  fontFamily: AAFonts.title, fontSize: 15, color: AAColors.ink),
             ),
             if (participant.exempt)
               const HandTag.label(label: '全免', dense: true, color: AAColors.lemon)
@@ -385,9 +403,9 @@ class _MarkPaidSheetState extends ConsumerState<_MarkPaidSheet> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text('标记谁已付？', style: text.headlineSmall),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         Text('勾选已把钱转给垫付人的小伙伴', style: text.bodySmall),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         ...widget.bill.participants.map((p) {
           if (p.exempt || p.userId == widget.bill.payerId) return const SizedBox.shrink();
           final on = _toPay.contains(p.userId);
@@ -405,8 +423,8 @@ class _MarkPaidSheetState extends ConsumerState<_MarkPaidSheet> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(p.nickname,
-                      style: const TextStyle(
-                          fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.ink)),
+                      style: TextStyle(
+                          fontFamily: AAFonts.title, fontSize: 15, color: AAColors.ink)),
                   AaCheckbox(
                     value: on,
                     onChanged: () => setState(() {
@@ -422,7 +440,7 @@ class _MarkPaidSheetState extends ConsumerState<_MarkPaidSheet> {
             ),
           );
         }),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
         Row(
           children: [
             Expanded(
@@ -436,7 +454,7 @@ class _MarkPaidSheetState extends ConsumerState<_MarkPaidSheet> {
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
       ],
     );
   }
@@ -479,13 +497,13 @@ class _EditSheetState extends State<_EditSheet> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text('编辑账单', style: text.headlineSmall),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         Text('标题', style: text.bodyMedium),
         HandTextField(controller: _title),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         Text('金额', style: text.bodyMedium),
         HandTextField(controller: _amount, keyboardType: TextInputType.number),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
         DoodleButton(
           label: '保存',
           expand: true,
@@ -496,7 +514,7 @@ class _EditSheetState extends State<_EditSheet> {
                 }
               : null,
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
       ],
     );
   }

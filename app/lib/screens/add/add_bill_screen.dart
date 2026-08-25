@@ -1,9 +1,13 @@
+import 'dart:io' show File;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import 'package:aa_design/aa_design.dart';
 
+import '../../core/currency.dart';
 import '../../core/utils/format.dart';
 import '../../models/bill.dart';
 import '../../models/bill_participant.dart';
@@ -32,6 +36,8 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
   int _amountCents = 0;
   DateTime _date = DateTime.now();
   late String _groupId = '';
+  /// 旅行常用货币（默认人民币）
+  TravelCurrency _currency = travelCurrencies.first;
   BillCategory _category = BillCategory.food;
   late String _payerId = '';
   late Set<String> _selectedIds = {};
@@ -39,6 +45,9 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
   List<Receipt> _receipts = [];
   bool _isRegular = false;
   bool _saved = false;
+
+  /// 防重复提交：保存进行中置位，重复点击直接忽略（单次操作仅生成一张账单）
+  bool _saving = false;
 
   @override
   void initState() {
@@ -50,8 +59,12 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
     final groups = await ref.read(groupsProvider.future);
     if (!mounted) return;
     setState(() {
-      _groupId = widget.initialGroupId ??
-          (groups.isEmpty ? '' : groups.first.id);
+      // 群组详情进入时预选该群；id 失效/不存在则回退第一个群
+      // （Dropdown 的 value 必须命中 items，否则会断言崩溃）
+      final requested = widget.initialGroupId;
+      final valid =
+          requested != null && groups.any((g) => g.id == requested);
+      _groupId = valid ? requested : (groups.isEmpty ? '' : groups.first.id);
     });
     await _resetForGroup();
   }
@@ -59,7 +72,7 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
   Future<void> _resetForGroup() async {
     final me = ref.read(currentUserProvider)?.id ?? 'me';
     final members =
-        (await ref.read(groupMembersProvider.future))[_groupId] ?? const [];
+        (await ref.read(groupMembersProvider.future))[_groupId] ?? [];
     _payerId = me;
     _selectedIds = members.map((m) => m.userId).toSet();
     _split = null;
@@ -76,17 +89,24 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
 
   List<GroupMember> get _selectedMembers {
     final all =
-        (ref.read(groupMembersProvider).value ?? const {})[_groupId] ??
-            const [];
+        (ref.read(groupMembersProvider).value ?? {})[_groupId] ??
+            [];
     return all.where((m) => _selectedIds.contains(m.userId)).toList();
   }
 
   @override
   Widget build(BuildContext context) {
     final groups = ref.watch(groupsProvider).value ?? const <Group>[];
-    final members = (ref.watch(groupMembersProvider).value ?? const {})[_groupId] ?? const [];
+    final members = (ref.watch(groupMembersProvider).value ?? {})[_groupId] ?? [];
     final n = _selectedMembers.length;
-    final perEven = n == 0 ? 0 : _amountCents ~/ n;
+    // 外币时按今日汇率折算成人民币（分）展示/均摊/入账
+    final rateAsync = ref.watch(exchangeRateProvider(_currency.code));
+    final rateResult = rateAsync.value;
+    final rateReady = _currency.isCny || rateResult != null;
+    final rmbCents = _currency.isCny
+        ? _amountCents
+        : (_amountCents * (rateResult?.rate ?? 1)).round();
+    final perEven = n == 0 ? 0 : rmbCents ~/ n;
 
     if (_saved) {
       return _Celebration(onDone: () {
@@ -121,16 +141,16 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
                         autofocus: true,
                         keyboardType: TextInputType.number,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(fontFamily: 'LongCang', fontSize: 58, color: AAColors.ink, height: 1.1),
+                        style: TextStyle(fontFamily: AAFonts.hand, fontSize: 58, color: AAColors.ink, height: 1.1),
                         onChanged: (v) => setState(() {
                           _amountCents = _parseCents(v);
                         }),
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           hintText: '0.00',
-                          hintStyle: TextStyle(fontFamily: 'LongCang', fontSize: 58, color: AAColors.inkSoft),
-                          // Demo P30：¥ 用知音漫兴体 40px
-                          prefixText: '¥ ',
-                          prefixStyle: TextStyle(fontFamily: 'ZhiMangXing', fontSize: 40, color: AAColors.inkSoft),
+                          hintStyle: TextStyle(fontFamily: AAFonts.hand, fontSize: 58, color: AAColors.inkSoft),
+                          // 货币符号统一 JetBrains Mono 40px（外币时用对应货币符号）
+                          prefixText: '${_currency.symbol} ',
+                          prefixStyle: TextStyle(fontFamily: AAFonts.currency, fontSize: 40, color: AAColors.inkSoft),
                           border: InputBorder.none,
                         ),
                       ),
@@ -139,11 +159,11 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
                     SizedBox(
                       width: MediaQuery.of(context).size.width * 0.6,
                       child: CustomPaint(
-                        size: const Size(double.infinity, 3),
+                        size: Size(double.infinity, 3),
                         painter: _AmountDashPainter(),
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    SizedBox(height: 10),
                     if (n > 0)
                       HandTag(
                         '$n人 × ${Fmt.yuan(perEven, trimZero: true)} 均摊',
@@ -151,13 +171,33 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
                         variant: ChipVariant.orange,
                       )
                     else
-                      const Text('输入金额，实时预览均摊',
+                      Text('输入金额，实时预览均摊',
                           style: TextStyle(
-                              fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
+                              fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft)),
+                    // 外币：今日汇率折算提示
+                    if (!_currency.isCny && _amountCents > 0) ...[
+                      SizedBox(height: 8),
+                      if (!rateReady)
+                        Text('正在获取今日汇率…',
+                            style: TextStyle(
+                                fontFamily: AAFonts.title,
+                                fontSize: 12,
+                                color: AAColors.inkSoft))
+                      else
+                        Text(
+                          '≈ ¥${Fmt.yuanNoSymbol(rmbCents)} · 今日汇率 1 ${_currency.code} ≈ '
+                          '${rateResult!.rate.toStringAsFixed(4)}'
+                          '${rateResult.isReference ? '（参考汇率）' : ''}',
+                          style: TextStyle(
+                              fontFamily: AAFonts.title,
+                              fontSize: 12,
+                              color: AAColors.inkSoft),
+                        ),
+                    ],
                   ],
                 ),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               PaperCard(
                 padding: const EdgeInsets.fromLTRB(14, 4, 14, 4),
                 child: Column(
@@ -167,6 +207,39 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
                       child: HandTextField(controller: _titleCtrl, hint: '如 今晚聚餐'),
                     ),
                     _FieldRow(
+                      label: '货币',
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: _currency.code,
+                          isExpanded: true,
+                          icon: Text('▾',
+                              style: TextStyle(
+                                  fontSize: 16,
+                                  color: AAColors.inkSoft,
+                                  height: 1)),
+                          items: [
+                            for (final c in travelCurrencies)
+                              DropdownMenuItem(
+                                value: c.code,
+                                child: Text('${c.name} (${c.code})',
+                                    style: TextStyle(
+                                        fontFamily: AAFonts.title,
+                                        fontSize: 15,
+                                        color: AAColors.ink)),
+                              ),
+                          ],
+                          onChanged: (v) => setState(() {
+                            if (v == null) return;
+                            _currency = travelCurrencies.firstWhere(
+                                (c) => c.code == v,
+                                orElse: () => travelCurrencies.first);
+                            // 分摊明细按金额换算，换币种后作废重算
+                            _split = null;
+                          }),
+                        ),
+                      ),
+                    ),
+                    _FieldRow(
                       label: '日期',
                       child: GestureDetector(
                         onTap: _pickDate,
@@ -174,9 +247,9 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(Fmt.date(_date),
-                                style: const TextStyle(
-                                    fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.ink)),
-                            const Text('▾', style: TextStyle(fontSize: 16, color: AAColors.inkSoft, height: 1)),
+                                style: TextStyle(
+                                    fontFamily: AAFonts.title, fontSize: 15, color: AAColors.ink)),
+                            Text('▾', style: TextStyle(fontSize: 16, color: AAColors.inkSoft, height: 1)),
                           ],
                         ),
                       ),
@@ -184,14 +257,14 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
                     _FieldRow(
                       label: '群组',
                       child: groups.isEmpty
-                          ? const Text('还没有群组',
+                          ? Text('还没有群组',
                               style: TextStyle(
-                                  fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.inkSoft))
+                                  fontFamily: AAFonts.title, fontSize: 15, color: AAColors.inkSoft))
                           : DropdownButtonHideUnderline(
                               child: DropdownButton<String>(
                                 value: _groupId,
                                 isExpanded: true,
-                                icon: const Text('▾',
+                                icon: Text('▾',
                                     style: TextStyle(fontSize: 16, color: AAColors.inkSoft, height: 1)),
                                 items: groups
                                     .map((g) =>
@@ -212,9 +285,9 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text('${Cat.emoji(_category)} ${Cat.label(_category)}',
-                                style: const TextStyle(
-                                    fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.ink)),
-                            const Text('▾', style: TextStyle(fontSize: 16, color: AAColors.inkSoft, height: 1)),
+                                style: TextStyle(
+                                    fontFamily: AAFonts.title, fontSize: 15, color: AAColors.ink)),
+                            Text('▾', style: TextStyle(fontSize: 16, color: AAColors.inkSoft, height: 1)),
                           ],
                         ),
                       ),
@@ -231,9 +304,9 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text('${_selectedIds.length}人',
-                                style: const TextStyle(
-                                    fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.ink)),
-                            const Text('▾', style: TextStyle(fontSize: 16, color: AAColors.inkSoft, height: 1)),
+                                style: TextStyle(
+                                    fontFamily: AAFonts.title, fontSize: 15, color: AAColors.ink)),
+                            Text('▾', style: TextStyle(fontSize: 16, color: AAColors.inkSoft, height: 1)),
                           ],
                         ),
                       ),
@@ -249,10 +322,10 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
                               _split?.summary ??
                                   '${SplitText.label(members.isEmpty ? SplitType.even : _defaultSplitType)} '
                                       '${_evenPerPersonText(members.length)}',
-                              style: const TextStyle(
-                                  fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.ink),
+                              style: TextStyle(
+                                  fontFamily: AAFonts.title, fontSize: 15, color: AAColors.ink),
                             ),
-                            const Text('▾', style: TextStyle(fontSize: 16, color: AAColors.inkSoft, height: 1)),
+                            Text('▾', style: TextStyle(fontSize: 16, color: AAColors.inkSoft, height: 1)),
                           ],
                         ),
                       ),
@@ -264,15 +337,15 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
                         children: [
                           GestureDetector(
                             onTap: _addReceipt,
-                            child: const Text('📷 拍照/相册',
+                            child: Text('📷 拍照/相册',
                                 style: TextStyle(
-                                    fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.sky)),
+                                    fontFamily: AAFonts.title, fontSize: 15, color: AAColors.sky)),
                           ),
                           if (_receipts.isNotEmpty) ...[
-                            const SizedBox(width: 8),
+                            SizedBox(width: 8),
                             ..._receipts.map((r) => Padding(
                                   padding: const EdgeInsets.only(right: 4),
-                                  child: _MiniReceipt(emoji: r.url),
+                                  child: _MiniReceipt(url: r.url),
                                 )),
                           ],
                         ],
@@ -288,32 +361,32 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
                             value: _isRegular,
                             onChanged: () => setState(() => _isRegular = !_isRegular),
                           ),
-                          const SizedBox(width: 8),
-                          const Text('⏰ 设为定期账单（每月自动生成）',
+                          SizedBox(width: 8),
+                          Text('⏰ 设为定期账单（每月自动生成）',
                               style: TextStyle(
-                                  fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.ink)),
+                                  fontFamily: AAFonts.title, fontSize: 12, color: AAColors.ink)),
                         ],
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               DoodleButton(
-                label: '收下这张小票！✓',
+                label: _saving ? '记账中…' : '收下这张小票！✓',
                 big: true,
-                onPressed: _canSave ? _save : null,
+                onPressed: _canSave && !_saving ? _save : null,
               ),
-              const SizedBox(height: 10),
-              const Text('📷 拍照凭证 · 只要30秒就记好啦',
+              SizedBox(height: 10),
+              Text('📷 拍照凭证 · 只要30秒就记好啦',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                      fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
-              const SizedBox(height: 16),
+                      fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft)),
+              SizedBox(height: 16),
             ],
           ),
           // 💰 涂鸦装饰（Demo .doodle）→ 金币素材
-          const Positioned(
+          Positioned(
             top: 70,
             right: 10,
             child: Opacity(
@@ -326,9 +399,16 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
     );
   }
 
+  /// 当前金额折算后的人民币（分）—— 外币时依赖当日汇率（未就绪时按 1 兜底，保存前会校验）
+  int get _rmbCents {
+    if (_currency.isCny) return _amountCents;
+    final rate = ref.read(exchangeRateProvider(_currency.code)).value?.rate ?? 1;
+    return (_amountCents * rate).round();
+  }
+
   String _evenPerPersonText(int n) {
-    if (n <= 0 || _amountCents <= 0) return '';
-    return '${Fmt.yuan(_amountCents ~/ n, trimZero: true)}/人';
+    if (n <= 0 || _rmbCents <= 0) return '';
+    return '${Fmt.yuan(_rmbCents ~/ n, trimZero: true)}/人';
   }
 
   Future<void> _pickCategory() async {
@@ -338,9 +418,9 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('选个分类',
-              style: TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 18, color: AAColors.ink)),
-          const SizedBox(height: 10),
+          Text('选个分类',
+              style: TextStyle(fontFamily: AAFonts.title, fontSize: 18, color: AAColors.ink)),
+          SizedBox(height: 10),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -356,7 +436,7 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
               );
             }).toList(),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
         ],
       ),
     );
@@ -380,18 +460,24 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
   }
 
   bool get _canSave =>
-      _amountCents > 0 && _groupId.isNotEmpty && _selectedIds.isNotEmpty && _payerInParticipants;
+      _amountCents > 0 &&
+      _groupId.isNotEmpty &&
+      _selectedIds.isNotEmpty &&
+      _payerInParticipants &&
+      // 外币需等今日汇率就绪（避免按 1:1 误存）
+      (_currency.isCny ||
+          ref.read(exchangeRateProvider(_currency.code)).value != null);
 
   bool get _payerInParticipants =>
       _payerId.isEmpty || _selectedIds.isEmpty || _selectedIds.contains(_payerId);
 
   Widget _payerChooser(List<GroupMember> members) {
-    if (members.isEmpty) return const Text('—');
+    if (members.isEmpty) return Text('—');
     return DropdownButtonHideUnderline(
       child: DropdownButton<String>(
         value: _payerId.isEmpty ? null : _payerId,
         isExpanded: true,
-        icon: const Text('▾', style: TextStyle(fontSize: 16, color: AAColors.inkSoft, height: 1)),
+        icon: Text('▾', style: TextStyle(fontSize: 16, color: AAColors.inkSoft, height: 1)),
         items: members.map((m) => DropdownMenuItem(value: m.userId, child: Text(m.nickname))).toList(),
         onChanged: (v) => setState(() {
           if (v != null) {
@@ -407,7 +493,7 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
     final result = await showAaSheet<Set<String>>(
       context,
       child: ParticipantsPanel(
-        members: (ref.read(groupMembersProvider).value ?? const {})[_groupId] ?? const [],
+        members: (ref.read(groupMembersProvider).value ?? {})[_groupId] ?? [],
         myId: ref.read(currentUserProvider)?.id ?? 'me',
         initialSelected: _selectedIds,
       ),
@@ -426,20 +512,57 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
     final result = await showAaSheet<SplitResult>(
       context,
       child: SplitPanel(
-        amountCents: _amountCents,
+        amountCents: _rmbCents,
         members: _selectedMembers,
         initialType: _split?.type ?? _defaultSplitType,
-        initialShares: _split == null ? const {} : {for (final l in _split!.lines) l.userId: l.amountCents},
-        initialExempt: _split == null ? const {} : {for (final l in _split!.lines) if (l.exempt) l.userId},
+        initialShares: _split == null ? {} : {for (final l in _split!.lines) l.userId: l.amountCents},
+        initialExempt: _split == null ? {} : {for (final l in _split!.lines) if (l.exempt) l.userId},
       ),
     );
     if (result != null) setState(() => _split = result);
   }
 
+  /// 拍照/相册 → 直接调起系统相机/相册（P30 与 P33 真机链路一致），
+  /// 选中的图片加入草稿凭证列表（本地文件路径，随账单保存）。
   Future<void> _addReceipt() async {
-    final ok = await showAaConfirm(context, title: '模拟拍摄凭证', subtitle: 'Demo 中自动生成一张小票', confirmLabel: '拍摄');
-    if (ok == true) {
-      setState(() => _receipts = [..._receipts, Receipt(id: 'r${_receipts.length}', billId: '', url: '🧾')]);
+    final src = await showAaSheet<ImageSource>(
+      context,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('凭证来源',
+              style: TextStyle(fontFamily: AAFonts.title, fontSize: 18, color: AAColors.ink)),
+          SizedBox(height: 12),
+          DoodleButton(
+            label: '📷 拍一张',
+            expand: true,
+            onPressed: () => Navigator.of(context).pop(ImageSource.camera),
+          ),
+          SizedBox(height: 8),
+          DoodleButton(
+            label: '🖼️ 从相册选',
+            type: DoodleButtonType.secondary,
+            expand: true,
+            onPressed: () => Navigator.of(context).pop(ImageSource.gallery),
+          ),
+          SizedBox(height: 8),
+        ],
+      ),
+    );
+    if (src == null || !mounted) return;
+    try {
+      // 系统相机/相册（Android 走 intent，无需 CAMERA 权限）
+      final file = await ImagePicker().pickImage(
+        source: src,
+        maxWidth: 1920,
+        imageQuality: 85,
+      );
+      if (file == null || !mounted) return;
+      setState(() {
+        _receipts = [..._receipts, Receipt(id: 'r${_receipts.length}', billId: '', url: file.path)];
+      });
+    } catch (e) {
+      if (mounted) showAaToast(context, '拍/选失败：$e');
     }
   }
 
@@ -458,53 +581,64 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
   }
 
   Future<void> _save() async {
-    if (!_canSave) return;
-    final repo = ref.read(billRepositoryProvider);
-    final user = ref.read(currentUserProvider)!;
-    final group = _group;
+    if (!_canSave || _saving || _saved) return;
+    setState(() => _saving = true);
+    try {
+      final repo = ref.read(billRepositoryProvider);
+      final user = ref.read(currentUserProvider)!;
+      final group = _group;
+      // 外币 → 按当日汇率折算成人民币（分）入账
+      final rmbCents = _rmbCents;
 
-    List<BillParticipant> participants;
-    if (_split != null) {
-      participants = _split!.lines.map((l) {
-        return BillParticipant(
-          userId: l.userId,
-          nickname: l.name,
-          avatarUrl: l.avatarUrl,
-          shareAmountCents: l.exempt ? 0 : l.amountCents,
-          paid: l.userId == _payerId,
-          exempt: l.exempt,
-        );
-      }).toList();
-    } else {
-      final lines = computeEven(_amountCents, _selectedMembers, const {});
-      participants = lines.map((l) {
-        return BillParticipant(
-          userId: l.userId,
-          nickname: l.name,
-          avatarUrl: l.avatarUrl,
-          shareAmountCents: l.amountCents,
-          paid: l.userId == _payerId,
-          exempt: l.exempt,
-        );
-      }).toList();
+      List<BillParticipant> participants;
+      if (_split != null) {
+        participants = _split!.lines.map((l) {
+          return BillParticipant(
+            userId: l.userId,
+            nickname: l.name,
+            avatarUrl: l.avatarUrl,
+            shareAmountCents: l.exempt ? 0 : l.amountCents,
+            paid: l.userId == _payerId,
+            exempt: l.exempt,
+          );
+        }).toList();
+      } else {
+        final lines = computeEven(rmbCents, _selectedMembers, {});
+        participants = lines.map((l) {
+          return BillParticipant(
+            userId: l.userId,
+            nickname: l.name,
+            avatarUrl: l.avatarUrl,
+            shareAmountCents: l.amountCents,
+            paid: l.userId == _payerId,
+            exempt: l.exempt,
+          );
+        }).toList();
+      }
+
+      await repo.create(
+        groupId: _groupId,
+        groupName: group?.name ?? '',
+        title: _titleCtrl.text.trim().isEmpty ? '未命名账单' : _titleCtrl.text.trim(),
+        amountCents: rmbCents,
+        billDate: _date,
+        category: _category,
+        payerId: _payerId,
+        payerName: user.nickname,
+        participants: participants,
+        splitType: _split?.type ?? SplitType.even,
+        receipts: _receipts,
+        isRegular: _isRegular,
+      );
+      ref.read(refreshProvider.notifier).bump();
+      if (mounted) setState(() => _saved = true);
+      // 成功：不重置 _saving —— 页面随即切换为庆祝页，杜绝同帧连点窗口
+    } catch (e) {
+      if (mounted) {
+        setState(() => _saving = false);
+        showAaToast(context, '记账失败：$e');
+      }
     }
-
-    await repo.create(
-      groupId: _groupId,
-      groupName: group?.name ?? '',
-      title: _titleCtrl.text.trim().isEmpty ? '未命名账单' : _titleCtrl.text.trim(),
-      amountCents: _amountCents,
-      billDate: _date,
-      category: _category,
-      payerId: _payerId,
-      payerName: user.nickname,
-      participants: participants,
-      splitType: _split?.type ?? SplitType.even,
-      receipts: _receipts,
-      isRegular: _isRegular,
-    );
-    ref.read(refreshProvider.notifier).bump();
-    if (mounted) setState(() => _saved = true);
   }
 }
 
@@ -527,14 +661,14 @@ class _FieldRow extends StatelessWidget {
               SizedBox(
                 width: 64,
                 child: Text(label,
-                    style: const TextStyle(
-                        fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.inkSoft)),
+                    style: TextStyle(
+                        fontFamily: AAFonts.title, fontSize: 15, color: AAColors.inkSoft)),
               ),
               Expanded(child: Align(alignment: Alignment.centerRight, child: child)),
             ],
           ),
         ),
-        CustomPaint(size: const Size(double.infinity, 2.5), painter: _DashLine2()),
+        CustomPaint(size: Size(double.infinity, 2.5), painter: _DashLine2()),
       ],
     );
   }
@@ -578,20 +712,35 @@ class _AmountDashPainter extends CustomPainter {
 }
 
 class _MiniReceipt extends StatelessWidget {
-  const _MiniReceipt({required this.emoji});
-  final String emoji;
+  const _MiniReceipt({required this.url});
+  final String url;
+
   @override
   Widget build(BuildContext context) {
+    final local = !url.startsWith('🧾') &&
+        !url.startsWith('http') &&
+        File(url).existsSync();
     return Container(
       width: 40,
       height: 40,
       alignment: Alignment.center,
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: AAColors.cardWhite,
+        color: AAColors.paperDeep,
         borderRadius: BorderRadius.circular(6),
         border: Border.all(color: AAColors.ink, width: 1.2),
       ),
-      child: Text(emoji, style: const TextStyle(fontSize: 18)),
+      child: local
+          ? Image.file(
+              File(url),
+              width: 40,
+              height: 40,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) =>
+                  Text('🧾', style: TextStyle(fontSize: 18)),
+            )
+          : Text(url.startsWith('🧾') ? '🧾' : '📷',
+              style: TextStyle(fontSize: 18)),
     );
   }
 }
@@ -607,12 +756,12 @@ class _Celebration extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const CheckDraw(color: AAColors.mint, size: 96),
-            const SizedBox(height: 8),
+            CheckDraw(color: AAColors.mint, size: 96),
+            SizedBox(height: 8),
             Text('已保存，等TA们摊钱咯~', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 16),
-            const CoinBurst(count: 6),
-            const SizedBox(height: 20),
+            SizedBox(height: 16),
+            CoinBurst(count: 6),
+            SizedBox(height: 20),
             DoodleButton(label: '好的', type: DoodleButtonType.secondary, onPressed: onDone),
           ],
         ),
@@ -658,16 +807,16 @@ class _HandDateSheetState extends State<_HandDateSheet> {
                   _m--;
                 }
               }),
-              child: const Text('‹', style: TextStyle(fontSize: 24, color: AAColors.ink)),
+              child: Text('‹', style: TextStyle(fontSize: 24, color: AAColors.ink)),
             ),
-            const SizedBox(width: 14),
+            SizedBox(width: 14),
             Expanded(
               child: Text('$_y年$_m月',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
-                      fontFamily: 'ZCOOLKuaiLe', fontSize: 18, color: AAColors.ink)),
+                  style: TextStyle(
+                      fontFamily: AAFonts.title, fontSize: 18, color: AAColors.ink)),
             ),
-            const SizedBox(width: 14),
+            SizedBox(width: 14),
             InkWell(
               onTap: atNow
                   ? null
@@ -686,9 +835,9 @@ class _HandDateSheetState extends State<_HandDateSheet> {
             ),
           ],
         ),
-        const SizedBox(height: 8),
-        CustomPaint(size: const Size(double.infinity, 2.5), painter: _CalDash()),
-        const SizedBox(height: 10),
+        SizedBox(height: 8),
+        CustomPaint(size: Size(double.infinity, 2.5), painter: _CalDash()),
+        SizedBox(height: 10),
         Wrap(
           spacing: 8,
           runSpacing: 8,
@@ -712,7 +861,7 @@ class _HandDateSheetState extends State<_HandDateSheet> {
                     ),
                     child: Text('$d',
                         style: TextStyle(
-                            fontFamily: 'ZCOOLKuaiLe',
+                            fontFamily: AAFonts.title,
                             fontSize: 13,
                             color: selected ? AAColors.ink : AAColors.inkSoft)),
                   ),
@@ -720,13 +869,13 @@ class _HandDateSheetState extends State<_HandDateSheet> {
               }),
           ],
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         DoodleButton(
           label: '就选 $_y年$_m月$_d日 ✓',
           big: true,
           onPressed: () => Navigator.of(context).pop(DateTime(_y, _m, _d)),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
       ],
     );
   }

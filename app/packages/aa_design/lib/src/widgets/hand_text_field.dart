@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../tokens/aa_colors.dart';
 
+import '../theme/aa_fonts.dart';
 /// "填空题"输入框：只有一条手抖下划线，聚焦时变珊瑚橙（UI规范 §7.3）
 class HandTextField extends StatefulWidget {
   const HandTextField({
@@ -57,7 +58,7 @@ class _HandTextFieldState extends State<HandTextField> {
           textAlign: widget.textAlign ?? TextAlign.start,
           maxLines: widget.maxLines,
           style: TextStyle(
-            fontFamily: 'ZCOOLKuaiLe',
+            fontFamily: AAFonts.title,
             fontSize: widget.maxLines > 1 ? 15 : 17,
             color: AAColors.ink,
             height: 1.4,
@@ -65,7 +66,7 @@ class _HandTextFieldState extends State<HandTextField> {
           decoration: InputDecoration(
             hintText: widget.hint,
             hintStyle: TextStyle(
-              fontFamily: 'ZCOOLKuaiLe',
+              fontFamily: AAFonts.title,
               fontSize: widget.maxLines > 1 ? 15 : 17,
               color: AAColors.inkSoft.withValues(alpha: 0.7),
             ),
@@ -80,7 +81,7 @@ class _HandTextFieldState extends State<HandTextField> {
           onTapOutside: (_) => setState(() => _focused = false),
         ),
         CustomPaint(
-          size: const Size(double.infinity, 4),
+          size: Size(double.infinity, 4),
           painter: _UnderlinePainter(
             color: _focused ? AAColors.coral : ink,
             wild: _focused,
@@ -97,7 +98,7 @@ class _HandTextFieldState extends State<HandTextField> {
             child: Text(
               widget.openLabel!,
               style: TextStyle(
-                fontFamily: 'ZCOOLKuaiLe',
+                fontFamily: AAFonts.title,
                 fontSize: 15,
                 color: AAColors.inkSoft,
               ),

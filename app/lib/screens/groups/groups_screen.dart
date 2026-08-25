@@ -41,8 +41,8 @@ class GroupsScreen extends ConsumerWidget {
           ? ListView(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
               children: [
-                _InviteCard(onTap: () => context.push('/groups/create')),
-                const SizedBox(height: 12),
+                const _JoinEntryRow(),
+                SizedBox(height: 12),
                 EmptyState(
                   title: '还没有群组，拉上小伙伴开个AA局吧～',
                   subtitle: '团团这里只有硬币，快来人多才热闹',
@@ -56,7 +56,7 @@ class GroupsScreen extends ConsumerWidget {
           : ListView(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
               children: [
-                _InviteCard(onTap: () => context.push('/groups/${groups.first.id}/invite')),
+                const _JoinEntryRow(),
                 SectionTitle('最近', emoji: '📔'),
                 for (var i = 0; i < groups.length; i++)
                   _GroupCard(
@@ -66,14 +66,14 @@ class GroupsScreen extends ConsumerWidget {
                     onTap: () => context.push('/groups/${groups[i].id}'),
                     onLongPress: () => _longPress(context, ref, groups[i], me),
                   ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 DoodleButton(
                   label: '＋ 创建群组',
                   type: DoodleButtonType.primary,
                   big: true,
                   onPressed: () => context.push('/groups/create'),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
               ],
             ),
     );
@@ -86,7 +86,7 @@ class GroupsScreen extends ConsumerWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text('「${g.name}」', style: Theme.of(context).textTheme.headlineSmall),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           _SheetAction(
             emoji: '📌',
             label: '置顶群组',
@@ -102,7 +102,7 @@ class GroupsScreen extends ConsumerWidget {
               Navigator.of(context).pop('copy');
             },
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
         ],
       ),
     );
@@ -120,53 +120,95 @@ class _SheetAction extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      leading: Text(emoji, style: const TextStyle(fontSize: 20)),
-      title: Text(label, style: const TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.ink)),
-      trailing: const Text('→', style: TextStyle(fontSize: 15, color: AAColors.inkSoft)),
+      leading: Text(emoji, style: TextStyle(fontSize: 20)),
+      title: Text(label, style: TextStyle(fontFamily: AAFonts.title, fontSize: 15, color: AAColors.ink)),
+      trailing: Text('→', style: TextStyle(fontSize: 15, color: AAColors.inkSoft)),
       onTap: onTap,
     );
   }
 }
 
-/// 邀请朋友来AA —— Demo P20 首卡：📮 emoji 底 + 标题/副行 + →
-class _InviteCard extends StatelessWidget {
-  const _InviteCard({required this.onTap});
+/// 加入群组双入口 —— 扫一扫 / 邀请链接（替代原「邀请朋友来AA」卡）
+class _JoinEntryRow extends StatelessWidget {
+  const _JoinEntryRow();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SectionTitle('加入群组', emoji: '🎒'),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: _JoinEntry(
+                emoji: '📷',
+                tint: const Color(0xFFF0F6FB),
+                title: '扫一扫',
+                subtitle: '扫群组二维码入群',
+                onTap: () => context.push('/groups/scan'),
+              ),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: _JoinEntry(
+                emoji: '🔗',
+                tint: const Color(0xFFEDF7EE),
+                title: '邀请链接',
+                subtitle: '粘贴链接加入群组',
+                onTap: () => context.push('/groups/join-link'),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// 单个入群入口小卡（emoji 圆底 + 标题 + 副行）
+class _JoinEntry extends StatelessWidget {
+  const _JoinEntry({
+    required this.emoji,
+    required this.tint,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final String emoji;
+  final Color tint;
+  final String title;
+  final String subtitle;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return PaperCard(
       onTap: onTap,
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-      child: Row(
+      padding: const EdgeInsets.fromLTRB(10, 12, 10, 12),
+      child: Column(
         children: [
-          // 邀请卡头像：📮 替换为「邮箱」素材
           Container(
             width: 44,
             height: 44,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: const Color(0xFFFFF1EA),
+              color: tint,
               shape: BoxShape.circle,
               border: Border.all(color: AAColors.ink, width: 2.5),
             ),
-            child: const AaIconImage('assets/icons/inbox.png', size: 22),
+            child: Text(emoji, style: const TextStyle(fontSize: 20)),
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('邀请朋友来AA',
-                    style: TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.ink)),
-                const SizedBox(height: 2),
-                Text('发送邀请链接/二维码',
-                    style: const TextStyle(
-                        fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
-              ],
-            ),
-          ),
-          const Text('→', style: TextStyle(fontSize: 15, color: AAColors.ink)),
+          SizedBox(height: 8),
+          Text(title,
+              style: TextStyle(
+                  fontFamily: AAFonts.title, fontSize: 15, color: AAColors.ink)),
+          SizedBox(height: 2),
+          Text(subtitle,
+              style: TextStyle(
+                  fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft)),
         ],
       ),
     );
@@ -199,7 +241,7 @@ class _GroupCard extends StatelessWidget {
         child: Row(
           children: [
             SketchAvatar(emoji: group.avatar, size: 44, background: tint),
-            const SizedBox(width: 10),
+            SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -207,28 +249,28 @@ class _GroupCard extends StatelessWidget {
                   Row(
                     children: [
                       Text(group.name,
-                          style: const TextStyle(
-                              fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.ink)),
+                          style: TextStyle(
+                              fontFamily: AAFonts.title, fontSize: 15, color: AAColors.ink)),
                       if (isOwner) ...[
-                        const SizedBox(width: 6),
-                        const Text('👑', style: TextStyle(fontSize: 14)),
+                        SizedBox(width: 6),
+                        Text('👑', style: TextStyle(fontSize: 14)),
                       ],
                     ],
                   ),
-                  const SizedBox(height: 2),
+                  SizedBox(height: 2),
                   Text(
                     group.pendingBillCount > 0
                         ? '${group.memberCount}个小伙伴 · ${group.pendingBillCount}笔待清'
                         : '${group.memberCount}个小伙伴 · 已清账',
-                    style: const TextStyle(
-                        fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft),
+                    style: TextStyle(
+                        fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             StampBadge(
               text: group.pendingBillCount > 0 ? '${group.pendingBillCount}笔待清' : '✅已清',
               color: group.pendingBillCount > 0

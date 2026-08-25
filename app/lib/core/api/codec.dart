@@ -126,7 +126,8 @@ Bill parseBill(dynamic data, {String groupName = '', String payerNameFallback = 
     billDate: date,
     location: _safeStr(j, 'location'),
     category: _categoryOf(_safeStr(j, 'category')),
-    payerId: _safeStr(j, 'payerId'),
+    // payerId 兜底：老版本服务端 mapBill 只返回嵌套 payer 对象，缺顶层 payerId
+    payerId: _safeStr(j, 'payerId', _safeStr(payer, 'id')),
     payerName: _safeStr(payer, 'nickname', payerNameFallback),
     participants: _asList(j['participants']).map(parseParticipant).toList(),
     splitType: _splitTypeOf(_safeStr(j, 'splitType')),

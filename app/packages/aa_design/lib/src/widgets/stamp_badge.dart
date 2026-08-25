@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import '../tokens/aa_colors.dart';
 
+import '../theme/aa_fonts.dart';
 /// 圆圈印章 —— 严格照搬 Demo `.stamp`：
 /// `border:2px solid var(--ink);border-radius:50%;padding:4px 10px;
 ///  font-size:11px;transform:rotate(-8deg);background:#FFFDF6`
@@ -41,7 +42,7 @@ class StampBadge extends StatelessWidget {
           text,
           textAlign: TextAlign.center,
           style: TextStyle(
-            fontFamily: 'ZCOOLKuaiLe',
+            fontFamily: AAFonts.title,
             fontSize: 11,
             height: 1.2,
             color: color,

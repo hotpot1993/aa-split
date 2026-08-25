@@ -93,4 +93,19 @@ export class StorageService {
     }
     return `/uploads/${objectKey}`;
   }
+
+  /** 删除对象（替换凭证时清理旧图；文件不存在视为成功，不抛错） */
+  async remove(objectKey: string): Promise<void> {
+    if (!objectKey || objectKey.startsWith('http')) return;
+    try {
+      if (this.mode === 'minio' && this.minioClient && this.minioBucket) {
+        await this.minioClient.removeObject(this.minioBucket, objectKey);
+        return;
+      }
+      await fs.promises.unlink(path.join(this.uploadDir, objectKey));
+    } catch (e: any) {
+      if (e?.code === 'ENOENT') return;
+      this.logger.warn(`删除对象失败（忽略）：${objectKey} ${e?.message}`);
+    }
+  }
 }

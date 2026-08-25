@@ -9,6 +9,8 @@ import '../../core/utils/format.dart';
 import '../../models/bill.dart';
 import '../../models/group.dart';
 import '../../providers/data_providers.dart';
+import '../../providers/refresh_provider.dart';
+import '../../providers/repositories.dart';
 import '../../widgets/avatar.dart';
 import '../../widgets/common.dart';
 import '../../widgets/sheet.dart';
@@ -32,7 +34,7 @@ class HomeScreen extends ConsumerWidget {
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: [
           _Header(name: name),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           _NetCard(
             balance: bal,
             onSettle: () => _goSettle(context, ref, groups, bills, user?.id ?? 'me'),
@@ -54,16 +56,20 @@ class HomeScreen extends ConsumerWidget {
               onButtonTap: () => context.push('/add'),
             )
           else
-            ...recent.map((b) => _RecentRow(bill: b, onTap: () => context.push('/bills/${b.id}'))),
-          const SizedBox(height: 4),
+            ...recent.map((b) => _RecentRow(
+                  bill: b,
+                  onTap: () => context.push('/bills/${b.id}'),
+                  onLongPress: () => _onLongPressBill(context, ref, b, groups),
+                )),
+          SizedBox(height: 4),
           InkWell(
             onTap: () => context.push('/bills'),
-            child: const Center(
+            child: Center(
               child: Text('— 查看更多账单 →',
-                  style: TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
+                  style: TextStyle(fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft)),
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
         ],
       ),
     );
@@ -88,11 +94,35 @@ class HomeScreen extends ConsumerWidget {
     }
   }
 
-  void _goInvite(BuildContext context, groups) {
+  /// 邀请朋友：无群 → 创建群；一个群 → 直达；多个群 → 弹层选群
+  Future<void> _goInvite(BuildContext context, List<Group> groups) async {
     if (groups.isEmpty) {
       context.push('/groups/create');
-    } else {
+      return;
+    }
+    if (groups.length == 1) {
       context.push('/groups/${groups.first.id}/invite');
+      return;
+    }
+    final picked = await showAaSheet<Group>(
+      context,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('邀请哪个群组的小伙伴？',
+              style: Theme.of(context).textTheme.headlineSmall),
+          SizedBox(height: 8),
+          for (final g in groups)
+            _InviteGroupRow(
+              group: g,
+              onTap: () => Navigator.of(context).pop(g),
+            ),
+          SizedBox(height: 8),
+        ],
+      ),
+    );
+    if (picked != null && context.mounted) {
+      context.push('/groups/${picked.id}/invite');
     }
   }
 
@@ -112,6 +142,38 @@ class HomeScreen extends ConsumerWidget {
       showAaToast(context, '没有欠款要催，大家都超靠谱！');
     }
   }
+
+  /// 群主长按首页最近账单 → 确认弹窗 → 删除（与群组详情一致；
+  /// 非群主仅提示，不弹删除确认）
+  Future<void> _onLongPressBill(
+      BuildContext context, WidgetRef ref, Bill bill, List<Group> groups) async {
+    final me = ref.read(currentUserProvider)?.id;
+    Group? group;
+    for (final g in groups) {
+      if (g.id == bill.groupId) {
+        group = g;
+        break;
+      }
+    }
+    if (me == null || group == null || group.ownerId != me) {
+      showAaToast(context, '只有群主才能删除账单哦');
+      return;
+    }
+    final ok = await showAaConfirm(
+      context,
+      title: '要删除这笔账单吗？',
+      subtitle: '「${bill.title}」删除后从流水里消失，撤销不了了哦',
+      confirmLabel: '删除',
+    );
+    if (ok != true || !context.mounted) return;
+    try {
+      await ref.read(billRepositoryProvider).delete(bill.id);
+      ref.read(refreshProvider.notifier).bump();
+      if (context.mounted) showAaToast(context, '账单已删除');
+    } catch (e) {
+      if (context.mounted) showAaToast(context, '删除失败：$e');
+    }
+  }
 }
 
 class _Header extends StatelessWidget {
@@ -128,8 +190,8 @@ class _Header extends StatelessWidget {
             '${Fmt.greeting()}，$name 👋',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontFamily: 'ZCOOLKuaiLe',
+            style: TextStyle(
+              fontFamily: AAFonts.title,
               fontSize: 22,
               color: AAColors.ink,
               height: 1.2,
@@ -138,7 +200,7 @@ class _Header extends StatelessWidget {
         ),
         InkWell(
           onTap: () => context.push('/search'),
-          child: const AaIconImage('assets/icons/search.png', size: 24),
+          child: AaIconImage('assets/icons/search.png', size: 24),
         ),
       ],
     );
@@ -167,23 +229,23 @@ class _NetCard extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 '我的净额',
-                style: TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 13, color: AAColors.inkSoft),
+                style: TextStyle(fontFamily: AAFonts.title, fontSize: 13, color: AAColors.inkSoft),
               ),
-              const SizedBox(height: 4),
+              SizedBox(height: 4),
               HandAmount(amountCents: net, color: color, size: 42),
-              const SizedBox(height: 6),
+              SizedBox(height: 6),
               Row(
                 children: [
                   HandTag('应收 +¥${(balance.receivableCents / 100).toStringAsFixed(2)}',
                       variant: ChipVariant.green, fontSize: 12),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   HandTag('应付 -¥${(balance.payableCents / 100).toStringAsFixed(2)}',
                       variant: ChipVariant.orange, fontSize: 12),
                 ],
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               Row(
                 children: [
                   DoodleButton(
@@ -192,7 +254,7 @@ class _NetCard extends StatelessWidget {
                     mini: true,
                     onPressed: onSettle,
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   DoodleButton(label: '查看明细', mini: true, onPressed: onDetail),
                 ],
               ),
@@ -203,7 +265,7 @@ class _NetCard extends StatelessWidget {
             bottom: 2,
             child: Padding(
               padding: const EdgeInsets.only(top: 40),
-              child: const TuanTuanPanda(size: 64),
+              child: TuanTuanPanda(size: 64),
             ),
           ),
         ],
@@ -226,23 +288,23 @@ class _QuickActions extends StatelessWidget {
           emoji: '',
           image: 'assets/icons/edit.png',
           label: '记一笔',
-          radii: const [50, 46, 52, 48],
+          radii: [50, 46, 52, 48],
           onTap: onAdd,
         ),
-        const SizedBox(width: 10),
+        SizedBox(width: 10),
         _QuickCircle(
           emoji: '',
           image: 'assets/icons/group.png',
           label: '邀请朋友',
-          radii: const [48, 52, 46, 54],
+          radii: [48, 52, 46, 54],
           onTap: onInvite,
         ),
-        const SizedBox(width: 10),
+        SizedBox(width: 10),
         _QuickCircle(
           emoji: '',
           image: 'assets/icons/broadcast.png',
           label: '催款',
-          radii: const [52, 48, 54, 46],
+          radii: [52, 48, 54, 46],
           onTap: onRemind,
         ),
       ],
@@ -288,16 +350,16 @@ class _QuickCircle extends StatelessWidget {
                 shape: BoxShape.rectangle,
                 borderRadius: r(radii),
                 border: Border.all(color: AAColors.ink, width: 2.5),
-                boxShadow: const [AATokens.quickShadow],
+                boxShadow: [AATokens.quickShadow],
               ),
               child: image != null
                   ? AaIconImage(image!, size: 30)
-                  : Text(emoji, style: const TextStyle(fontSize: 24)),
+                  : Text(emoji, style: TextStyle(fontSize: 24)),
             ),
-            const SizedBox(height: 5),
+            SizedBox(height: 5),
             Text(label,
-                style: const TextStyle(
-                    fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.ink)),
+                style: TextStyle(
+                    fontFamily: AAFonts.title, fontSize: 12, color: AAColors.ink)),
           ],
         ),
       ),
@@ -305,22 +367,47 @@ class _QuickCircle extends StatelessWidget {
   }
 }
 
+/// 邀请页群组选择行（首页「邀请朋友」多群时弹层）
+class _InviteGroupRow extends StatelessWidget {
+  const _InviteGroupRow({required this.group, required this.onTap});
+  final Group group;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      leading: SketchAvatar(emoji: group.avatar, size: 42),
+      title: Text(group.name,
+          style: TextStyle(
+              fontFamily: AAFonts.title, fontSize: 15, color: AAColors.ink)),
+      subtitle: Text('${group.memberCount}个小伙伴',
+          style: TextStyle(
+              fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft)),
+      trailing: Text('→', style: TextStyle(fontSize: 15, color: AAColors.inkSoft)),
+      onTap: onTap,
+    );
+  }
+}
+
 /// 最近账单行 —— Demo `.card.tap`：`padding:12px`，`[ava 44][标题+副行][金额 24px][印章]`
 class _RecentRow extends StatelessWidget {
-  const _RecentRow({required this.bill, required this.onTap});
+  const _RecentRow({required this.bill, required this.onTap, this.onLongPress});
   final Bill bill;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context) {
     return PaperCard(
       onTap: onTap,
+      onLongPress: onLongPress,
       padding: const EdgeInsets.all(12),
       margin: const EdgeInsets.only(bottom: 16),
       child: Row(
         children: [
           CategoryIcon(category: bill.category, size: 44),
-          const SizedBox(width: 10),
+          SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -328,22 +415,22 @@ class _RecentRow extends StatelessWidget {
                 Text(bill.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.ink)),
-                const SizedBox(height: 2),
+                    style: TextStyle(
+                        fontFamily: AAFonts.title, fontSize: 15, color: AAColors.ink)),
+                SizedBox(height: 2),
                 Text(
                   '${bill.groupName} · ${bill.participants.length}人 · ${Fmt.relative(bill.billDate)} · ${SplitText.label(bill.splitType)}',
-                  style: const TextStyle(
-                      fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft),
+                  style: TextStyle(
+                      fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           HandAmount(amountCents: bill.amountCents, size: 24, trimZero: true),
-          const SizedBox(width: 10),
+          SizedBox(width: 10),
           StampBadge(
             text: bill.fullySettled ? '✅已结清' : '待结算',
             color: bill.fullySettled ? AASemantic.stampDone : AASemantic.stampMoney,

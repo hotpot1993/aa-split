@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../tokens/aa_colors.dart';
 
+import '../theme/aa_fonts.dart';
 /// 筛选/状态胶囊 —— 严格照搬 Demo `.chip`：
 /// `border:2px solid var(--ink);border-radius:999px;padding:3px 11px;
 ///  font-size:12px;background:#fff`
@@ -67,7 +68,7 @@ class HandTag extends StatelessWidget {
       ChipVariant.orange => (AASemantic.chipOrangeBg, AASemantic.chipOrangeText),
       ChipVariant.blue => (AASemantic.chipBlueBg, AASemantic.chipBlueText),
       ChipVariant.selected => (AAColors.marker, AAColors.ink),
-      ChipVariant.plain => (const Color(0xFFFFFFFF), AAColors.ink),
+      ChipVariant.plain => (Color(0xFFFFFFFF), AAColors.ink),
     };
     return Container(
       padding: dense
@@ -85,12 +86,12 @@ class HandTag extends StatelessWidget {
             Icon(icon,
                 size: fontSize - 1,
                 color: textColor ?? fg),
-            const SizedBox(width: 4),
+            SizedBox(width: 4),
           ],
           Text(
             label,
             style: TextStyle(
-              fontFamily: 'ZCOOLKuaiLe',
+              fontFamily: AAFonts.title,
               fontSize: fontSize,
               height: 1.2,
               color: textColor ?? fg,

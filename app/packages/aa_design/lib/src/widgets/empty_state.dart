@@ -5,6 +5,7 @@ import '../tokens/aa_tokens.dart';
 import 'doodle_button.dart';
 import 'paper_card.dart';
 
+import '../theme/aa_fonts.dart';
 /// 空状态卡片 —— 严格照搬 Demo `.emptyc`：
 /// `background:#FFFDF6;border-radius:16px 6px 14px 7px/7px 14px 6px 16px;
 ///  padding:18px 14px 14px;box-shadow:3px 3px 0 rgba(68,58,50,.15);
@@ -52,25 +53,25 @@ class EmptyState extends StatelessWidget {
         if (artImage != null)
           Image.asset(artImage!, width: 38, height: 38, fit: BoxFit.contain)
         else
-          Text(art, style: const TextStyle(fontSize: 38)),
-        const SizedBox(height: 6),
+          Text(art, style: TextStyle(fontSize: 38)),
+        SizedBox(height: 6),
         Text(
           title,
           textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontFamily: 'ZCOOLKuaiLe',
+          style: TextStyle(
+            fontFamily: AAFonts.title,
             fontSize: 16,
             color: AAColors.ink,
             height: 1.4,
           ),
         ),
         if (subtitle != null) ...[
-          const SizedBox(height: 4),
+          SizedBox(height: 4),
           Text(
             subtitle!,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontFamily: 'ZCOOLKuaiLe',
+            style: TextStyle(
+              fontFamily: AAFonts.title,
               fontSize: 12,
               color: AAColors.inkSoft,
               height: 1.4,
@@ -78,7 +79,7 @@ class EmptyState extends StatelessWidget {
           ),
         ],
         if (buttonLabel != null) ...[
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           DoodleButton(label: buttonLabel!, onPressed: onButtonTap, mini: true),
         ],
       ],
@@ -111,8 +112,8 @@ class EmptyState extends StatelessWidget {
                 ),
                 child: Text(
                   tag!,
-                  style: const TextStyle(
-                    fontFamily: 'ZCOOLKuaiLe',
+                  style: TextStyle(
+                    fontFamily: AAFonts.title,
                     fontSize: 11,
                     color: AAColors.ink,
                     height: 1.2,
@@ -143,10 +144,10 @@ class AaLoading extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         TuanTuanPanda(size: mascotSize),
-        const SizedBox(height: 10),
+        SizedBox(height: 10),
         Text(label,
-            style: const TextStyle(
-                fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
+            style: TextStyle(
+                fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft)),
       ],
     );
   }

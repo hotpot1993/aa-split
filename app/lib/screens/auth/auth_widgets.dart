@@ -16,12 +16,12 @@ class FieldError extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const StampBadge(text: '!', color: AAColors.berry, rotate: -8),
-          const SizedBox(width: 6),
+          StampBadge(text: '!', color: AAColors.berry, rotate: -8),
+          SizedBox(width: 6),
           Text(
             message!,
-            style: const TextStyle(
-              fontFamily: 'ZCOOLKuaiLe',
+            style: TextStyle(
+              fontFamily: AAFonts.title,
               fontSize: 12,
               color: AAColors.berry,
             ),

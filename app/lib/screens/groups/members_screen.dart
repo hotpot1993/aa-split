@@ -18,7 +18,7 @@ class MembersScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final members = (ref.watch(groupMembersProvider).value ?? const {})[groupId] ?? [];
+    final members = (ref.watch(groupMembersProvider).value ?? {})[groupId] ?? [];
     final me = ref.watch(currentUserProvider)?.id ?? 'me';
 
     return AaScaffold(
@@ -44,20 +44,20 @@ class MembersScreen extends ConsumerWidget {
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           DoodleButton(
             label: '＋ 添加成员',
             big: true,
             onPressed: () => context.push('/groups/$groupId/invite'),
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           DoodleButton(
             label: '退出群组（账单仍保留）',
             type: DoodleButtonType.danger,
             big: true,
             onPressed: () => _leave(ref, context, me),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
         ],
       ),
     );
@@ -80,7 +80,7 @@ class MembersScreen extends ConsumerWidget {
   }
 
   Future<void> _leave(WidgetRef ref, BuildContext context, String me) async {
-    final members = (ref.read(groupMembersProvider).value ?? const {})[groupId] ?? [];
+    final members = (ref.read(groupMembersProvider).value ?? {})[groupId] ?? [];
     final isOwner = members.any((x) => x.isOwner && x.userId == me);
     if (isOwner) {
       showAaToast(context, '你是群主，先转让群主或解散群组');
@@ -131,43 +131,43 @@ class _MemberLine extends StatelessWidget {
               Text.rich(TextSpan(children: [
                 TextSpan(
                   text: '${member.avatarUrl} ${member.nickname}${isMe ? '（我）' : ''} ',
-                  style: const TextStyle(
-                      fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.ink),
+                  style: TextStyle(
+                      fontFamily: AAFonts.title, fontSize: 15, color: AAColors.ink),
                 ),
                 TextSpan(
                   text: '@${member.accountName}',
-                  style: const TextStyle(
-                      fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft),
+                  style: TextStyle(
+                      fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft),
                 ),
               ])),
               if (member.isOwner)
-                const Text('👑 群主',
+                Text('👑 群主',
                     style: TextStyle(
-                        fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.ink))
+                        fontFamily: AAFonts.title, fontSize: 15, color: AAColors.ink))
               else if (canManage)
                 InkWell(
                   onTap: onRemove,
                   child: Row(
                     children: [
-                      const HandTag('正常', dense: true, variant: ChipVariant.blue),
-                      const SizedBox(width: 6),
-                      const Text('✗',
+                      HandTag('正常', dense: true, variant: ChipVariant.blue),
+                      SizedBox(width: 6),
+                      Text('✗',
                           style: TextStyle(
-                              fontFamily: 'ZCOOLKuaiLe', fontSize: 13, color: AAColors.inkSoft)),
-                      const SizedBox(width: 2),
+                              fontFamily: AAFonts.title, fontSize: 13, color: AAColors.inkSoft)),
+                      SizedBox(width: 2),
                       Text('移除',
-                          style: const TextStyle(
-                              fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
+                          style: TextStyle(
+                              fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft)),
                     ],
                   ),
                 )
               else
-                const HandTag('正常', dense: true, variant: ChipVariant.blue),
+                HandTag('正常', dense: true, variant: ChipVariant.blue),
             ],
           ),
         ),
         if (showBorder)
-          CustomPaint(size: const Size(double.infinity, 2.5), painter: _MemberDash()),
+          CustomPaint(size: Size(double.infinity, 2.5), painter: _MemberDash()),
       ],
     );
   }

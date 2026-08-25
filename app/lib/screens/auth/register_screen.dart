@@ -40,6 +40,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   bool? _available;
 
+  /// 防重复提交：注册进行中置位，重复点击直接忽略（单次操作仅注册一次）
+  bool _submitting = false;
+
   bool get _accountTaken => _available == false;
 
   bool get _canSubmit {
@@ -52,11 +55,15 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   }
 
   Future<void> _submit() async {
-    if (!_canSubmit) return;
+    if (!_canSubmit || _submitting) return;
+    setState(() => _submitting = true);
     await _checkAccount();
     if (!mounted) return;
     if (_accountTaken) {
-      setState(() => _accountErr = '这个名字被占用啦，换一个试试');
+      setState(() {
+        _accountErr = '这个名字被占用啦，换一个试试';
+        _submitting = false;
+      });
       return;
     }
     try {
@@ -67,11 +74,22 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             securityQuestion: _question,
             securityAnswer: _answer.text.trim(),
           );
+      // 成功：不重置 _submitting（页面随即跳转主框架），杜绝连点窗口
       if (mounted) context.go('/home');
     } on AuthException catch (e) {
-      setState(() => _accountErr = e.message);
+      if (mounted) {
+        setState(() {
+          _accountErr = e.message;
+          _submitting = false;
+        });
+      }
     } catch (e) {
-      setState(() => _accountErr = e.toString());
+      if (mounted) {
+        setState(() {
+          _accountErr = e.toString();
+          _submitting = false;
+        });
+      }
     }
   }
 
@@ -79,9 +97,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   Widget build(BuildContext context) {
     return AuthScaffold(
       children: [
-        const AaAppBar(title: '✏️ 注册新账户'),
+        AaAppBar(title: '✏️ 注册新账户'),
         // 🐾 涂鸦装饰（Demo .doodle）
-        const SizedBox(height: 34),
+        SizedBox(height: 34),
         // 账户信息卡（Demo .card padding:4px 14px 的 .line 行）
         PaperCard(
           padding: const EdgeInsets.fromLTRB(14, 4, 14, 4),
@@ -106,7 +124,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       ),
                     ),
                     if (_account.text.trim().isNotEmpty) ...[
-                      const SizedBox(width: 6),
+                      SizedBox(width: 6),
                       StampBadge(
                         text: _accountTaken ? '占用' : '✅ 可用',
                         rotate: -8,
@@ -148,7 +166,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       ),
                       IconButton(
                         icon: Text(_obscure ? '🙈' : '👁️',
-                            style: const TextStyle(fontSize: 15)),
+                            style: TextStyle(fontSize: 15)),
                         onPressed: () => setState(() => _obscure = !_obscure),
                       ),
                     ],
@@ -174,22 +192,22 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
         PaperCard(
           padding: const EdgeInsets.fromLTRB(14, 12, 14, 4),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('🔐 找回密码用（忘记手机号也不怕）',
+              Text('🔐 找回密码用（忘记手机号也不怕）',
                   style: TextStyle(
-                      fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
-              const SizedBox(height: 4),
+                      fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft)),
+              SizedBox(height: 4),
               _RegLine(
                 label: '安全问题',
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
                     value: _question,
-                    icon: const Text('▾',
+                    icon: Text('▾',
                         style: TextStyle(fontSize: 16, color: AAColors.inkSoft, height: 1)),
                     items: _questions
                         .map((q) => DropdownMenuItem(value: q, child: Text(q)))
@@ -216,41 +234,41 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             ],
           ),
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         FieldError(message: _accountErr),
         FieldError(message: _passwordErr),
         FieldError(message: _confirmErr),
         FieldError(message: _answerErr),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         Row(
           children: [
             AaCheckbox(
               value: _agree,
               onChanged: () => setState(() => _agree = !_agree),
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             Text(
               '已阅读并同意《用户协议》《隐私政策》',
-              style: const TextStyle(
-                  fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.ink),
+              style: TextStyle(
+                  fontFamily: AAFonts.title, fontSize: 12, color: AAColors.ink),
             ),
           ],
         ),
-        const SizedBox(height: 14),
+        SizedBox(height: 14),
         DoodleButton(
-          label: '注册并开始 🎉',
+          label: _submitting ? '注册中…' : '注册并开始 🎉',
           big: true,
-          onPressed: _canSubmit ? _submit : null,
+          onPressed: _canSubmit && !_submitting ? _submit : null,
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         Center(
           child: TextButton(
             onPressed: () => context.pop(),
-            child: const Text('已有账户？去登录',
-                style: TextStyle(color: AAColors.sky, fontFamily: 'ZCOOLKuaiLe')),
+            child: Text('已有账户？去登录',
+                style: TextStyle(color: AAColors.sky, fontFamily: AAFonts.title)),
           ),
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
       ],
     );
   }
@@ -288,14 +306,14 @@ class _RegLine extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Text(label,
-                  style: const TextStyle(
-                      fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.inkSoft)),
+                  style: TextStyle(
+                      fontFamily: AAFonts.title, fontSize: 15, color: AAColors.inkSoft)),
               child,
             ],
           ),
         ),
         if (showBorder)
-          CustomPaint(size: const Size(double.infinity, 2.5), painter: _RegDash()),
+          CustomPaint(size: Size(double.infinity, 2.5), painter: _RegDash()),
       ],
     );
   }

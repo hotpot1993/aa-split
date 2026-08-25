@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../tokens/aa_colors.dart';
 
+import '../theme/aa_fonts.dart';
 /// 金额字号档位（对应 Demo 内联 font-size）
 abstract final class AATokensAmountSize {
   /// .amount 基准 42px
@@ -75,7 +76,8 @@ class HandAmount extends StatelessWidget {
               child: Text(
                 sign,
                 style: TextStyle(
-                  fontFamily: 'LongCang',
+                  // 正负号统一 JetBrains Mono（与 ¥ 一致）
+                  fontFamily: AAFonts.currency,
                   fontSize: size * 0.72,
                   color: color,
                   height: 1.0,
@@ -87,18 +89,19 @@ class HandAmount extends StatelessWidget {
             child: Text(
               '¥',
               style: TextStyle(
-                fontFamily: 'LongCang',
+                // 货币符号统一 JetBrains Mono（手绘/标准风格一致）
+                fontFamily: AAFonts.currency,
                 fontSize: size * yenScale,
                 color: color,
                 height: 1.0,
               ),
             ),
           ),
-          const SizedBox(width: 2),
+          SizedBox(width: 2),
           Text(
             numText,
             style: TextStyle(
-              fontFamily: 'LongCang',
+              fontFamily: AAFonts.hand,
               fontSize: size,
               color: color,
               height: 1.0,
@@ -142,7 +145,7 @@ class HandAmountWithLabel extends StatelessWidget {
           child: Text(
             label,
             style: TextStyle(
-              fontFamily: 'ZCOOLKuaiLe',
+              fontFamily: AAFonts.title,
               fontSize: 12,
               color: AAColors.inkSoft,
             ),

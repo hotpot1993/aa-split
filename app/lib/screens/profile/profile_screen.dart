@@ -52,7 +52,7 @@ class ProfileScreen extends ConsumerWidget {
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: [
           // 头像 + 昵称（Demo：86px 大头像 + 📷 角标 + 22px 昵称 + @账户名）
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           Center(
             child: Column(
               children: [
@@ -67,28 +67,28 @@ class ProfileScreen extends ConsumerWidget {
                           emoji: user.avatarUrl,
                           size: 86,
                           name: user.nickname,
-                          background: const Color(0xFFFFF1EA),
+                          background: Color(0xFFFFF1EA),
                         ),
                       ),
-                      const Positioned(right: -6, bottom: -2, child: Text('📷', style: TextStyle(fontSize: 18))),
+                      Positioned(right: -6, bottom: -2, child: Text('📷', style: TextStyle(fontSize: 18))),
                     ],
                   ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Text(user.nickname,
-                    style: const TextStyle(
-                        fontFamily: 'ZCOOLKuaiLe', fontSize: 22, color: AAColors.ink)),
-                const SizedBox(height: 2),
+                    style: TextStyle(
+                        fontFamily: AAFonts.title, fontSize: 22, color: AAColors.ink)),
+                SizedBox(height: 2),
                 // 英文点缀（规范 §4 第五级：Caveat 手写体）
                 Text('@${user.accountName}',
-                    style: const TextStyle(
-                        fontFamily: 'Caveat',
+                    style: TextStyle(
+                        fontFamily: AAFonts.accent,
                         fontSize: 15,
                         color: AAColors.inkSoft)),
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           // 数据卡（Demo：三列，中间列左右虚线分隔）
           PaperCard(
             padding: const EdgeInsets.all(12),
@@ -98,7 +98,7 @@ class ProfileScreen extends ConsumerWidget {
                 Expanded(child: _StatCell(value: '${groups.length}', label: '群组', size: 26)),
                 Expanded(
                   child: CustomPaint(
-                    painter: const _DashedVerticalsPainter(),
+                    painter: _DashedVerticalsPainter(),
                     child: _StatCell(value: '${bills.length}', label: '账单', size: 26),
                   ),
                 ),
@@ -106,7 +106,7 @@ class ProfileScreen extends ConsumerWidget {
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           // 菜单卡（Demo .line 行）
           PaperCard(
             padding: const EdgeInsets.fromLTRB(14, 2, 14, 2),
@@ -140,14 +140,14 @@ class ProfileScreen extends ConsumerWidget {
               ],
             ),
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           DoodleButton(
             label: '退出登录「下次再来玩呀」',
             type: DoodleButtonType.danger,
             big: true,
             onPressed: () => _logout(context, ref),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
         ],
       ),
     );
@@ -161,14 +161,14 @@ class ProfileScreen extends ConsumerWidget {
           children: [
             if (image != null) ...[
               AaIconImage(image, size: 18),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
             ],
             Text(label,
-                style: const TextStyle(
-                    fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.ink)),
+                style: TextStyle(
+                    fontFamily: AAFonts.title, fontSize: 15, color: AAColors.ink)),
           ],
         ),
-        const Text('→', style: TextStyle(fontSize: 15, color: AAColors.ink)),
+        Text('→', style: TextStyle(fontSize: 15, color: AAColors.ink)),
       ],
     );
   }
@@ -198,30 +198,30 @@ class ProfileScreen extends ConsumerWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text('换头像',
+          Text('换头像',
               style:
-                  TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 18, color: AAColors.ink)),
-          const SizedBox(height: 12),
+                  TextStyle(fontFamily: AAFonts.title, fontSize: 18, color: AAColors.ink)),
+          SizedBox(height: 12),
           DoodleButton(
             label: '📷 拍一张',
             expand: true,
             onPressed: () => Navigator.of(context).pop('camera'),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           DoodleButton(
             label: '🖼️ 从相册选',
             type: DoodleButtonType.secondary,
             expand: true,
             onPressed: () => Navigator.of(context).pop('gallery'),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           DoodleButton(
             label: '🐼 恢复默认',
             type: DoodleButtonType.ghost,
             expand: true,
             onPressed: () => Navigator.of(context).pop('default'),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
         ],
       ),
     );
@@ -298,11 +298,11 @@ class _StatCell extends StatelessWidget {
           Text(
             value,
             style: TextStyle(
-                fontFamily: 'LongCang', fontSize: size, color: AAColors.ink, height: 1),
+                fontFamily: AAFonts.hand, fontSize: size, color: AAColors.ink, height: 1),
           ),
         Text(label,
-            style: const TextStyle(
-                fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
+            style: TextStyle(
+                fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft)),
       ],
     );
   }
@@ -345,7 +345,7 @@ class _Wobble extends StatefulWidget {
 
 class _WobbleState extends State<_Wobble> with SingleTickerProviderStateMixin {
   late final AnimationController _c =
-      AnimationController(vsync: this, duration: const Duration(milliseconds: 2400))..repeat();
+      AnimationController(vsync: this, duration: Duration(milliseconds: 2400))..repeat();
   @override
   void dispose() {
     _c.dispose();
@@ -396,13 +396,13 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text('编辑资料', style: text.headlineSmall),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         Text('昵称', style: text.bodyMedium),
         HandTextField(controller: _nickname),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         Text('个性签名', style: text.bodyMedium),
         HandTextField(controller: _bio, maxLines: 2),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
         DoodleButton(
           label: '保存',
           expand: true,
@@ -413,7 +413,7 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
                   if (context.mounted) Navigator.of(context).pop();
                 },
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
       ],
     );
   }

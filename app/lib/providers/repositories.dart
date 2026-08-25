@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/repositories/auth_repository.dart';
 import '../data/repositories/bill_repository.dart';
+import '../data/repositories/exchange_rate_repository.dart';
 import '../data/repositories/group_repository.dart';
 import '../data/repositories/notification_repository.dart';
 import '../data/repositories/settlement_repository.dart';
@@ -14,3 +15,5 @@ final settlementRepositoryProvider =
     Provider<SettlementRepository>((ref) => SettlementRepository());
 final notificationRepositoryProvider =
     Provider<NotificationRepository>((ref) => NotificationRepository());
+final exchangeRateRepositoryProvider =
+    Provider<ExchangeRateRepository>((ref) => ExchangeRateRepository());

@@ -29,3 +29,21 @@ flutter:
     - family: Caveat
       fonts:
         - asset: assets/fonts/Caveat-VariableFont_wght.ttf
+    # 标准风格字体（设置页切换：金额=JetBrains Mono，其余=Noto Sans SC）
+    # 可变字体按常用字重重复注册，保证 fontWeight 正确映射到 wght 轴
+    - family: NotoSansSC
+      fonts:
+        - asset: assets/fonts/NotoSansSC-Variable.ttf
+          weight: 400
+        - asset: assets/fonts/NotoSansSC-Variable.ttf
+          weight: 500
+        - asset: assets/fonts/NotoSansSC-Variable.ttf
+          weight: 700
+    - family: JetBrainsMono
+      fonts:
+        - asset: assets/fonts/JetBrainsMono-Variable.ttf
+          weight: 400
+        - asset: assets/fonts/JetBrainsMono-Variable.ttf
+          weight: 500
+        - asset: assets/fonts/JetBrainsMono-Variable.ttf
+          weight: 700

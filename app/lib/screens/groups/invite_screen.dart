@@ -6,6 +6,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import 'package:aa_design/aa_design.dart';
 
+import '../../models/group.dart';
 import '../../providers/data_providers.dart';
 import '../../providers/repositories.dart';
 import '../../providers/refresh_provider.dart';
@@ -50,7 +51,15 @@ class _InviteScreenState extends ConsumerState<InviteScreen> {
   @override
   Widget build(BuildContext context) {
     final members =
-        (ref.watch(groupMembersProvider).value ?? const {})[widget.groupId] ?? const [];
+        (ref.watch(groupMembersProvider).value ?? {})[widget.groupId] ?? [];
+    // 展示真实群名（群列表加载完成前兜底「群组」）
+    var groupName = '群组';
+    for (final g in ref.watch(groupsProvider).value ?? const <Group>[]) {
+      if (g.id == widget.groupId) {
+        groupName = g.name;
+        break;
+      }
+    }
 
     return AaScaffold(
       appBar: AaAppBar(title: '📮 邀请成员', icon: '🎁'),
@@ -63,11 +72,11 @@ class _InviteScreenState extends ConsumerState<InviteScreen> {
             tapeColor: AATokens.tapeLemon,
             child: Column(
               children: [
-                const SizedBox(height: 6),
-                const Text('扫一扫 / 点链接 加入「饭友群」',
+                SizedBox(height: 6),
+                Text('扫一扫 / 点链接 加入「$groupName」',
                     style: TextStyle(
-                        fontFamily: 'ZCOOLKuaiLe', fontSize: 14, color: AAColors.ink)),
-                const SizedBox(height: 10),
+                        fontFamily: AAFonts.title, fontSize: 14, color: AAColors.ink)),
+                SizedBox(height: 10),
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
@@ -78,24 +87,24 @@ class _InviteScreenState extends ConsumerState<InviteScreen> {
                   child: QrImageView(
                     data: _link,
                     size: 150,
-                    eyeStyle: const QrEyeStyle(
+                    eyeStyle: QrEyeStyle(
                       eyeShape: QrEyeShape.square,
                       color: AAColors.ink,
                     ),
-                    dataModuleStyle: const QrDataModuleStyle(
+                    dataModuleStyle: QrDataModuleStyle(
                       dataModuleShape: QrDataModuleShape.circle,
                       color: AAColors.ink,
                     ),
                   ),
                 ),
-                const SizedBox(height: 10),
+                SizedBox(height: 10),
                 // 邀请链接：英文/数字点缀（规范 §4 第五级：Caveat 手写体）
                 Text(_link,
-                    style: const TextStyle(
-                        fontFamily: 'Caveat',
+                    style: TextStyle(
+                        fontFamily: AAFonts.accent,
                         fontSize: 16,
                         color: AAColors.inkSoft)),
-                const SizedBox(height: 10),
+                SizedBox(height: 10),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -107,13 +116,13 @@ class _InviteScreenState extends ConsumerState<InviteScreen> {
                         showAaToast(context, '📋 邀请链接已复制');
                       },
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                     DoodleButton(
                       label: '保存二维码',
                       mini: true,
                       onPressed: () => showAaToast(context, '🖼 已保存到相册'),
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                     DoodleButton(
                       label: '分享',
                       mini: true,
@@ -124,7 +133,7 @@ class _InviteScreenState extends ConsumerState<InviteScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           // 方式二：账户名直加
           PaperCard(
             padding: const EdgeInsets.fromLTRB(14, 4, 14, 4),
@@ -134,9 +143,9 @@ class _InviteScreenState extends ConsumerState<InviteScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('方式二：账户名直加',
+                      Text('方式二：账户名直加',
                           style: TextStyle(
-                              fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.inkSoft)),
+                              fontFamily: AAFonts.title, fontSize: 15, color: AAColors.inkSoft)),
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -148,7 +157,7 @@ class _InviteScreenState extends ConsumerState<InviteScreen> {
                               textAlign: TextAlign.end,
                             ),
                           ),
-                          const SizedBox(width: 6),
+                          SizedBox(width: 6),
                           DoodleButton(
                             label: '添加',
                             mini: true,
@@ -164,16 +173,16 @@ class _InviteScreenState extends ConsumerState<InviteScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('已添加',
+                      Text('已添加',
                           style: TextStyle(
-                              fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.inkSoft)),
+                              fontFamily: AAFonts.title, fontSize: 15, color: AAColors.inkSoft)),
                       if (_added.isEmpty)
                         Text(
                           members.isEmpty
                               ? '暂无'
                               : members.map((m) => m.nickname).join('、'),
-                          style: const TextStyle(
-                              fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.ink),
+                          style: TextStyle(
+                              fontFamily: AAFonts.title, fontSize: 15, color: AAColors.ink),
                         )
                       else
                         Wrap(
@@ -189,13 +198,13 @@ class _InviteScreenState extends ConsumerState<InviteScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           DoodleButton(
             label: '完成，进入群组 →',
             big: true,
             onPressed: () => context.go('/groups/${widget.groupId}'),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
         ],
       ),
     );

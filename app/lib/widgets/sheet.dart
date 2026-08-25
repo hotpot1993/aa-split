@@ -14,7 +14,7 @@ void showAaToast(BuildContext context, String message) {
     builder: (_) => AaToast(message: message),
   );
   overlay.insert(entry);
-  Future<void>.delayed(const Duration(milliseconds: 1600), entry.remove);
+  Future<void>.delayed(Duration(milliseconds: 1600), entry.remove);
 }
 
 class AaToast extends StatefulWidget {
@@ -28,7 +28,7 @@ class AaToast extends StatefulWidget {
 class _AaToastState extends State<AaToast> with SingleTickerProviderStateMixin {
   late final AnimationController _c = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 250),
+    duration: Duration(milliseconds: 250),
   )..forward();
 
   @override
@@ -56,7 +56,7 @@ class _AaToastState extends State<AaToast> with SingleTickerProviderStateMixin {
                 offset: Offset(0, 8 * (1 - t)),
                 child: Center(
                   child: Container(
-                    constraints: const BoxConstraints(maxWidth: 320),
+                    constraints: BoxConstraints(maxWidth: 320),
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
                     decoration: BoxDecoration(
                       color: AAColors.ink,
@@ -66,8 +66,8 @@ class _AaToastState extends State<AaToast> with SingleTickerProviderStateMixin {
                       widget.message,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontFamily: 'ZCOOLKuaiLe',
+                      style: TextStyle(
+                        fontFamily: AAFonts.title,
                         fontSize: 13,
                         color: AAColors.paper,
                         height: 1.2,
@@ -145,8 +145,8 @@ class _ConfirmSheet extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (showMascot) ...[
-            const TuanTuan(emotion: TuanTuanEmotion.excited, size: 84),
-            const SizedBox(height: 10),
+            TuanTuan(emotion: TuanTuanEmotion.excited, size: 84),
+            SizedBox(height: 10),
           ],
           Text(
             title,
@@ -154,14 +154,14 @@ class _ConfirmSheet extends StatelessWidget {
             style: Theme.of(context).textTheme.headlineSmall,
           ),
           if (subtitle != null) ...[
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(
               subtitle!,
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           Row(
             children: [
               Expanded(
@@ -172,7 +172,7 @@ class _ConfirmSheet extends StatelessWidget {
                   onPressed: () => Navigator.of(context).pop(false),
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: DoodleButton(
                   label: confirmLabel,
@@ -183,7 +183,7 @@ class _ConfirmSheet extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
         ],
       ),
     );
@@ -209,7 +209,7 @@ class _AaSheet extends StatelessWidget {
               decoration: ShapeDecoration(
                 color: surface,
                 shape: _SheetTopShape(),
-                shadows: const [
+                shadows: [
                   BoxShadow(
                     color: AAColors.ink,
                     offset: Offset(0, -3),
@@ -221,7 +221,7 @@ class _AaSheet extends StatelessWidget {
           Positioned(
             top: 6,
             left: 14,
-            child: const PinDecorator(),
+            child: PinDecorator(),
           ),
           SafeArea(
             top: false,

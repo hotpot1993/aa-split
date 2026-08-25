@@ -24,6 +24,7 @@ class PaperCard extends StatefulWidget {
     this.borderWidth = AATokens.stroke,
     this.borderColor = AAColors.ink,
     this.onTap,
+    this.onLongPress,
     this.margin = EdgeInsets.zero,
     this.pressable = true,
     this.shadow = AATokens.cardShadow,
@@ -50,6 +51,7 @@ class PaperCard extends StatefulWidget {
   /// 边框颜色（Demo 粉卡 border-color:var(--pink)）
   final Color borderColor;
   final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
   final EdgeInsetsGeometry margin;
 
   /// onTap 时是否启用按下下沉效果（.card.tap:active translate(2px,2px)）
@@ -110,12 +112,13 @@ class _PaperCardState extends State<PaperCard> {
       );
     }
 
-    if (widget.onTap != null) {
+    if (widget.onTap != null || widget.onLongPress != null) {
       card = GestureDetector(
         onTapDown: widget.pressable ? (_) => setState(() => _pressed = true) : null,
         onTapUp: widget.pressable ? (_) => setState(() => _pressed = false) : null,
         onTapCancel: widget.pressable ? () => setState(() => _pressed = false) : null,
         onTap: widget.onTap,
+        onLongPress: widget.onLongPress,
         behavior: HitTestBehavior.opaque,
         child: card,
       );

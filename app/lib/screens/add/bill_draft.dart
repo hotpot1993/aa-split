@@ -20,7 +20,7 @@ class SplitResult {
   int get totalCents => lines.fold(0, (s, e) => s + e.amountCents);
 }
 
-/// 均摊：把 amountCents 均匀分给 nonExempt
+/// 均摊：把 amountCents 均匀分给 nonExempt（余数按 1 分逐人分配，保证合计 = 总额）
 List<ShareLine> computeEven(int amountCents, List<GroupMember> members, Set<String> exemptIds) {
   final active = members.where((m) => !exemptIds.contains(m.userId)).toList();
   final n = active.isEmpty ? 1 : active.length;
@@ -30,7 +30,7 @@ List<ShareLine> computeEven(int amountCents, List<GroupMember> members, Set<Stri
     final exempt = exemptIds.contains(m.userId);
     var amt = exempt ? 0 : base;
     if (!exempt && rem > 0) {
-      amt += rem;
+      amt += 1;
       rem--;
     }
     return ShareLine(userId: m.userId, name: m.nickname, avatarUrl: m.avatarUrl, amountCents: amt, exempt: exempt);

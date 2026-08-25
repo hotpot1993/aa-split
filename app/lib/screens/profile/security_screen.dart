@@ -4,8 +4,12 @@ import 'package:go_router/go_router.dart';
 
 import 'package:aa_design/aa_design.dart';
 
+import '../../core/utils/format.dart';
 import '../../data/repositories/auth_repository.dart';
+import '../../models/user_device.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/data_providers.dart';
+import '../../providers/refresh_provider.dart';
 import '../../providers/repositories.dart';
 import '../../widgets/common.dart';
 import '../../widgets/sheet.dart';
@@ -72,6 +76,10 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // 登录设备：真实数据（打开本页时先上报当前设备，服务端按 userId+deviceId 幂等记录；
+    // Demo 模式为 MockStore 演示数据）
+    final devices =
+        ref.watch(loginDevicesProvider).value ?? const <UserDevice>[];
     return AaScaffold(
       appBar: AaAppBar(
         title: '账号安全',
@@ -87,23 +95,23 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Row(
+                Row(
                   children: [
                     AaIconImage('assets/icons/key.png', size: 16),
                     SizedBox(width: 6),
                     Text('修改密码',
                         style: TextStyle(
-                            fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
+                            fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft)),
                   ],
                 ),
-                const SizedBox(height: 2),
+                SizedBox(height: 2),
                 _pwdLine('当前密码', _current, showBorder: true),
                 _pwdLine('新密码', _newPwd, showBorder: true),
                 _pwdLine('确认新密码', _confirmPwd, showBorder: false),
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           PaperCard(
             padding: const EdgeInsets.fromLTRB(14, 4, 14, 4),
             child: Column(
@@ -116,59 +124,109 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           PaperCard(
             padding: const EdgeInsets.fromLTRB(14, 12, 14, 4),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Row(
+                Row(
                   children: [
                     AaIconImage('assets/icons/phone.png', size: 16),
                     SizedBox(width: 6),
                     Text('登录设备',
                         style: TextStyle(
-                            fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
+                            fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft)),
                   ],
                 ),
-                const SizedBox(height: 2),
-                Column(
-                  children: [
-                    _tapLine(
-                      'iPhone 15 · 本机',
-                      leadImage: 'assets/icons/phone.png',
-                      trailing: const HandTag('当前', dense: true, variant: ChipVariant.green),
-                      showBorder: true,
+                SizedBox(height: 2),
+                if (devices.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 2),
+                    child: Text('暂无登录设备记录',
+                        style: TextStyle(
+                            fontFamily: AAFonts.title, fontSize: 13, color: AAColors.inkSoft)),
+                  )
+                else
+                  // 最近登录在前（页面打开时刚上报过本机 → 首行即当前设备）
+                  for (var i = 0; i < devices.length; i++)
+                    _deviceLine(
+                      devices[i],
+                      isCurrent: i == 0,
+                      showBorder: i < devices.length - 1,
                     ),
-                    _tapLine(
-                      'Mac Safari · 昨晚',
-                      leadImage: 'assets/icons/laptop.png',
-                      trailing: const HandTag('删除', dense: true, variant: ChipVariant.orange),
-                      showBorder: false,
-                      onTap: () => showAaToast(context, '已退出该设备'),
-                    ),
-                  ],
-                ),
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           DoodleButton(
             label: '保存修改',
             big: true,
             onPressed: _changePassword,
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           DoodleButton(
             label: '注销账号',
             type: DoodleButtonType.danger,
             big: true,
             onPressed: _deleteAccount,
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
         ],
       ),
     );
+  }
+
+  /// 登录设备行：机型 + 最近登录时间；当前设备标「当前」，其它设备可「退出」
+  Widget _deviceLine(UserDevice d,
+      {required bool isCurrent, required bool showBorder}) {
+    final icon = (d.platform == 'android' || d.platform == 'ios')
+        ? 'assets/icons/phone.png'
+        : 'assets/icons/laptop.png';
+    final time = d.lastLoginAt == null ? '' : ' · ${Fmt.relative(d.lastLoginAt!)}';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 2),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  AaIconImage(icon, size: 16),
+                  SizedBox(width: 6),
+                  Text('${d.label}$time',
+                      style: TextStyle(
+                          fontFamily: AAFonts.title, fontSize: 15, color: AAColors.inkSoft)),
+                ],
+              ),
+              if (isCurrent)
+                HandTag('当前', dense: true, variant: ChipVariant.green)
+              else
+                GestureDetector(
+                  onTap: () => _removeDevice(d),
+                  child: HandTag('退出', dense: true, variant: ChipVariant.orange),
+                ),
+            ],
+          ),
+        ),
+        if (showBorder)
+          CustomPaint(size: Size(double.infinity, 2.5), painter: _SecDash()),
+      ],
+    );
+  }
+
+  /// 退出（移除）一台设备记录并刷新列表
+  Future<void> _removeDevice(UserDevice d) async {
+    try {
+      await ref.read(authRepositoryProvider).removeDevice(d.deviceId);
+      ref.read(refreshProvider.notifier).bump();
+      if (!mounted) return;
+      showAaToast(context, '已退出「${d.label}」');
+    } catch (_) {
+      if (mounted) showAaToast(context, '退出失败，请稍后再试');
+    }
   }
 
   Widget _pwdLine(String label, TextEditingController ctrl, {bool showBorder = true}) {
@@ -181,8 +239,8 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(label,
-                  style: const TextStyle(
-                      fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.inkSoft)),
+                  style: TextStyle(
+                      fontFamily: AAFonts.title, fontSize: 15, color: AAColors.inkSoft)),
               SizedBox(
                 width: 170,
                 child: HandTextField(
@@ -196,7 +254,7 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
           ),
         ),
         if (showBorder)
-          CustomPaint(size: const Size(double.infinity, 2.5), painter: _SecDash()),
+          CustomPaint(size: Size(double.infinity, 2.5), painter: _SecDash()),
       ],
     );
   }
@@ -218,24 +276,24 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
                   children: [
                     if (leadImage != null) ...[
                       AaIconImage(leadImage, size: 16),
-                      const SizedBox(width: 6),
+                      SizedBox(width: 6),
                     ],
                     Text(label,
-                        style: const TextStyle(
-                            fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.inkSoft)),
+                        style: TextStyle(
+                            fontFamily: AAFonts.title, fontSize: 15, color: AAColors.inkSoft)),
                   ],
                 ),
                 if (value != null)
                   Text(value,
-                      style: const TextStyle(
-                          fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.ink)),
+                      style: TextStyle(
+                          fontFamily: AAFonts.title, fontSize: 15, color: AAColors.ink)),
                 ?trailing,
               ],
             ),
           ),
         ),
         if (showBorder)
-          CustomPaint(size: const Size(double.infinity, 2.5), painter: _SecDash()),
+          CustomPaint(size: Size(double.infinity, 2.5), painter: _SecDash()),
       ],
     );
   }

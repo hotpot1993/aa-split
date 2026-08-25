@@ -145,6 +145,93 @@ void main() {
       expect(q, '你第一个朋友的名字？');
     });
 
+    test('login：请求体携带真实设备快照 deviceInfo', () async {
+      adapter = MockAdapter((options) async {
+        expect(options.method, 'POST');
+        expect(options.path, '/auth/login');
+        final di = (options.data as Map)['deviceInfo'] as Map;
+        expect(di['deviceId'], isNotEmpty); // 持久化设备标识
+        expect(di['deviceName'], isNotEmpty); // 机型（测试环境回退为平台名）
+        expect(di['platform'], isNotEmpty);
+        expect(di['osVersion'], isNotEmpty);
+        return json(ok({
+          'accessToken': 'tok_dev',
+          'user': {
+            'id': 'u1',
+            'accountName': 'tuanzi',
+            'nickname': '团子酱',
+          },
+        }));
+      });
+      dio.httpClientAdapter = adapter;
+
+      final user = await AuthRepository().login('tuanzi', 'abc123ABC');
+      expect(user.id, 'u1');
+    });
+
+    test('listDevices：上报后拉取解析；上报接口失败不阻塞列表', () async {
+      // ① 正常链路：POST /auth/devices（上报）→ GET /auth/devices（解析）
+      adapter = MockAdapter((options) async {
+        if (options.method == 'POST') {
+          expect(options.path, '/auth/devices');
+          return json(ok({'success': true}));
+        }
+        expect(options.path, '/auth/devices');
+        return json(ok([
+          {
+            'id': 'd1',
+            'deviceId': 'dev-a',
+            'deviceName': 'Xiaomi 2509FPN0BC',
+            'platform': 'android',
+            'osVersion': '17',
+            'ip': '1.2.3.4',
+            'lastLoginAt': '2026-08-25T16:06:07.000Z',
+          },
+          {
+            'id': 'd2',
+            'deviceId': 'dev-b',
+            'deviceName': '旧手机',
+            'platform': 'ios',
+            'osVersion': '18',
+            'ip': null,
+            'lastLoginAt': null,
+          },
+        ]));
+      });
+      dio.httpClientAdapter = adapter;
+
+      final list = await AuthRepository().listDevices();
+      expect(list, hasLength(2));
+      expect(list[0].deviceName, 'Xiaomi 2509FPN0BC');
+      expect(list[0].lastLoginAt, isNotNull);
+      expect(list[1].lastLoginAt, isNull);
+
+      // ② 上报接口 500 → 列表仍正常返回（容错，不出现「暂无」假象）
+      adapter = MockAdapter((options) async {
+        if (options.method == 'POST') {
+          return ResponseBody.fromString(
+            jsonEncode({'code': 500, 'message': 'boom'}),
+            500,
+          );
+        }
+        return json(ok([
+          {
+            'id': 'd1',
+            'deviceId': 'dev-a',
+            'deviceName': 'Xiaomi 2509FPN0BC',
+            'platform': 'android',
+            'osVersion': '17',
+            'lastLoginAt': '2026-08-25T16:06:07.000Z',
+          },
+        ]));
+      });
+      dio.httpClientAdapter = adapter;
+
+      final list2 = await AuthRepository().listDevices();
+      expect(list2, hasLength(1));
+      expect(list2[0].deviceName, 'Xiaomi 2509FPN0BC');
+    });
+
     test('updateProfile：PATCH /auth/me 载荷正确并同步本地会话', () async {
       adapter = MockAdapter((options) async {
         expect(options.method, 'PATCH');

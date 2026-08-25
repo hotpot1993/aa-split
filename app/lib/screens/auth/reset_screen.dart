@@ -47,15 +47,15 @@ class _ResetScreenState extends ConsumerState<ResetScreen> {
     return AuthScaffold(
       children: _ok
           ? [
-              const SizedBox(height: 120),
-              const Center(child: TuanTuanPanda(size: 110)),
-              const SizedBox(height: 12),
-              const Center(
+              SizedBox(height: 120),
+              Center(child: TuanTuanPanda(size: 110)),
+              SizedBox(height: 12),
+              Center(
                 child: Text('密码已重置！',
                     style: TextStyle(
-                        fontFamily: 'ZCOOLKuaiLe', fontSize: 22, color: AAColors.ink)),
+                        fontFamily: AAFonts.title, fontSize: 22, color: AAColors.ink)),
               ),
-              const SizedBox(height: 20),
+              SizedBox(height: 20),
               DoodleButton(
                 label: '去登录 →',
                 expand: true,
@@ -66,8 +66,8 @@ class _ResetScreenState extends ConsumerState<ResetScreen> {
               ),
             ]
           : [
-              const AaAppBar(title: '🔑 重设密码', icon: '✔️'),
-              const SizedBox(height: 26),
+              AaAppBar(title: '🔑 重设密码', icon: '✔️'),
+              SizedBox(height: 26),
               PaperCard(
                 padding: const EdgeInsets.fromLTRB(14, 4, 14, 4),
                 child: Column(
@@ -76,9 +76,9 @@ class _ResetScreenState extends ConsumerState<ResetScreen> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('新密码',
+                          Text('新密码',
                               style: TextStyle(
-                                  fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.inkSoft)),
+                                  fontFamily: AAFonts.title, fontSize: 15, color: AAColors.inkSoft)),
                           SizedBox(
                             width: 200,
                             child: HandTextField(
@@ -97,9 +97,9 @@ class _ResetScreenState extends ConsumerState<ResetScreen> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('确认新密码',
+                          Text('确认新密码',
                               style: TextStyle(
-                                  fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.inkSoft)),
+                                  fontFamily: AAFonts.title, fontSize: 15, color: AAColors.inkSoft)),
                           SizedBox(
                             width: 200,
                             child: HandTextField(
@@ -116,21 +116,21 @@ class _ResetScreenState extends ConsumerState<ResetScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 10),
+              SizedBox(height: 10),
               FieldError(message: _error),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               DoodleButton(
                 label: '重置密码并去登录 👍',
                 big: true,
                 onPressed: _reset,
               ),
-              const SizedBox(height: 14),
-              const Center(
+              SizedBox(height: 14),
+              Center(
                 child: Text('💪 新密码要字母+数字哦',
                     style: TextStyle(
-                        fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
+                        fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft)),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
             ],
     );
   }

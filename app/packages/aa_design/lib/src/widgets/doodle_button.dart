@@ -3,6 +3,7 @@ import '../shapes/wonky_border.dart';
 import '../tokens/aa_colors.dart';
 import '../tokens/aa_tokens.dart';
 
+import '../theme/aa_fonts.dart';
 /// 涂鸦按钮 —— 严格照搬 Demo `.btn`：
 /// `font-size:15px;padding:10px 18px;border:2.5px solid var(--ink);
 ///  border-radius:16px 6px 14px 7px/7px 14px 6px 16px;background:#FFFDF6;color:var(--ink);
@@ -89,7 +90,7 @@ class _DoodleButtonState extends State<DoodleButton> {
       content = Text(
         widget.label,
         style: TextStyle(
-          fontFamily: 'ZCOOLKuaiLe',
+          fontFamily: AAFonts.title,
           fontSize: 15,
           color: _enabled ? AAColors.sky : AAColors.inkSoft,
           decoration: TextDecoration.underline,
@@ -104,12 +105,12 @@ class _DoodleButtonState extends State<DoodleButton> {
         children: [
           if (widget.icon != null) ...[
             Icon(widget.icon, size: _fontSize - 2, color: textColor),
-            const SizedBox(width: 6),
+            SizedBox(width: 6),
           ],
           Text(
             widget.label,
             style: TextStyle(
-              fontFamily: 'ZCOOLKuaiLe',
+              fontFamily: AAFonts.title,
               fontSize: _fontSize,
               color: textColor,
               height: 1.3,
@@ -140,19 +141,19 @@ class _DoodleButtonState extends State<DoodleButton> {
       child: SizedBox(
         width: widget.expand || widget.big ? double.infinity : null,
         child: Transform.translate(
-          offset: _pressed ? const Offset(2.5, 2.5) : Offset.zero,
+          offset: _pressed ? Offset(2.5, 2.5) : Offset.zero,
           child: DecoratedBox(
             decoration: ShapeDecoration(
               color: widget.type == DoodleButtonType.ghost
                   ? Colors.transparent
                   : (_enabled ? fill : fill.withValues(alpha: 0.5)),
               shape: widget.type == DoodleButtonType.ghost
-                  ? const DashedWonkyBorder()
+                  ? DashedWonkyBorder()
                   : WonkyBorder(
                       side: BorderSide(color: stroke, width: AATokens.stroke),
                     ),
               shadows: widget.type == DoodleButtonType.ghost
-                  ? const []
+                  ? []
                   : [
                       _pressed ? AATokens.buttonPressShadow : AATokens.buttonShadow,
                     ],

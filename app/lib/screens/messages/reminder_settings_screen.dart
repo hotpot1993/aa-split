@@ -49,7 +49,6 @@ class _ReminderSettingsScreenState extends ConsumerState<ReminderSettingsScreen>
             padding: const EdgeInsets.fromLTRB(14, 4, 14, 4),
             child: Column(
               children: [
-                _line('🧾 新账单提醒', prefs.newBill, (v) => ctrl.set(newBill: v)),
                 _line('📢 催款提醒', prefs.remind, (v) => ctrl.set(remind: v)),
                 _line('⏰ 定期账单提醒', prefs.regular, (v) => ctrl.set(regular: v)),
                 _line('👥 群组动态@我', prefs.mention, (v) => ctrl.set(mention: v)),
@@ -63,7 +62,7 @@ class _ReminderSettingsScreenState extends ConsumerState<ReminderSettingsScreen>
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           SectionTitle('催款默认文案'),
           PaperCard(
             child: HandTextField(
@@ -73,10 +72,10 @@ class _ReminderSettingsScreenState extends ConsumerState<ReminderSettingsScreen>
               onChanged: (v) => ctrl.setText(v),
             ),
           ),
-          const SizedBox(height: 8),
-          const Text('可以在这里改催款时带的默认话术',
-              style: TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
-          const SizedBox(height: 16),
+          SizedBox(height: 8),
+          Text('可以在这里改催款时带的默认话术',
+              style: TextStyle(fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft)),
+          SizedBox(height: 16),
           DoodleButton(
             label: '保存设置',
             big: true,
@@ -85,7 +84,7 @@ class _ReminderSettingsScreenState extends ConsumerState<ReminderSettingsScreen>
               Navigator.of(context).maybePop(),
             },
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
         ],
       ),
     );
@@ -105,11 +104,11 @@ class _ReminderSettingsScreenState extends ConsumerState<ReminderSettingsScreen>
                 children: [
                   if (leadImage != null) ...[
                     AaIconImage(leadImage, size: 16),
-                    const SizedBox(width: 6),
+                    SizedBox(width: 6),
                   ],
                   Text(label,
-                      style: const TextStyle(
-                          fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.inkSoft)),
+                      style: TextStyle(
+                          fontFamily: AAFonts.title, fontSize: 15, color: AAColors.inkSoft)),
                 ],
               ),
               HandToggle(value: value, activeColor: AAColors.mint, onChanged: onChanged),
@@ -117,7 +116,7 @@ class _ReminderSettingsScreenState extends ConsumerState<ReminderSettingsScreen>
           ),
         ),
         if (showBorder)
-          CustomPaint(size: const Size(double.infinity, 2.5), painter: _TogDash()),
+          CustomPaint(size: Size(double.infinity, 2.5), painter: _TogDash()),
       ],
     );
   }

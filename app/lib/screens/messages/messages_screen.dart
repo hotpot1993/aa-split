@@ -48,12 +48,12 @@ class MessagesScreen extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
               children: [
                 if (today.isNotEmpty)
-                  const SectionTitle('今天', emojiImage: 'assets/icons/sun.png'),
+                  SectionTitle('今天', emojiImage: 'assets/icons/sun.png'),
                 ...today.map((n) => _MsgCard(n: n)),
                 if (earlier.isNotEmpty)
-                  const SectionTitle('更早', emojiImage: 'assets/icons/moon.png'),
+                  SectionTitle('更早', emojiImage: 'assets/icons/moon.png'),
                 ...earlier.map((n) => _MsgCard(n: n)),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
               ],
             ),
     );
@@ -91,24 +91,24 @@ class _MsgCard extends ConsumerWidget {
           children: [
             Row(
               children: [
-                const StampBadge(text: '催款', color: AASemantic.stampMoney),
-                const SizedBox(width: 8),
+                StampBadge(text: '催款', color: AASemantic.stampMoney),
+                SizedBox(width: 8),
                 Expanded(
                   child: Text.rich(TextSpan(children: [
-                    const TextSpan(
+                    TextSpan(
                         text: '',
-                        style: TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 12)),
-                    TextSpan(text: n.title, style: const TextStyle(
-                        fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.ink)),
+                        style: TextStyle(fontFamily: AAFonts.title, fontSize: 12)),
+                    TextSpan(text: n.title, style: TextStyle(
+                        fontFamily: AAFonts.title, fontSize: 12, color: AAColors.ink)),
                   ])),
                 ),
               ],
             ),
-            const SizedBox(height: 6),
+            SizedBox(height: 6),
             Text('来自：${n.body}',
-                style: const TextStyle(
-                    fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
-            const SizedBox(height: 8),
+                style: TextStyle(
+                    fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft)),
+            SizedBox(height: 8),
             DoodleButton(
               label: '去处理 ✓',
               mini: true,
@@ -131,17 +131,17 @@ class _MsgCard extends ConsumerWidget {
             Row(
               children: [
                 AaIconImage(emoji, size: 22),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Expanded(
                   child: Text(n.title,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                          fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.ink)),
+                      style: TextStyle(
+                          fontFamily: AAFonts.title, fontSize: 15, color: AAColors.ink)),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Row(
               children: [
                 Expanded(
@@ -154,7 +154,7 @@ class _MsgCard extends ConsumerWidget {
                     onPressed: () => showAaToast(context, '🎉 已加入群组'),
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Expanded(
                   child: DoodleButton(
                     label: '拒绝 ✗',
@@ -178,7 +178,7 @@ class _MsgCard extends ConsumerWidget {
       child: Row(
         children: [
           AaIconImage(emoji, size: 22),
-          const SizedBox(width: 10),
+          SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -186,18 +186,18 @@ class _MsgCard extends ConsumerWidget {
                 Text(n.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.ink)),
-                const SizedBox(height: 2),
+                    style: TextStyle(
+                        fontFamily: AAFonts.title, fontSize: 15, color: AAColors.ink)),
+                SizedBox(height: 2),
                 Text('${n.body} · ${Fmt.relative(n.createdAt)}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
+                    style: TextStyle(
+                        fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft)),
               ],
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           HandTag(_chipText(n.type), fontSize: 12, variant: ChipVariant.blue),
         ],
       ),

@@ -39,7 +39,16 @@ function matches(row: Row, where: Record<string, any>): boolean {
       } else if ('equals' in v) {
         if (row[k] !== v.equals) return false;
       } else {
-        return false;
+        // 复合唯一键：{ fieldA_fieldB: { fieldA: x, fieldB: y } }
+        const keys = k.split('_');
+        if (
+          keys.length >= 2 &&
+          keys.every((kk) => v[kk] !== undefined)
+        ) {
+          if (!keys.every((kk) => row[kk] === v[kk])) return false;
+        } else {
+          return false;
+        }
       }
     } else if (row[k] !== v) {
       return false;
@@ -76,6 +85,7 @@ export class FakePrisma {
     notification: [],
     regularBill: [],
     settlement: [],
+    userDevice: [],
   };
 
   user = new Model('user', this);
@@ -87,6 +97,7 @@ export class FakePrisma {
   notification = new Model('notification', this);
   regularBill = new Model('regularBill', this);
   settlement = new Model('settlement', this);
+  userDevice = new Model('userDevice', this);
 
   rowsOf(name: string): Row[] {
     return this.store[name];
@@ -121,6 +132,7 @@ class Model {
       regularBill: { createdAt: new Date(), updatedAt: new Date(), active: true },
       settlement: { createdAt: new Date(), status: 'pending', billIds: [] },
       receipt: { createdAt: new Date(), sort: 0 },
+      userDevice: { lastLoginAt: new Date(), createdAt: new Date() },
     };
     for (const [k, v] of Object.entries(defaults[this.modelName] ?? {})) {
       if (row[k] === undefined) row[k] = v;

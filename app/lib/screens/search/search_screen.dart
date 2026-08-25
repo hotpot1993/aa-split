@@ -36,7 +36,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     final q = _q.text.trim();
     final groups = ref.watch(groupsProvider).value ?? const <Group>[];
     final bills = ref.watch(billsProvider).value ?? const <Bill>[];
-    final members = (ref.watch(groupMembersProvider).value ?? const {}).values.expand((e) => e).toList();
+    final members = (ref.watch(groupMembersProvider).value ?? {}).values.expand((e) => e).toList();
 
     final groupHits = q.isEmpty ? <Group>[] : groups.where((g) => g.name.contains(q)).toList();
     final billHits = q.isEmpty
@@ -67,19 +67,19 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             padding: const EdgeInsets.fromLTRB(4, 8, 4, 12),
             child: Row(
               children: [
-                const Text('🔍', style: TextStyle(fontSize: 15)),
-                const SizedBox(width: 8),
+                Text('🔍', style: TextStyle(fontSize: 15)),
+                SizedBox(width: 8),
                 Expanded(
                   child: TextField(
                     controller: _q,
                     autofocus: true,
                     onChanged: (_) => setState(() {}),
-                    style: const TextStyle(
-                        fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.ink),
-                    decoration: const InputDecoration(
+                    style: TextStyle(
+                        fontFamily: AAFonts.title, fontSize: 15, color: AAColors.ink),
+                    decoration: InputDecoration(
                       hintText: '输入想找的账',
                       hintStyle: TextStyle(
-                          fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.inkSoft),
+                          fontFamily: AAFonts.title, fontSize: 15, color: AAColors.inkSoft),
                       border: InputBorder.none,
                       isDense: true,
                       contentPadding: EdgeInsets.zero,
@@ -93,13 +93,13 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           Row(
             children: [
               _chip('群组', _ResultTab.groups, groupHits.length),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               _chip('账单', _ResultTab.bills, billHits.length),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               _chip('成员', _ResultTab.members, memberHits.length),
             ],
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           if (q.isEmpty)
             EmptyState(
               title: '翻来覆去没找到…换个关键词？',
@@ -133,7 +133,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                   ],
               },
           ],
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
         ],
       ),
     );
@@ -159,26 +159,26 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       child: Row(
         children: [
           CategoryIcon(category: b.category, size: 44),
-          const SizedBox(width: 10),
+          SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 HighlightPartText(b.title, parts: [q],
                     style:
-                        const TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.ink)),
-                const SizedBox(height: 2),
+                        TextStyle(fontFamily: AAFonts.title, fontSize: 15, color: AAColors.ink)),
+                SizedBox(height: 2),
                 Text(
                   '${b.groupName} · ${Fmt.yuan(b.amountCents, trimZero: true)} · ${SplitText.label(b.splitType)}',
-                  style: const TextStyle(
-                      fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft),
+                  style: TextStyle(
+                      fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           StampBadge(
             text: b.fullySettled ? '已结清' : '待结算',
             color: b.fullySettled ? AASemantic.stampDone : AASemantic.stampMoney,
@@ -195,25 +195,25 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       margin: const EdgeInsets.only(bottom: 16),
       child: Row(
         children: [
-          SketchAvatar(emoji: g.avatar, size: 44, background: const Color(0xFFEDF7EE)),
-          const SizedBox(width: 10),
+          SketchAvatar(emoji: g.avatar, size: 44, background: Color(0xFFEDF7EE)),
+          SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 HighlightPartText(g.name, parts: [q],
                     style:
-                        const TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.ink)),
-                const SizedBox(height: 2),
+                        TextStyle(fontFamily: AAFonts.title, fontSize: 15, color: AAColors.ink)),
+                SizedBox(height: 2),
                 Text('群组 · ${g.memberCount}个小伙伴 · ${g.pendingBillCount}笔待清',
-                    style: const TextStyle(
-                        fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft),
+                    style: TextStyle(
+                        fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis),
               ],
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           StampBadge(
             text: g.pendingBillCount > 0 ? '${g.pendingBillCount}笔待清' : '✅已清',
             color: g.pendingBillCount > 0 ? AASemantic.stampMoney : AASemantic.stampDone,
@@ -231,18 +231,18 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       child: Row(
         children: [
           SketchAvatar(emoji: m.avatarUrl, size: 44, name: m.nickname),
-          const SizedBox(width: 10),
+          SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 HighlightPartText(m.nickname, parts: [q],
                     style:
-                        const TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.ink)),
-                const SizedBox(height: 2),
+                        TextStyle(fontFamily: AAFonts.title, fontSize: 15, color: AAColors.ink)),
+                SizedBox(height: 2),
                 Text('@${m.accountName}',
-                    style: const TextStyle(
-                        fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
+                    style: TextStyle(
+                        fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft)),
               ],
             ),
           ),

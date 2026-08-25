@@ -9,8 +9,11 @@ import '../../models/bill.dart';
 import '../../models/group.dart';
 import '../../models/group_member.dart';
 import '../../providers/data_providers.dart';
+import '../../providers/refresh_provider.dart';
+import '../../providers/repositories.dart';
 import '../../widgets/avatar.dart';
 import '../../widgets/common.dart';
+import '../../widgets/sheet.dart';
 
 /// P23 群组详情页 —— 对齐 docs/ui-demo/index.html
 class GroupDetailScreen extends ConsumerWidget {
@@ -36,14 +39,15 @@ class GroupDetailScreen extends ConsumerWidget {
       }
     }
     if (group == null) {
-      return const AaScaffold(
+      return AaScaffold(
         appBar: null,
         body: Center(child: EmptyState(title: '这个群组找不到啦')),
       );
     }
+    final g = group; // 闭包可见的非空引用
     final allBills = ref.watch(billsProvider).value ?? const <Bill>[];
     final bills = allBills.where((b) => b.groupId == groupId).toList();
-    final members = (ref.watch(groupMembersProvider).value ?? const {})[groupId] ?? [];
+    final members = (ref.watch(groupMembersProvider).value ?? {})[groupId] ?? [];
 
     final total = bills.fold<int>(0, (s, b) => s + b.amountCents);
     final perPerson = members.isEmpty ? 0 : total ~/ members.length;
@@ -69,29 +73,29 @@ class GroupDetailScreen extends ConsumerWidget {
               children: [
                 Row(
                   children: [
-                    const AaIconImage('assets/icons/coin.png', size: 16),
-                    const SizedBox(width: 6),
-                    const Text('群总账',
+                    AaIconImage('assets/icons/coin.png', size: 16),
+                    SizedBox(width: 6),
+                    Text('群总账',
                         style: TextStyle(
-                            fontFamily: 'ZCOOLKuaiLe', fontSize: 13, color: AAColors.inkSoft)),
+                            fontFamily: AAFonts.title, fontSize: 13, color: AAColors.inkSoft)),
                   ],
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.baseline,
                   textBaseline: TextBaseline.alphabetic,
                   children: [
                     HandAmount(amountCents: total, color: AAColors.ink, size: 34),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                     Padding(
                       padding: const EdgeInsets.only(bottom: 4),
                       child: Text('人均 ${Fmt.yuan(perPerson, trimZero: true)} / ${members.length}人',
-                          style: const TextStyle(
-                              fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
+                          style: TextStyle(
+                              fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft)),
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
@@ -102,11 +106,11 @@ class GroupDetailScreen extends ConsumerWidget {
                         fontSize: 12,
                         variant: _netVariant(m),
                       ),
-                      const SizedBox(width: 1),
+                      SizedBox(width: 1),
                     ],
                   ],
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 DoodleButton(
                   label: '✨ 一键智能结算',
                   big: true,
@@ -120,8 +124,8 @@ class GroupDetailScreen extends ConsumerWidget {
           Row(
             children: [
               if (members.isEmpty)
-                const Text('还没有成员',
-                    style: TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft))
+                Text('还没有成员',
+                    style: TextStyle(fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft))
               else ...[
                 for (var i = 0; i < members.length; i++)
                   Padding(
@@ -133,12 +137,12 @@ class GroupDetailScreen extends ConsumerWidget {
                       background: _tints[i % _tints.length],
                     ),
                   ),
-                const SizedBox(width: 6),
+                SizedBox(width: 6),
                 InkWell(
                   onTap: () => context.push('/groups/$groupId/members'),
-                  child: const Text('管理成员→',
+                  child: Text('管理成员→',
                       style: TextStyle(
-                          fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
+                          fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft)),
                 ),
               ],
             ],
@@ -151,7 +155,7 @@ class GroupDetailScreen extends ConsumerWidget {
               tag: 'P23 群组详情',
               artImage: 'assets/icons/edit.png',
               buttonLabel: '✏️ 记一笔',
-              onButtonTap: () => context.push('/add'),
+              onButtonTap: () => context.push('/add?group=$groupId'),
             )
           else if (allSettled)
             EmptyState(
@@ -160,21 +164,49 @@ class GroupDetailScreen extends ConsumerWidget {
               tag: 'P23/P25 已清账 🎉',
               artImage: 'assets/icons/party.png',
               buttonLabel: '再来一笔 💪',
-              onButtonTap: () => context.push('/add'),
+              onButtonTap: () => context.push('/add?group=$groupId'),
             )
           else
-            ...bills.map((b) => _FlowRow(bill: b, onTap: () => context.push('/bills/${b.id}'))),
-          const SizedBox(height: 4),
+            ...bills.map((b) => _FlowRow(
+                  bill: b,
+                  onTap: () => context.push('/bills/${b.id}'),
+                  onLongPress: () => _onLongPressBill(context, ref, g, b),
+                )),
+          SizedBox(height: 4),
           DoodleButton(
             label: '✏️ + 记一笔',
             big: true,
             type: DoodleButtonType.secondary,
-            onPressed: () => context.push('/add'),
+            onPressed: () => context.push('/add?group=$groupId'),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
         ],
       ),
     );
+  }
+
+  /// 群主长按账单 → 确认弹窗 → 删除（服务端 DELETE /bills/:id 兜底校验权限）
+  Future<void> _onLongPressBill(
+      BuildContext context, WidgetRef ref, Group group, Bill bill) async {
+    final me = ref.read(currentUserProvider)?.id;
+    if (me == null || group.ownerId != me) {
+      showAaToast(context, '只有群主才能删除账单哦');
+      return;
+    }
+    final ok = await showAaConfirm(
+      context,
+      title: '要删除这笔账单吗？',
+      subtitle: '「${bill.title}」删除后从流水里消失，撤销不了了哦',
+      confirmLabel: '删除',
+    );
+    if (ok != true || !context.mounted) return;
+    try {
+      await ref.read(billRepositoryProvider).delete(bill.id);
+      ref.read(refreshProvider.notifier).bump();
+      if (context.mounted) showAaToast(context, '账单已删除');
+    } catch (e) {
+      if (context.mounted) showAaToast(context, '删除失败：$e');
+    }
   }
 
   static String _netLabel(GroupMember m) {
@@ -194,9 +226,10 @@ class GroupDetailScreen extends ConsumerWidget {
 
 /// 流水行 —— Demo `.card.tap`：`[avatar][日期+标题 / ¥xx · 均摊][印章]`
 class _FlowRow extends StatelessWidget {
-  const _FlowRow({required this.bill, required this.onTap});
+  const _FlowRow({required this.bill, required this.onTap, this.onLongPress});
   final Bill bill;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context) {
@@ -208,12 +241,13 @@ class _FlowRow extends StatelessWidget {
         : SplitText.label(bill.splitType);
     return PaperCard(
       onTap: onTap,
+      onLongPress: onLongPress,
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
       margin: const EdgeInsets.only(bottom: 16),
       child: Row(
         children: [
           CategoryIcon(category: bill.category, size: 44),
-          const SizedBox(width: 10),
+          SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -221,20 +255,20 @@ class _FlowRow extends StatelessWidget {
                 Text('${Fmt.dateShort(bill.billDate)} ${bill.title}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.ink)),
-                const SizedBox(height: 2),
+                    style: TextStyle(
+                        fontFamily: AAFonts.title, fontSize: 15, color: AAColors.ink)),
+                SizedBox(height: 2),
                 Text(
                   '${Fmt.yuan(bill.amountCents, trimZero: true)} · $splitPart',
-                  style: const TextStyle(
-                      fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft),
+                  style: TextStyle(
+                      fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           StampBadge(
             text: bill.fullySettled ? '已结清' : '待结算',
             color: bill.fullySettled ? AASemantic.stampDone : AASemantic.stampMoney,

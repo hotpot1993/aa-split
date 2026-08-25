@@ -61,14 +61,16 @@ $buildDir = Join-Path $app "build\app\outputs"
 Get-ChildItem (Join-Path $buildDir "bundle\release") -Filter "*.aab" -ErrorAction SilentlyContinue |
     Copy-Item -Destination $dist -Force
 # collect release-variant APKs only (exclude stale debug apk)
-Get-ChildItem (Join-Path $buildDir "flutter-apk") -Filter "app-release*.apk" -ErrorAction SilentlyContinue |
+Get-ChildItem (Join-Path $buildDir "flutter-apk") -Filter "app-release.apk" -ErrorAction SilentlyContinue |
     Copy-Item -Destination $dist -Force
-Get-ChildItem (Join-Path $buildDir "flutter-apk") -Filter "app-arm64-v8a-release.apk" -ErrorAction SilentlyContinue |
-    Copy-Item -Destination $dist -Force
-Get-ChildItem (Join-Path $buildDir "flutter-apk") -Filter "app-armeabi-v7a-release.apk" -ErrorAction SilentlyContinue |
-    Copy-Item -Destination $dist -Force
-Get-ChildItem (Join-Path $buildDir "flutter-apk") -Filter "app-x86_64-release.apk" -ErrorAction SilentlyContinue |
-    Copy-Item -Destination $dist -Force
+# per-ABI 分包：仅 -SplitAbi 且本次构建过时才收集，避免旧产物混入
+if ($SplitAbi) {
+    Get-ChildItem (Join-Path $buildDir "flutter-apk") -Filter "app-*-release.apk" -ErrorAction SilentlyContinue |
+        Copy-Item -Destination $dist -Force
+} else {
+    Get-ChildItem $dist -Filter "app-*-release.apk" -ErrorAction SilentlyContinue |
+        Remove-Item -Force -ErrorAction SilentlyContinue
+}
 
 $files = Get-ChildItem $dist -File
 $sha = foreach ($f in $files) {

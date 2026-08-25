@@ -65,7 +65,7 @@ class _RemindScreenState extends ConsumerState<RemindScreen> {
         title: '催款',
         headIcon: 'assets/icons/broadcast.png',
       ),
-        body: const Padding(
+        body: Padding(
           padding: EdgeInsets.all(16),
           child: EmptyState(
             title: '没有欠款要催，大家都超靠谱！',
@@ -84,9 +84,9 @@ class _RemindScreenState extends ConsumerState<RemindScreen> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: [
-          const Text('选一选还没付的小伙伴（默认全选）：',
-              style: TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
-          const SizedBox(height: 8),
+          Text('选一选还没付的小伙伴（默认全选）：',
+              style: TextStyle(fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft)),
+          SizedBox(height: 8),
           Wrap(
             spacing: 10,
             runSpacing: 10,
@@ -110,7 +110,7 @@ class _RemindScreenState extends ConsumerState<RemindScreen> {
               );
             }).toList(),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           // 催款小纸条：tape pink 卡 + 可编辑文案
           PaperCard(
             withTape: true,
@@ -119,10 +119,10 @@ class _RemindScreenState extends ConsumerState<RemindScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('催款小纸条（可编辑）',
+                Text('催款小纸条（可编辑）',
                     style: TextStyle(
-                        fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
-                const SizedBox(height: 6),
+                        fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft)),
+                SizedBox(height: 6),
                 HandTextField(
                   controller: _message,
                   maxLines: 4,
@@ -132,20 +132,20 @@ class _RemindScreenState extends ConsumerState<RemindScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           DoodleButton(
             label: '发送催款 ✈️',
             big: true,
             onPressed: sending ? _send : null,
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           Text(
             '已催过 $_remindCount 次 · 发送后对方会收到🔔提醒',
             textAlign: TextAlign.center,
-            style: const TextStyle(
-                fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft),
+            style: TextStyle(
+                fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
         ],
       ),
     );

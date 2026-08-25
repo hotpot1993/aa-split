@@ -62,24 +62,24 @@ class _ForgotScreenState extends ConsumerState<ForgotScreen> {
   Widget build(BuildContext context) {
     return AuthScaffold(
       children: [
-        const AaAppBar(title: '忘记密码', headIcon: 'assets/icons/search.png', iconImage: 'assets/icons/detective.png'),
-        const SizedBox(height: 26),
+        AaAppBar(title: '忘记密码', headIcon: 'assets/icons/search.png', iconImage: 'assets/icons/detective.png'),
+        SizedBox(height: 26),
         PaperCard(
           withTape: true,
           child: Column(
             children: [
-              const Image(image: AssetImage('assets/icons/detective.png'), width: 48, height: 48),
-              const Text('团团侦探出马！',
+              Image(image: AssetImage('assets/icons/detective.png'), width: 48, height: 48),
+              Text('团团侦探出马！',
                   style: TextStyle(
-                      fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.ink)),
-              const SizedBox(height: 2),
-              const Text('回答注册时的安全问题即可找回',
+                      fontFamily: AAFonts.title, fontSize: 15, color: AAColors.ink)),
+              SizedBox(height: 2),
+              Text('回答注册时的安全问题即可找回',
                   style: TextStyle(
-                      fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
+                      fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft)),
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
         PaperCard(
           padding: const EdgeInsets.fromLTRB(14, 4, 14, 4),
           child: Column(
@@ -88,9 +88,9 @@ class _ForgotScreenState extends ConsumerState<ForgotScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('账户名',
+                    Text('账户名',
                         style: TextStyle(
-                            fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.inkSoft)),
+                            fontFamily: AAFonts.title, fontSize: 15, color: AAColors.inkSoft)),
                     SizedBox(
                       width: 200,
                       child: HandTextField(
@@ -103,45 +103,45 @@ class _ForgotScreenState extends ConsumerState<ForgotScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 6),
+              SizedBox(height: 6),
               DoodleButton(
                 label: '查询安全问题',
                 mini: true,
                 onPressed: _lookup,
               ),
-              const SizedBox(height: 6),
+              SizedBox(height: 6),
             ],
           ),
         ),
         if (_question.isNotEmpty) ...[
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           PaperCard(
             padding: const EdgeInsets.fromLTRB(14, 12, 14, 4),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Row(
+                Row(
                   children: [
                     AaIconImage('assets/icons/clipboard.png', size: 16),
                     SizedBox(width: 6),
                     Text('你的安全问题',
                         style: TextStyle(
-                            fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
+                            fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft)),
                   ],
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 Text(_question,
-                    style: const TextStyle(
-                        fontFamily: 'ZCOOLKuaiLe', fontSize: 16, color: AAColors.ink)),
-                const SizedBox(height: 8),
+                    style: TextStyle(
+                        fontFamily: AAFonts.title, fontSize: 16, color: AAColors.ink)),
+                SizedBox(height: 8),
                 AaLine(
                   showBorder: false,
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('答案',
+                      Text('答案',
                           style: TextStyle(
-                              fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.inkSoft)),
+                              fontFamily: AAFonts.title, fontSize: 15, color: AAColors.inkSoft)),
                       SizedBox(
                         width: 200,
                         child: HandTextField(
@@ -157,24 +157,24 @@ class _ForgotScreenState extends ConsumerState<ForgotScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           FieldError(message: _error),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           DoodleButton(
             label: '下一步：验证答案 →',
             big: true,
             onPressed: _verify,
           ),
         ],
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         Center(
           child: TextButton(
             onPressed: () => context.pop(),
-            child: const Text('返回登录',
-                style: TextStyle(color: AAColors.sky, fontFamily: 'ZCOOLKuaiLe')),
+            child: Text('返回登录',
+                style: TextStyle(color: AAColors.sky, fontFamily: AAFonts.title)),
           ),
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
       ],
     );
   }

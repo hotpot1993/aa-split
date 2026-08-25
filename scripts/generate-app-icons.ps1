@@ -1,7 +1,11 @@
 # AA Split App - Store icon generator (re-runnable)
-# Hand-drawn style: paper bg + TuanTuan panda head + lemon halo + berry blush + "CAI" antenna
+# Default: hand-drawn style (paper bg + TuanTuan panda head + lemon halo + berry blush + "CAI" antenna)
+# Optional -Source <png>: use an existing square design (e.g. docs/pic/app icon.png) as the icon.
 # Output: docs/store/icons/* (store sizes) + Android launch/adaptive icons + iOS AppIcon
-# Usage: powershell -ExecutionPolicy Bypass -File scripts\generate-app-icons.ps1
+# Usage: powershell -ExecutionPolicy Bypass -File scripts\generate-app-icons.ps1 [-Source "docs\pic\app icon.png"]
+param(
+    [string]$Source   # 自定义图标源图（方形 PNG）；缺省时绘制手绘熊猫 master
+)
 $ErrorActionPreference = "Stop"
 Add-Type -AssemblyName System.Drawing
 
@@ -99,7 +103,22 @@ function Save-Scaled([string]$src, [int]$size, [string]$dest) {
 
 # master + store sizes
 New-Item -ItemType Directory -Force -Path (Split-Path $master) | Out-Null
-Draw-Master $master
+if ($Source) {
+    # 自定义源图 → 1024 master（方形拉伸；源图须为正方形）
+    $srcImg = [System.Drawing.Image]::FromFile($Source)
+    $masterBmp = New-Object System.Drawing.Bitmap 1024, 1024
+    $g = [System.Drawing.Graphics]::FromImage($masterBmp)
+    $g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::HighQuality
+    $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+    $g.DrawImage($srcImg, 0, 0, 1024, 1024)
+    $g.Dispose()
+    $masterBmp.Save($master, [System.Drawing.Imaging.ImageFormat]::Png)
+    $masterBmp.Dispose()
+    $srcImg.Dispose()
+    Write-Host "master <- $Source ($($master))"
+} else {
+    Draw-Master $master
+}
 $iconsDir = Split-Path $master
 foreach ($sz in @(1024, 512, 432, 216, 192, 144, 96, 72, 48)) {
     Save-Scaled $master $sz (Join-Path $iconsDir ("icon-$sz.png"))
@@ -135,7 +154,7 @@ $xml2 = '<?xml version="1.0" encoding="utf-8"?>' + [Environment]::NewLine +
 # iOS AppIcon (filenames match Contents.json: base*scale)
 $appiconset = Join-Path $root "app\ios\Runner\Assets.xcassets\AppIcon.appiconset"
 Get-ChildItem (Join-Path $appiconset "Icon-App-*.png") | ForEach-Object {
-    if ($_.BaseName -match "^Icon-App-(\d+(?:\.\d+)?)x\d+@(\d)x$") {
+    if ($_.BaseName -match "^Icon-App-(\d+(?:\.\d+)?)x\d+(?:\.\d+)?@(\d)x$") {
         $px = [int][math]::Round([double]$Matches[1] * [int]$Matches[2])
         Save-Scaled $master $px $_.FullName
     }

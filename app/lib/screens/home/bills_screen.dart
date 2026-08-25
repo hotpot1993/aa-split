@@ -64,7 +64,7 @@ class _BillsScreenState extends ConsumerState<BillsScreen> {
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
               children: [
                 _FilterChips(selected: _filter, onChanged: (f) => setState(() => _filter = f)),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 EmptyState(
                   title: '账本空空如也，记一笔吧！',
                   subtitle: '30秒搞定，以后回头翻账可开心了',
@@ -87,7 +87,7 @@ class _BillsScreenState extends ConsumerState<BillsScreen> {
                   for (final b in groups[months[i]]!)
                     _BillRow(bill: b, onTap: () => context.push('/bills/${b.id}')),
                 ],
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
               ],
             ),
     );
@@ -143,7 +143,7 @@ class _BillRow extends StatelessWidget {
       child: Row(
         children: [
           CategoryIcon(category: bill.category, size: 44),
-          const SizedBox(width: 10),
+          SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -151,22 +151,22 @@ class _BillRow extends StatelessWidget {
                 Text(bill.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.ink)),
-                const SizedBox(height: 2),
+                    style: TextStyle(
+                        fontFamily: AAFonts.title, fontSize: 15, color: AAColors.ink)),
+                SizedBox(height: 2),
                 Text(
                   '${bill.groupName} · ${Fmt.dateShort(bill.billDate)}',
-                  style: const TextStyle(
-                      fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft),
+                  style: TextStyle(
+                      fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           HandAmount(amountCents: bill.amountCents, size: 22, trimZero: true),
-          const SizedBox(width: 10),
+          SizedBox(width: 10),
           StampBadge(
             text: bill.fullySettled ? '已结清' : '待结算',
             color: bill.fullySettled ? AASemantic.stampDone : AASemantic.stampMoney,

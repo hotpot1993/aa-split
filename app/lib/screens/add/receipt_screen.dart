@@ -52,9 +52,9 @@ class _ReceiptScreenState extends ConsumerState<ReceiptScreen> {
         break;
       }
     }
-    _serverReceipts = bill?.receipts ?? const [];
+    _serverReceipts = bill?.receipts ?? [];
     if (bill == null) {
-      return const AaScaffold(appBar: null, body: Center(child: EmptyState(title: '账单不存在')));
+      return AaScaffold(appBar: null, body: Center(child: EmptyState(title: '账单不存在')));
     }
     final b = bill;
     final receipts = _allReceipts;
@@ -73,14 +73,14 @@ class _ReceiptScreenState extends ConsumerState<ReceiptScreen> {
             preview: receipts.isEmpty ? null : _ReceiptThumb(url: receipts.last.url),
             previewCount: receipts.length,
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           Text('已拍 ${receipts.length} 张：',
-              style: const TextStyle(
-                  fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
-          const SizedBox(height: 4),
+              style: TextStyle(
+                  fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft)),
+          SizedBox(height: 4),
           if (receipts.isEmpty)
-            const Text('还没有凭证，拍一张吧',
-                style: TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft))
+            Text('还没有凭证，拍一张吧',
+                style: TextStyle(fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft))
           else
             Row(
               children: [
@@ -91,13 +91,13 @@ class _ReceiptScreenState extends ConsumerState<ReceiptScreen> {
                   ),
               ],
             ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           DoodleButton(
             label: '完成，回记账页 ✓',
             big: true,
             onPressed: () => context.pop(),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
         ],
       ),
     );
@@ -179,20 +179,20 @@ class _ReceiptScreenState extends ConsumerState<ReceiptScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text('凭证来源', style: Theme.of(context).textTheme.headlineSmall),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           DoodleButton(
             label: '📷 拍一张',
             expand: true,
             onPressed: () => Navigator.of(context).pop(ImageSource.camera),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           DoodleButton(
             label: '🖼️ 从相册选',
             type: DoodleButtonType.secondary,
             expand: true,
             onPressed: () => Navigator.of(context).pop(ImageSource.gallery),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
         ],
       ),
     );
@@ -253,8 +253,8 @@ class _CameraFrame extends StatelessWidget {
                               borderRadius: BorderRadius.circular(999),
                             ),
                             child: Text('已拍 $previewCount 张',
-                                style: const TextStyle(
-                                    fontFamily: 'ZCOOLKuaiLe',
+                                style: TextStyle(
+                                    fontFamily: AAFonts.title,
                                     fontSize: 11,
                                     color: AAColors.paper)),
                           ),
@@ -262,21 +262,21 @@ class _CameraFrame extends StatelessWidget {
                       ],
                     ),
                   )
-                : const Column(
+                : Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Image(image: AssetImage('assets/icons/camera.png'), width: 62, height: 62),
                       SizedBox(height: 6),
                       Text('对准小票/截图',
-                          style: TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.ink)),
+                          style: TextStyle(fontFamily: AAFonts.title, fontSize: 15, color: AAColors.ink)),
                       SizedBox(height: 2),
                       Text('4:3 · 支持9张 · 自动压缩',
                           style: TextStyle(
-                              fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
+                              fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft)),
                     ],
                   ),
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           // 按钮组（Demo .btn.mini x3）
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -286,14 +286,14 @@ class _CameraFrame extends StatelessWidget {
                 mini: true,
                 onPressed: () => showAaToast(context, '💡 闪光灯已开'),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               DoodleButton(
                 label: '🖼 从相册选',
                 mini: true,
                 type: DoodleButtonType.secondary,
                 onPressed: onCapture,
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               DoodleButton(
                 label: '📸 拍一张',
                 mini: true,
@@ -320,7 +320,7 @@ class _PolaroidBox extends StatelessWidget {
       child: Container(
         width: 110,
         padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: Colors.white,
           border: Border.fromBorderSide(BorderSide(color: AAColors.ink, width: 2.5)),
           borderRadius: BorderRadius.all(Radius.circular(4)),
@@ -339,8 +339,8 @@ class _PolaroidBox extends StatelessWidget {
               ),
               child: _ReceiptThumb(url: url),
             ),
-            const SizedBox(height: 4),
-            const SizedBox(height: 18),
+            SizedBox(height: 4),
+            SizedBox(height: 18),
           ],
         ),
       ),
@@ -357,7 +357,7 @@ class _ReceiptThumb extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (url.startsWith('🧾')) {
-      return const AaIconImage('assets/icons/receipt.png', size: 34);
+      return AaIconImage('assets/icons/receipt.png', size: 34);
     }
     final isLocal = !url.startsWith('http') && File(url).existsSync();
     if (isLocal) {
@@ -366,7 +366,7 @@ class _ReceiptThumb extends StatelessWidget {
         width: 110,
         height: 70,
         fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => const Text('🧾', style: TextStyle(fontSize: 22)),
+        errorBuilder: (_, _, _) => Text('🧾', style: TextStyle(fontSize: 22)),
       );
     }
     return Image.network(
@@ -374,7 +374,7 @@ class _ReceiptThumb extends StatelessWidget {
       width: 110,
       height: 70,
       fit: BoxFit.cover,
-      errorBuilder: (_, _, _) => const Text('🧾', style: TextStyle(fontSize: 22)),
+      errorBuilder: (_, _, _) => Text('🧾', style: TextStyle(fontSize: 22)),
     );
   }
 }

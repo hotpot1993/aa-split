@@ -14,6 +14,7 @@ import { JwtPayload } from '../common/types';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { DeviceInfoDto } from './dto/device-info.dto';
 
 const BCRYPT_ROUNDS = 12;
 const RESET_TOKEN_TTL_MS = 10 * 60 * 1000; // 10 分钟
@@ -76,7 +77,7 @@ export class AuthService {
     };
   }
 
-  async register(dto: RegisterDto) {
+  async register(dto: RegisterDto, ip?: string) {
     const existing = await this.prisma.user.findUnique({
       where: { accountName: dto.accountName },
     });
@@ -92,10 +93,11 @@ export class AuthService {
       },
     });
     const tokens = await this.signTokens(user);
+    await this.recordDevice(user.id, dto.deviceInfo, ip);
     return { ...tokens, user: this.sanitizeUser(user) };
   }
 
-  async login(dto: LoginDto) {
+  async login(dto: LoginDto, ip?: string) {
     const user = await this.prisma.user.findUnique({
       where: { accountName: dto.accountName },
     });
@@ -108,7 +110,73 @@ export class AuthService {
       throw new UnauthorizedException('账户名或密码错误');
     }
     const tokens = await this.signTokens(user);
+    await this.recordDevice(user.id, dto.deviceInfo, ip);
     return { ...tokens, user: this.sanitizeUser(user) };
+  }
+
+  // ---------- 登录设备（P52 账号安全） ----------
+
+  /**
+   * 记录/更新登录设备（按 userId+deviceId 幂等；不传 deviceId 则跳过）。
+   * 登录、注册以及「设备列表页」打开时都会调用，保证当前设备始终真实在列。
+   */
+  async recordDevice(userId: string, dto?: DeviceInfoDto, ip?: string) {
+    const deviceId = dto?.deviceId?.trim();
+    if (!deviceId) return { success: false };
+    const data = {
+      deviceId,
+      platform: (dto?.platform ?? '').slice(0, 16),
+      deviceName: (dto?.deviceName ?? '').slice(0, 64),
+      osVersion: (dto?.osVersion ?? '').slice(0, 32),
+      ip: ip?.slice(0, 45) ?? null,
+    };
+    const existing = await this.prisma.userDevice.findUnique({
+      where: { userId_deviceId: { userId, deviceId } },
+    });
+    if (existing) {
+      await this.prisma.userDevice.update({
+        where: { id: existing.id },
+        data: {
+          platform: data.platform,
+          deviceName: data.deviceName,
+          osVersion: data.osVersion,
+          ip: data.ip,
+          lastLoginAt: new Date(),
+        },
+      });
+    } else {
+      await this.prisma.userDevice.create({
+        data: { userId, ...data, lastLoginAt: new Date() },
+      });
+    }
+    // 必须返回非 undefined：TransformInterceptor 对 undefined 直接透传，
+    // 会导致响应体为空、客户端无法解析 { code, message, data }
+    return { success: true };
+  }
+
+  /** 当前账号的登录设备列表（最近登录在前） */
+  async listDevices(userId: string) {
+    const rows = await this.prisma.userDevice.findMany({
+      where: { userId },
+      orderBy: { lastLoginAt: 'desc' },
+    });
+    return rows.map((d) => ({
+      id: d.id,
+      deviceId: d.deviceId,
+      platform: d.platform,
+      deviceName: d.deviceName,
+      osVersion: d.osVersion,
+      ip: d.ip,
+      lastLoginAt: d.lastLoginAt,
+    }));
+  }
+
+  /** 移除（退出）某台设备记录；不存在也视为成功（幂等） */
+  async removeDevice(userId: string, deviceId: string) {
+    await this.prisma.userDevice.deleteMany({
+      where: { userId, deviceId },
+    });
+    return { success: true };
   }
 
   /** 找回密码第一步：验证安全问题 → 返回 resetToken（DB 记录 hash + 过期时间） */
@@ -254,8 +322,9 @@ export class AuthService {
         data: { status: 'left' },
       });
 
-      // 3. 个人通知删除（其余群组/账单数据属于群，保留）
+      // 3. 个人通知与登录设备记录删除（其余群组/账单数据属于群，保留）
       await tx.notification.deleteMany({ where: { userId } });
+      await tx.userDevice.deleteMany({ where: { userId } });
 
       // 4. 匿名化 + 标记注销；旧 token 由 JwtAuthGuard 的 deletedAt 校验立即失效
       const suffix = randomBytes(6).toString('hex');

@@ -5,7 +5,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/api/api_client.dart';
 import '../../core/api/codec.dart';
 import '../../core/config.dart';
+import '../../core/device_info.dart';
 import '../../models/user.dart';
+import '../../models/user_device.dart';
 import '../mock/mock_store.dart';
 
 /// 认证相关异常（携带用户可读文案，用于行内红章/Toast）
@@ -74,6 +76,8 @@ class AuthRepository {
       final res = await ApiClient.instance.post('/auth/login', body: {
         'accountName': accountName.trim(),
         'password': password,
+        // 真实设备信息（登录即记录设备，P52 登录设备列表）
+        'deviceInfo': (await DeviceInfoService.current()).toJson(),
       });
       final data = res.data as Map? ?? const {};
       final token = (data['accessToken'] ?? '').toString();
@@ -119,6 +123,8 @@ class AuthRepository {
         if (nickname.isNotEmpty) 'nickname': nickname,
         'securityQuestion': securityQuestion,
         'securityAnswer': securityAnswer,
+        // 真实设备信息（注册即记录设备，P52 登录设备列表）
+        'deviceInfo': (await DeviceInfoService.current()).toJson(),
       });
       final data = res.data as Map? ?? const {};
       final token = (data['accessToken'] ?? '').toString();
@@ -245,6 +251,34 @@ class AuthRepository {
     await ApiClient.instance.delete('/auth/me');
     ApiClient.instance.setToken(null);
     await _clearSession();
+  }
+
+  // ---------- 登录设备（P52 账号安全：真实数据） ----------
+
+  /// 登录设备列表：先上报当前设备（幂等）再拉取，保证本机始终真实在列。
+  /// 上报失败不阻塞列表（登录时已记录过当前设备）。
+  Future<List<UserDevice>> listDevices() async {
+    if (AppConfig.useMock) return List.of(MockStore.instance.devices);
+    final me = await DeviceInfoService.current();
+    try {
+      await ApiClient.instance.post('/auth/devices', body: me.toJson());
+    } catch (_) {
+      // 忽略：展示列表优先；当前设备在登录时已上报
+    }
+    final res = await ApiClient.instance.get('/auth/devices');
+    final list = res.data is List ? res.data as List : const [];
+    return list
+        .map((e) => UserDevice.fromJson((e as Map).cast<String, dynamic>()))
+        .toList();
+  }
+
+  /// 退出指定设备（服务端幂等；当前设备也可调用，下次登录会重新记录）
+  Future<void> removeDevice(String deviceId) async {
+    if (AppConfig.useMock) {
+      MockStore.instance.devices.removeWhere((d) => d.deviceId == deviceId);
+      return;
+    }
+    await ApiClient.instance.delete('/auth/devices/$deviceId');
   }
 
   Future<void> _saveSession(String token, User user) async {

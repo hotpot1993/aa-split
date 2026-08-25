@@ -27,9 +27,9 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>用于拍摄账单凭证图片，保存到账单中供群成员查看。</string>
+	<string>用于拍摄账单凭证图片，以及扫一扫识别群组邀请二维码加入群组。</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>用于从相册选择账单凭证图片，保存到账单中供群成员查看。</string>
+	<string>用于从相册选择账单凭证图片，以及识别相册中的群组邀请二维码。</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

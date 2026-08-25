@@ -162,6 +162,17 @@ describe('核心链路 e2e（注册→建群→记账→结算→催款→已付
       .expect(201);
     expect(joinRes.body.data.id).toBe(group.id);
 
+    // 新成员加入 → 群内其它成员收到「新成员加入」动态（SSE 推送驱动客户端刷新成员列表）
+    const aliceNotifs = await request(server())
+      .get('/api/v1/notifications')
+      .set('Authorization', `Bearer ${aliceToken}`)
+      .expect(200);
+    const memberNotif = (aliceNotifs.body.data.list as any[]).find(
+      (n: any) => n.type === 'member' && n.refId === group.id,
+    );
+    expect(memberNotif).toBeDefined();
+    expect(memberNotif.body).toContain('鲍勃');
+
     const groups = await request(server())
       .get('/api/v1/groups')
       .set('Authorization', `Bearer ${bobToken}`)
@@ -200,6 +211,8 @@ describe('核心链路 e2e（注册→建群→记账→结算→催款→已付
     // 垫付人自付份额 → 创建后为 partial（待他人）
     expect(bill.settleStatus).toBe('partial');
     expect(bill.amountCents).toBe(22000);
+    // 顶层 payerId 必须返回（客户端 personalBalance 依赖它区分垫付人）
+    expect(bill.payerId).toBe(alice.id);
     expect(bill.participants).toHaveLength(2);
     expect(bill.participants.map((p: any) => p.shareAmountCents).sort()).toEqual([
       11000, 11000,
@@ -207,6 +220,13 @@ describe('核心链路 e2e（注册→建群→记账→结算→催款→已付
     expect(
       bill.participants.find((p: any) => p.userId === alice.id).paid,
     ).toBe(true);
+
+    // 群账单流水（客户端首页净额数据源）必须同样带顶层 payerId
+    const listRes = await request(server())
+      .get(`/api/v1/groups/${group.id}/bills?page=1&pageSize=10`)
+      .set('Authorization', `Bearer ${alice.token}`)
+      .expect(200);
+    expect(listRes.body.data.list[0].payerId).toBe(alice.id);
 
     // 分摊合计不等于金额 → 400 业务错误
     const bad = await request(server())
@@ -261,8 +281,8 @@ describe('核心链路 e2e（注册→建群→记账→结算→催款→已付
       .get('/api/v1/notifications/unread-count')
       .set('Authorization', `Bearer ${bobToken}`)
       .expect(200);
-    // new_bill + remind 各一条
-    expect(unread.body.data.count).toBe(2);
+    // 新账单通知已取消：仅 remind 一条
+    expect(unread.body.data.count).toBe(1);
 
     const paid = await request(server())
       .post(`/api/v1/bills/${bill.id}/mark-paid`)
@@ -283,6 +303,85 @@ describe('核心链路 e2e（注册→建群→记账→结算→催款→已付
       .expect(200);
     expect(settle.body.data.transferCount).toBe(0);
     expect(settle.body.data.transfers).toEqual([]);
+  });
+
+  it('一键结清：群内全部账单统一标记为已付', async () => {
+    const alice = (globalThis as any).__alice as { token: string; id: string };
+    const group = (globalThis as any).__group as { id: string };
+    const bobId = (globalThis as any).__bobId as string;
+
+    // 新建一笔未结清账单（alice 垫付 30 元，bob 未付）
+    const billRes = await request(server())
+      .post('/api/v1/bills')
+      .set('Authorization', `Bearer ${alice.token}`)
+      .send({
+        groupId: group.id,
+        title: '结清测试',
+        amountCents: 3000,
+        billDate: '2026-08-25',
+        category: 'food',
+        splitType: 'even',
+        payerId: alice.id,
+        participants: [{ userId: alice.id }, { userId: bobId }],
+      })
+      .expect(201);
+    const bill = billRes.body.data;
+    expect(bill.settleStatus).toBe('partial');
+
+    const res = await request(server())
+      .post(`/api/v1/groups/${group.id}/bills/settle-all`)
+      .set('Authorization', `Bearer ${alice.token}`)
+      .expect(201);
+    expect(res.body.data.updatedBills).toBe(1);
+    expect(res.body.data.updatedShares).toBe(1);
+
+    const detail = await request(server())
+      .get(`/api/v1/bills/${bill.id}`)
+      .set('Authorization', `Bearer ${alice.token}`)
+      .expect(200);
+    expect(detail.body.data.settleStatus).toBe('settled');
+    expect(
+      detail.body.data.participants.every((p: any) => p.paid),
+    ).toBe(true);
+
+    // 结算方案已清空
+    const settle = await request(server())
+      .get(`/api/v1/groups/${group.id}/settlement`)
+      .set('Authorization', `Bearer ${alice.token}`)
+      .expect(200);
+    expect(settle.body.data.transferCount).toBe(0);
+
+    (globalThis as any).__settleBill = bill;
+  });
+
+  it('凭证替换：上传 → 替换（同 id 换图，旧对象清理）', async () => {
+    const alice = (globalThis as any).__alice as { token: string; id: string };
+    const bill = (globalThis as any).__settleBill as { id: string };
+
+    const up = await request(server())
+      .post(`/api/v1/bills/${bill.id}/receipts`)
+      .set('Authorization', `Bearer ${alice.token}`)
+      .attach('file', Buffer.from('fake-receipt-1'), 'receipt1.jpg')
+      .expect(201);
+    expect(up.body.data.id).toBeTruthy();
+    expect(up.body.data.url).toContain('/uploads/');
+
+    const rep = await request(server())
+      .post(`/api/v1/bills/${bill.id}/receipts/${up.body.data.id}/replace`)
+      .set('Authorization', `Bearer ${alice.token}`)
+      .attach('file', Buffer.from('fake-receipt-2'), 'receipt2.jpg')
+      .expect(201);
+    expect(rep.body.data.id).toBe(up.body.data.id);
+    expect(rep.body.data.objectKey).not.toBe(up.body.data.objectKey);
+
+    // 详情中的凭证已换图（同一 id）
+    const detail = await request(server())
+      .get(`/api/v1/bills/${bill.id}`)
+      .set('Authorization', `Bearer ${alice.token}`)
+      .expect(200);
+    expect(detail.body.data.receipts).toHaveLength(1);
+    expect(detail.body.data.receipts[0].id).toBe(up.body.data.id);
+    expect(detail.body.data.receipts[0].url).toContain('/uploads/');
   });
 
   it('找回密码链路（verify → reset → 新密码登录）', async () => {
@@ -377,5 +476,96 @@ describe('核心链路 e2e（注册→建群→记账→结算→催款→已付
       .post('/api/v1/auth/login')
       .send({ accountName: 'charlie', password: 'ghi789GHI' })
       .expect(401);
+  });
+
+  it('解散群组（软删除）：列表不再返回 + 详情 404', async () => {
+    const alice = (globalThis as any).__alice as { token: string };
+
+    // 新建一个群 → 出现在列表中
+    const created = await request(server())
+      .post('/api/v1/groups')
+      .set('Authorization', `Bearer ${alice.token}`)
+      .send({ name: '临时测试群', intro: '解散回归' })
+      .expect(201);
+    const gid = created.body.data.id as string;
+
+    const listBefore = await request(server())
+      .get('/api/v1/groups')
+      .set('Authorization', `Bearer ${alice.token}`)
+      .expect(200);
+    expect((listBefore.body.data as any[]).map((g) => g.id)).toContain(gid);
+
+    // 解散（软删除）→ 列表不再返回该群
+    await request(server())
+      .delete(`/api/v1/groups/${gid}`)
+      .set('Authorization', `Bearer ${alice.token}`)
+      .expect(200);
+
+    const listAfter = await request(server())
+      .get('/api/v1/groups')
+      .set('Authorization', `Bearer ${alice.token}`)
+      .expect(200);
+    expect((listAfter.body.data as any[]).map((g) => g.id)).not.toContain(gid);
+    expect((listAfter.body.data as any[]).some((g) => g.name === '饭友群')).toBe(true);
+
+    // 详情对已解散群 404（getGroupOrThrow / assertMember 兜底）
+    await request(server())
+      .get(`/api/v1/groups/${gid}`)
+      .set('Authorization', `Bearer ${alice.token}`)
+      .expect(404);
+  });
+
+  it('登录设备：上报 → 列表 → 幂等 → 移除（P52 真实数据链路）', async () => {
+    const alice = (globalThis as any).__alice as { token: string };
+
+    // 打开「账号安全」页时上报当前设备（响应必须为 { code, message, data } 包装，
+    // 修复 recordDevice 返回 undefined → 空响应体导致客户端解析失败）
+    const ensureRes = await request(server())
+      .post('/api/v1/auth/devices')
+      .set('Authorization', `Bearer ${alice.token}`)
+      .send({
+        deviceId: 'dev-alice-xiaomi',
+        platform: 'android',
+        deviceName: 'Xiaomi 2509FPN0BC',
+        osVersion: '17',
+      })
+      .expect(200);
+    expect(ensureRes.body.data).toEqual({ success: true });
+
+    const list = await request(server())
+      .get('/api/v1/auth/devices')
+      .set('Authorization', `Bearer ${alice.token}`)
+      .expect(200);
+    expect(list.body.data).toHaveLength(1);
+    expect(list.body.data[0].deviceName).toBe('Xiaomi 2509FPN0BC');
+    expect(list.body.data[0].platform).toBe('android');
+    expect(list.body.data[0].ip).toBeTruthy();
+
+    // 同设备再次上报 → 仍只有 1 条（userId+deviceId 幂等更新）
+    await request(server())
+      .post('/api/v1/auth/devices')
+      .set('Authorization', `Bearer ${alice.token}`)
+      .send({ deviceId: 'dev-alice-xiaomi', deviceName: 'Xiaomi 2509FPN0BC' })
+      .expect(200);
+    const list2 = await request(server())
+      .get('/api/v1/auth/devices')
+      .set('Authorization', `Bearer ${alice.token}`)
+      .expect(200);
+    expect(list2.body.data).toHaveLength(1);
+
+    // 退出该设备 → 列表清空；再删一次也幂等成功
+    await request(server())
+      .delete('/api/v1/auth/devices/dev-alice-xiaomi')
+      .set('Authorization', `Bearer ${alice.token}`)
+      .expect(200);
+    await request(server())
+      .delete('/api/v1/auth/devices/dev-alice-xiaomi')
+      .set('Authorization', `Bearer ${alice.token}`)
+      .expect(200);
+    const list3 = await request(server())
+      .get('/api/v1/auth/devices')
+      .set('Authorization', `Bearer ${alice.token}`)
+      .expect(200);
+    expect(list3.body.data).toHaveLength(0);
   });
 });

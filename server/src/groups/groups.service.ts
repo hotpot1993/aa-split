@@ -55,7 +55,7 @@ export class GroupsService {
     return group;
   }
 
-  /** 我加入的所有群 */
+  /** 我加入的所有群（软删除/已解散的群不返回） */
   async listMyGroups(userId: string) {
     const memberships = await this.prisma.groupMember.findMany({
       where: { userId, status: MemberStatus.active },
@@ -69,17 +69,20 @@ export class GroupsService {
       },
       orderBy: { joinedAt: 'desc' },
     });
-    return memberships.map((m) => ({
-      id: m.group.id,
-      name: m.group.name,
-      avatarUrl: m.group.avatarUrl,
-      intro: m.group.intro,
-      ownerId: m.group.ownerId,
-      owner: m.group.owner,
-      defaultSplitType: m.group.defaultSplitType,
-      memberCount: m.group._count.members,
-      joinedAt: m.joinedAt,
-    }));
+    return memberships
+      // 解散 = 软删除（deletedAt 非 null）：成员关系仍存在，但要过滤掉
+      .filter((m) => m.group !== null && m.group.deletedAt == null)
+      .map((m) => ({
+        id: m.group.id,
+        name: m.group.name,
+        avatarUrl: m.group.avatarUrl,
+        intro: m.group.intro,
+        ownerId: m.group.ownerId,
+        owner: m.group.owner,
+        defaultSplitType: m.group.defaultSplitType,
+        memberCount: m.group._count.members,
+        joinedAt: m.joinedAt,
+      }));
   }
 
   /** 创建群，创建者自动成为 owner + 成员 */
@@ -159,6 +162,31 @@ export class GroupsService {
     });
   }
 
+  /** 新成员入群/被添加后，给群内其它 active 成员发「动态」通知。
+   *  通知会推送 SSE → 客户端 bump 刷新数据，其它成员端的成员列表随之实时更新。 */
+  private async notifyMembersJoined(
+    groupId: string,
+    groupName: string,
+    joinedNickname: string,
+    exceptUserIds: string[],
+  ) {
+    const members = await this.prisma.groupMember.findMany({
+      where: { groupId, status: MemberStatus.active },
+      select: { userId: true },
+    });
+    const targets = members
+      .map((m) => m.userId)
+      .filter((uid) => !exceptUserIds.includes(uid));
+    if (targets.length === 0) return;
+    await this.notificationsService.createMany(targets, {
+      type: 'member',
+      title: '新成员加入',
+      body: `${joinedNickname} 加入了「${groupName}」`,
+      refType: 'group',
+      refId: groupId,
+    });
+  }
+
   /** 按账户名添加成员（任一 active 成员可添加） */
   async addMember(userId: string, groupId: string, accountName: string) {
     await this.assertMember(groupId, userId);
@@ -174,6 +202,7 @@ export class GroupsService {
     if (existing && existing.status === MemberStatus.active) {
       throw new ConflictException('该用户已是群成员');
     }
+    const joinedNickname = target.nickname || target.accountName;
     if (existing && existing.status === MemberStatus.left) {
       const updated = await this.prisma.groupMember.update({
         where: { id: existing.id },
@@ -186,6 +215,12 @@ export class GroupsService {
         refType: 'group',
         refId: groupId,
       });
+      await this.notifyMembersJoined(
+        groupId,
+        group.name,
+        joinedNickname,
+        [userId, target.id],
+      );
       return { success: true, membershipId: updated.id };
     }
     const created = await this.prisma.groupMember.create({
@@ -198,6 +233,12 @@ export class GroupsService {
       refType: 'group',
       refId: groupId,
     });
+    await this.notifyMembersJoined(
+      groupId,
+      group.name,
+      joinedNickname,
+      [userId, target.id],
+    );
     return { success: true, membershipId: created.id };
   }
 
@@ -246,6 +287,11 @@ export class GroupsService {
     if (existing && existing.status === MemberStatus.active) {
       return { id: group.id, name: group.name, alreadyJoined: true };
     }
+    const me = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { nickname: true, accountName: true },
+    });
+    const joinedNickname = me?.nickname || me?.accountName || '新朋友';
     if (existing) {
       await this.prisma.groupMember.update({
         where: { id: existing.id },
@@ -256,6 +302,8 @@ export class GroupsService {
         data: { groupId: group.id, userId, status: MemberStatus.active },
       });
     }
+    // 通知群内其它成员（SSE → 客户端刷新成员列表）
+    await this.notifyMembersJoined(group.id, group.name, joinedNickname, [userId]);
     return { id: group.id, name: group.name, alreadyJoined: false };
   }
 

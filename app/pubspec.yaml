@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.1+2
+version: 1.0.2+2003
 
 environment:
   sdk: ^3.12.2
@@ -43,8 +43,10 @@ dependencies:
   qr_flutter: ^4.1.0
   intl: ^0.20.3
   image_picker: ^1.1.2
+  device_info_plus: ^12.1.0
   jpush_flutter: ^3.5.5
   permission_handler: ^13.0.1
+  mobile_scanner: ^7.4.0
 
 dev_dependencies:
   flutter_test:
@@ -70,9 +72,10 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
-  # ---------- 自有图标素材（docs/pic 处理产物：透明底 512px） ----------
+  # ---------- 自有图标/吉祥物素材（docs/pic 处理产物：透明底 512px） ----------
   assets:
     - assets/icons/
+    - assets/mascot/
 
   # ---------- 字体系统（规范 §4 分级字体） ----------
   # 注意：字体文件在 aa_design 包内，但在「应用 pubspec」中声明，
@@ -91,6 +94,24 @@ flutter:
     - family: Caveat
       fonts:
         - asset: packages/aa_design/assets/fonts/Caveat-VariableFont_wght.ttf
+    # 货币符号（¥）两种字体风格统一 JetBrains Mono；标准风格：其余文字=Noto Sans SC
+    # 可变字体按常用字重重复注册，保证 fontWeight 正确映射到 wght 轴
+    - family: NotoSansSC
+      fonts:
+        - asset: packages/aa_design/assets/fonts/NotoSansSC-Variable.ttf
+          weight: 400
+        - asset: packages/aa_design/assets/fonts/NotoSansSC-Variable.ttf
+          weight: 500
+        - asset: packages/aa_design/assets/fonts/NotoSansSC-Variable.ttf
+          weight: 700
+    - family: JetBrainsMono
+      fonts:
+        - asset: packages/aa_design/assets/fonts/JetBrainsMono-Variable.ttf
+          weight: 400
+        - asset: packages/aa_design/assets/fonts/JetBrainsMono-Variable.ttf
+          weight: 500
+        - asset: packages/aa_design/assets/fonts/JetBrainsMono-Variable.ttf
+          weight: 700
 
   # To add assets to your application, add an assets section, like this:
   # assets:

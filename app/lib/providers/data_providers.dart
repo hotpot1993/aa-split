@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/config.dart';
 import '../data/mock/mock_store.dart';
+import '../data/repositories/exchange_rate_repository.dart';
 import '../models/bill.dart';
 import '../models/group.dart';
 import '../models/group_member.dart';
@@ -9,6 +10,7 @@ import '../models/notification_item.dart';
 import '../models/regular_bill.dart';
 import '../models/transfer.dart';
 import '../models/user.dart';
+import '../models/user_device.dart';
 import 'auth_provider.dart';
 import 'refresh_provider.dart';
 import 'repositories.dart';
@@ -76,4 +78,16 @@ final perBillTransfersProvider =
     FutureProvider.family<List<Transfer>, String>((ref, groupId) async {
   ref.watch(refreshProvider);
   return ref.read(settlementRepositoryProvider).perBill(groupId);
+});
+
+/// 今日汇率（1 单位外币 = 多少人民币；网络失败回退参考汇率并标记）
+final exchangeRateProvider =
+    FutureProvider.family<RateResult, String>((ref, code) async {
+  return ref.read(exchangeRateRepositoryProvider).rate(code);
+});
+
+/// 登录设备列表（P52 账号安全：真实数据；Demo 模式为 MockStore 演示数据）
+final loginDevicesProvider = FutureProvider<List<UserDevice>>((ref) async {
+  ref.watch(refreshProvider);
+  return ref.read(authRepositoryProvider).listDevices();
 });

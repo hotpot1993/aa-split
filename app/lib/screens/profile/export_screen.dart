@@ -34,9 +34,9 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: [
-          const Text('导出范围：',
-              style: TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
-          const SizedBox(height: 4),
+          Text('导出范围：',
+              style: TextStyle(fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft)),
+          SizedBox(height: 4),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -48,10 +48,10 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
               );
             }).toList(),
           ),
-          const SizedBox(height: 12),
-          const Text('文件格式：',
-              style: TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
-          const SizedBox(height: 4),
+          SizedBox(height: 12),
+          Text('文件格式：',
+              style: TextStyle(fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft)),
+          SizedBox(height: 4),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -63,7 +63,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
               );
             }).toList(),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           // 打包卡（Demo：🎒 + mini dim + 进度条）
           PaperCard(
             withTape: true,
@@ -72,26 +72,26 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
             child: Column(
               children: [
                 if (_done)
-                  const Image(image: AssetImage('assets/icons/box.png'), width: 44, height: 44)
+                  Image(image: AssetImage('assets/icons/box.png'), width: 44, height: 44)
                 else
-                  const Image(image: AssetImage('assets/icons/box.png'), width: 44, height: 44),
-                const SizedBox(height: 4),
-                const Text('团团正在打包你的账本…',
+                  Image(image: AssetImage('assets/icons/box.png'), width: 44, height: 44),
+                SizedBox(height: 4),
+                Text('团团正在打包你的账本…',
                     style: TextStyle(
-                        fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
-                const SizedBox(height: 10),
+                        fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft)),
+                SizedBox(height: 10),
                 _DemoProgress(progress: _packing ? 1.0 : 0.72),
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           DoodleButton(
             label: _packing || _done ? '开始导出 ✈️' : '开始导出 ✈️',
             big: true,
             onPressed: _packing ? null : _startPack,
           ),
           if (_done) ...[
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             DoodleButton(
               label: '下载文件',
               type: DoodleButtonType.secondary,
@@ -99,22 +99,22 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
               onPressed: () => showAaToast(context, '📦 打包好啦！请查收'),
             ),
           ],
-          const SizedBox(height: 12),
-          const Text('历史记录：',
-              style: TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
-          const SizedBox(height: 4),
+          SizedBox(height: 12),
+          Text('历史记录：',
+              style: TextStyle(fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft)),
+          SizedBox(height: 4),
           PaperCard(
             padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('6月账单.xlsx · 6月1日',
-                    style: TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.ink)),
-                const HandTag('已生成', dense: true, variant: ChipVariant.green),
+                Text('6月账单.xlsx · 6月1日',
+                    style: TextStyle(fontFamily: AAFonts.title, fontSize: 12, color: AAColors.ink)),
+                HandTag('已生成', dense: true, variant: ChipVariant.green),
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
         ],
       ),
     );
@@ -125,7 +125,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
       _packing = true;
       _done = false;
     });
-    Timer(const Duration(milliseconds: 1800), () {
+    Timer(Duration(milliseconds: 1800), () {
       if (!mounted) return;
       setState(() {
         _packing = false;
@@ -158,7 +158,7 @@ class _DemoProgress extends StatelessWidget {
           child: FractionallySizedBox(
             widthFactor: progress.clamp(0, 1),
             child: Container(
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 border: Border(right: BorderSide(color: AAColors.ink, width: 2)),
               ),
               child: CustomPaint(painter: _StripeBarPainter()),

@@ -68,6 +68,7 @@ export class BillsService {
       regularId: bill.regularId,
       creator: bill.creator,
       payer: bill.payer,
+      payerId: bill.payerId,
       participants: bill.participants.map((p) => ({
         userId: p.userId,
         shareAmountCents: p.shareAmountCents,
@@ -142,22 +143,17 @@ export class BillsService {
       return created;
     });
 
-    // 为每个非创建者参与者写 new_bill 通知
-    const notifyUserId = [...new Set(shares.map((s) => s.userId))].filter(
-      (id) => id !== userId,
-    );
-    await Promise.all(
-      notifyUserId.map((id) =>
-        this.notificationsService.create(id, {
-          type: 'new_bill',
-          title: '新账单',
-          body: `「${dto.title}」新增，需付 ¥${(dto.amountCents / 100).toFixed(2)}`,
+    // 产品调整：已取消「新账单通知」类型（不写通知库/不推送）；
+    // 改推「静默数据事件」→ 其它参与者账单列表实时刷新
+    const participantIds = [...new Set(shares.map((s) => s.userId))];
+    for (const uid of participantIds) {
+      if (uid !== userId) {
+        this.notificationsService.pushDataEvent(uid, {
           refType: 'bill',
           refId: bill.id,
-        }),
-      ),
-    );
-
+        });
+      }
+    }
     return this.mapBill(bill);
   }
 
@@ -250,16 +246,31 @@ export class BillsService {
       });
       return res;
     });
+    // 静默数据事件：所有参与者端实时刷新列表/详情
+    for (const p of updated.participants) {
+      this.notificationsService.pushDataEvent(p.userId, {
+        refType: 'bill',
+        refId: billId,
+      });
+    }
     return this.mapBill(updated);
   }
 
   /** 删除账单（软删除，创建者或群主） */
   async deleteBill(userId: string, billId: string) {
+    const bill = await this.findBillOrThrow(billId);
     await this.assertCanEdit(userId, billId);
-    return this.prisma.bill.update({
+    const res = await this.prisma.bill.update({
       where: { id: billId },
       data: { deletedAt: new Date() },
     });
+    for (const p of bill.participants) {
+      this.notificationsService.pushDataEvent(p.userId, {
+        refType: 'bill',
+        refId: billId,
+      });
+    }
+    return res;
   }
 
   /** 上传凭证（multipart file；创建者、垫付人或群主） */
@@ -276,6 +287,37 @@ export class BillsService {
       data: { billId, objectKey: stored.objectKey },
     });
     return { id: receipt.id, billId, objectKey: receipt.objectKey, url: stored.url };
+  }
+
+  /** 替换凭证：上传新图 → 更新凭证记录 → 清理旧对象（幂等，权限同上传） */
+  async replaceReceipt(
+    userId: string,
+    billId: string,
+    receiptId: string,
+    file: Express.Multer.File,
+  ) {
+    if (!file) throw new BadRequestException('缺少凭证文件');
+    const bill = await this.findBillOrThrow(billId);
+    const group = await this.prisma.group.findFirst({ where: { id: bill.groupId } });
+    const allowed =
+      bill.creatorId === userId || bill.payerId === userId || group?.ownerId === userId;
+    if (!allowed) throw new ForbiddenException('无权替换凭证');
+
+    const receipt = await this.prisma.receipt.findFirst({
+      where: { id: receiptId, billId },
+    });
+    if (!receipt) throw new NotFoundException('凭证不存在');
+
+    const stored = await this.storageService.upload(file);
+    const updated = await this.prisma.receipt.update({
+      where: { id: receipt.id },
+      data: { objectKey: stored.objectKey },
+    });
+    // 旧图清理失败不阻塞（仅记日志）
+    if (receipt.objectKey && receipt.objectKey !== stored.objectKey) {
+      void this.storageService.remove(receipt.objectKey);
+    }
+    return { id: updated.id, billId, objectKey: updated.objectKey, url: stored.url };
   }
 
   /** 标记某参与人已付/未付；事务更新 + 重算 settle_status + 写通知 */
@@ -318,7 +360,43 @@ export class BillsService {
         refId: billId,
       });
     }
+    // 静默数据事件：所有参与者端实时刷新付款状态
+    for (const p of bill.participants) {
+      this.notificationsService.pushDataEvent(p.userId, {
+        refType: 'bill',
+        refId: billId,
+      });
+    }
     return { success: true, paid, paidAt: updated.paidAt };
+  }
+
+  /** 一键结清：将群内所有未结清账单的未付参与份额统一标记已付（单事务，幂等）。 */
+  async settleAll(userId: string, groupId: string) {
+    await this.assertGroupMember(groupId, userId);
+    const bills = await this.prisma.bill.findMany({
+      where: { groupId, deletedAt: null, settleStatus: { not: 'settled' } },
+      select: { id: true },
+    });
+    if (bills.length === 0) return { updatedBills: 0, updatedShares: 0 };
+    const billIds = bills.map((b) => b.id);
+    return this.prisma.$transaction(async (tx) => {
+      const res = await tx.billParticipant.updateMany({
+        where: { billId: { in: billIds }, paid: false },
+        data: { paid: true, paidAt: new Date() },
+      });
+      // 逐笔重算结算状态（全部已付 → settled）
+      for (const id of billIds) {
+        const all = await tx.billParticipant.findMany({ where: { billId: id } });
+        const status = computeSettleStatus(
+          all.map(
+            (p) =>
+              ({ shareAmountCents: p.shareAmountCents, paid: p.paid }) as ResolvedShare,
+          ),
+        );
+        await tx.bill.update({ where: { id }, data: { settleStatus: status } });
+      }
+      return { updatedBills: billIds.length, updatedShares: res.count };
+    });
   }
 
   /** 催款：写 notification + 触发 SSE */

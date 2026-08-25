@@ -26,7 +26,7 @@ class AppBottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AAColors.cardWhite,
         border: Border(top: BorderSide(color: AAColors.ink, width: 3)),
       ),
@@ -37,27 +37,27 @@ class AppBottomNav extends StatelessWidget {
           child: Row(
             children: [
               _TabItem(
-                icon: const _HomeIcon(),
+                icon: _HomeIcon(),
                 label: _labels[0],
                 selected: currentIndex == 0,
                 onTap: () => onTap(0),
               ),
               _TabItem(
-                icon: const _GroupIcon(),
+                icon: _GroupIcon(),
                 label: _labels[1],
                 selected: currentIndex == 1,
                 onTap: () => onTap(1),
               ),
               _AddButton(onTap: onAdd),
               _TabItem(
-                icon: const _BellIcon(),
+                icon: _BellIcon(),
                 label: _labels[3],
                 selected: currentIndex == 2,
                 onTap: () => onTap(2),
                 badge: unreadCount,
               ),
               _TabItem(
-                icon: const _PersonIcon(),
+                icon: _PersonIcon(),
                 label: _labels[4],
                 selected: currentIndex == 3,
                 onTap: () => onTap(3),
@@ -93,12 +93,12 @@ class _AddButton extends StatelessWidget {
               padding: const EdgeInsets.all(8),
               decoration: ShapeDecoration(
                 color: AAColors.coral,
-                shape: const CircleBorder(
+                shape: CircleBorder(
                   side: BorderSide(color: AAColors.ink, width: 2.5),
                 ),
-                shadows: const [AATokens.buttonShadow],
+                shadows: [AATokens.buttonShadow],
               ),
-              child: const CustomPaint(
+              child: CustomPaint(
                 size: Size(52, 52),
                 painter: _PencilIconPainter(),
               ),
@@ -133,7 +133,7 @@ class _TabItem extends StatelessWidget {
         onTap: onTap,
         behavior: HitTestBehavior.opaque,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 280),
+          duration: Duration(milliseconds: 280),
           curve: springCurve,
           transform: Matrix4.translationValues(0, selected ? -5 : 0, 0),
           alignment: Alignment.center,
@@ -153,26 +153,26 @@ class _TabItem extends StatelessWidget {
                       top: -3,
                       child: Container(
                         padding: const EdgeInsets.all(3),
-                        constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
-                        decoration: const BoxDecoration(
+                        constraints: BoxConstraints(minWidth: 16, minHeight: 16),
+                        decoration: BoxDecoration(
                           color: AAColors.berry,
                           shape: BoxShape.circle,
                         ),
                         child: Center(
                           child: Text(
                             badge > 99 ? '99+' : '$badge',
-                            style: const TextStyle(fontSize: 9, color: Colors.white),
+                            style: TextStyle(fontSize: 9, color: Colors.white),
                           ),
                         ),
                       ),
                     ),
                 ],
               ),
-              const SizedBox(height: 3),
+              SizedBox(height: 3),
               Text(
                 label,
                 style: TextStyle(
-                  fontFamily: 'ZCOOLKuaiLe',
+                  fontFamily: AAFonts.title,
                   fontSize: 11,
                   color: color,
                   height: 1.2,
@@ -217,7 +217,7 @@ class _HomeIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CustomPaint(painter: _HomeIconPainter(), size: const Size(25, 25));
+    return CustomPaint(painter: _HomeIconPainter(), size: Size(25, 25));
   }
 }
 
@@ -242,15 +242,15 @@ class _GroupIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CustomPaint(painter: _GroupIconPainter(), size: const Size(25, 25));
+    return CustomPaint(painter: _GroupIconPainter(), size: Size(25, 25));
   }
 }
 
 class _GroupIconPainter extends _SketchIconPainter {
   @override
   Path get canvasPath => Path()
-    ..addOval(Rect.fromCircle(center: const Offset(8.8, 7), radius: 2.5))
-    ..addOval(Rect.fromCircle(center: const Offset(15.8, 8.4), radius: 2.1))
+    ..addOval(Rect.fromCircle(center: Offset(8.8, 7), radius: 2.5))
+    ..addOval(Rect.fromCircle(center: Offset(15.8, 8.4), radius: 2.1))
     ..moveTo(4.8, 14.6)
     ..quadraticBezierTo(8.8, 10.6, 12.8, 14.6)
     ..moveTo(12.6, 14.2)
@@ -262,7 +262,7 @@ class _BellIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CustomPaint(painter: _BellIconPainter(), size: const Size(25, 25));
+    return CustomPaint(painter: _BellIconPainter(), size: Size(25, 25));
   }
 }
 
@@ -280,7 +280,7 @@ class _BellIconPainter extends _SketchIconPainter {
     ..close()
     ..moveTo(12, 4.4)
     ..lineTo(12, 3.2)
-    ..addOval(Rect.fromCircle(center: const Offset(12, 18.4), radius: 1.3));
+    ..addOval(Rect.fromCircle(center: Offset(12, 18.4), radius: 1.3));
 }
 
 class _PersonIcon extends StatelessWidget {
@@ -288,14 +288,14 @@ class _PersonIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CustomPaint(painter: _PersonIconPainter(), size: const Size(25, 25));
+    return CustomPaint(painter: _PersonIconPainter(), size: Size(25, 25));
   }
 }
 
 class _PersonIconPainter extends _SketchIconPainter {
   @override
   Path get canvasPath => Path()
-    ..addOval(Rect.fromCircle(center: const Offset(12, 7.4), radius: 3.1))
+    ..addOval(Rect.fromCircle(center: Offset(12, 7.4), radius: 3.1))
     ..moveTo(5.8, 18.2)
     ..quadraticBezierTo(6.2, 12.4, 12, 12.4)
     ..quadraticBezierTo(17.8, 12.4, 18.2, 18.2);
