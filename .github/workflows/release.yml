@@ -83,7 +83,9 @@ jobs:
       - name: Verify release signing
         run: |
           echo "== 证书指纹(应与正式 keystore 一致) =="
-          keytool -printcert -jarfile app/build/app/outputs/flutter-apk/app-release.apk | grep -E "SHA256:|Owner:"
+          APKSIGNER=$(ls "$ANDROID_HOME/build-tools"/*/apksigner 2>/dev/null | tail -1) || true
+          [ -n "$APKSIGNER" ] || APKSIGNER=$(command -v apksigner)
+          "$APKSIGNER" verify --print-certs app/build/app/outputs/flutter-apk/app-release.apk | grep -E "SHA-256 digest|DN:"
 
       - name: Publish release
         uses: softprops/action-gh-release@v2
