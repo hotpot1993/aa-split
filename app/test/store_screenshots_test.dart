@@ -28,10 +28,15 @@ const _shotKey = ValueKey('store-shot');
 
 Future<void> _loadFont(String family, List<String> files) async {
   final loader = FontLoader(family);
+  var added = 0;
   for (final f in files) {
-    final bytes = File(f).readAsBytesSync();
+    final file = File(f);
+    if (!file.existsSync()) continue; // 跨平台(如 Linux CI)缺失字体自动跳过
+    final bytes = file.readAsBytesSync();
     loader.addFont(Future.value(ByteData.view(bytes.buffer)));
+    added++;
   }
+  if (added == 0) return;
   await loader.load();
 }
 
