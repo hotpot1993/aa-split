@@ -85,11 +85,13 @@ class _AaToastState extends State<AaToast> with SingleTickerProviderStateMixin {
 }
 
 /// 破坏性操作二次确认弹窗（撕纸顶边 + 图钉 + 团团）—— UI规范 §9.3
+/// [showMascot] 为 false 时不展示吉祥物（如「退出登录」弹窗保持简洁）。
 Future<bool?> showAaConfirm(
   BuildContext context, {
   required String title,
   String? subtitle,
   String confirmLabel = '确认',
+  bool showMascot = true,
 }) {
   return showModalBottomSheet<bool>(
     context: context,
@@ -102,6 +104,7 @@ Future<bool?> showAaConfirm(
       title: title,
       subtitle: subtitle,
       confirmLabel: confirmLabel,
+      showMascot: showMascot,
     ),
   );
 }
@@ -126,11 +129,13 @@ class _ConfirmSheet extends StatelessWidget {
     required this.title,
     this.subtitle,
     required this.confirmLabel,
+    this.showMascot = true,
   });
 
   final String title;
   final String? subtitle;
   final String confirmLabel;
+  final bool showMascot;
 
   @override
   Widget build(BuildContext context) {
@@ -139,8 +144,10 @@ class _ConfirmSheet extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const TuanTuan(emotion: TuanTuanEmotion.excited, size: 84),
-          const SizedBox(height: 10),
+          if (showMascot) ...[
+            const TuanTuan(emotion: TuanTuanEmotion.excited, size: 84),
+            const SizedBox(height: 10),
+          ],
           Text(
             title,
             textAlign: TextAlign.center,

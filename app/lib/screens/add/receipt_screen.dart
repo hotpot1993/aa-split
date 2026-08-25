@@ -1,3 +1,5 @@
+import 'dart:io' show File;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -28,6 +30,18 @@ class ReceiptScreen extends ConsumerStatefulWidget {
 class _ReceiptScreenState extends ConsumerState<ReceiptScreen> {
   bool _uploading = false;
 
+  /// 本次会话内新拍的凭证（真实模式追加服务端返回的 URL，Demo 模式追加 🧾 占位）。
+  /// 与账单列表数据去重合并展示，保证「已拍 N 张」与预览框即时反映实际操作。
+  final List<Receipt> _taken = [];
+
+  List<Receipt> get _allReceipts => [
+        ..._taken,
+        for (final r in _serverReceipts)
+          if (!_taken.any((t) => t.id == r.id)) r,
+      ];
+
+  List<Receipt> _serverReceipts = const [];
+
   @override
   Widget build(BuildContext context) {
     final all = ref.watch(billsProvider).value ?? const <Bill>[];
@@ -38,10 +52,12 @@ class _ReceiptScreenState extends ConsumerState<ReceiptScreen> {
         break;
       }
     }
+    _serverReceipts = bill?.receipts ?? const [];
     if (bill == null) {
       return const AaScaffold(appBar: null, body: Center(child: EmptyState(title: '账单不存在')));
     }
     final b = bill;
+    final receipts = _allReceipts;
 
     return AaScaffold(
       appBar: AaAppBar(
@@ -52,22 +68,26 @@ class _ReceiptScreenState extends ConsumerState<ReceiptScreen> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: [
-          _CameraFrame(onCapture: () => _capture(b)),
+          _CameraFrame(
+            onCapture: () => _capture(b),
+            preview: receipts.isEmpty ? null : _ReceiptThumb(url: receipts.last.url),
+            previewCount: receipts.length,
+          ),
           const SizedBox(height: 12),
-          Text('已拍 ${b.receipts.length} 张：',
+          Text('已拍 ${receipts.length} 张：',
               style: const TextStyle(
                   fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
           const SizedBox(height: 4),
-          if (b.receipts.isEmpty)
+          if (receipts.isEmpty)
             const Text('还没有凭证，拍一张吧',
                 style: TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft))
           else
             Row(
               children: [
-                for (var i = 0; i < b.receipts.take(2).length; i++)
+                for (var i = 0; i < receipts.take(2).length; i++)
                   Padding(
                     padding: const EdgeInsets.only(right: 14),
-                    child: _PolaroidBox(url: b.receipts[i].url, rotate: i == 0 ? -2 : 2),
+                    child: _PolaroidBox(url: receipts[i].url, rotate: i == 0 ? -2 : 2),
                   ),
               ],
             ),
@@ -85,13 +105,23 @@ class _ReceiptScreenState extends ConsumerState<ReceiptScreen> {
 
   Future<void> _capture(Bill bill) async {
     if (AppConfig.useMock) {
+      // 记账页同款「模拟拍摄凭证」提示弹窗（P30/P33 演示行为一致）
+      final ok = await showAaConfirm(
+        context,
+        title: '模拟拍摄凭证',
+        subtitle: 'Demo 中自动生成一张小票',
+        confirmLabel: '拍摄',
+      );
+      if (ok != true || !mounted) return;
       final repo = ref.read(billRepositoryProvider);
-      await repo.addReceipt(
+      final r = await repo.addReceipt(
         widget.billId,
         Receipt(id: 'r${DateTime.now().millisecondsSinceEpoch}', billId: widget.billId, url: '🧾'),
       );
+      _taken.add(r);
       ref.read(refreshProvider.notifier).bump();
       if (!mounted) return;
+      setState(() {});
       showAaToast(context, '已拍下一张凭证（演示）');
       return;
     }
@@ -116,16 +146,26 @@ class _ReceiptScreenState extends ConsumerState<ReceiptScreen> {
         return;
       }
       if (!mounted) return;
+      // 先本地预览，选中即反馈（不等上传完成）
+      final pendingPath = file.path;
+      setState(() => _taken.add(Receipt(id: 'tmp-$pendingPath', billId: widget.billId, url: pendingPath)));
       showAaToast(context, '上传中…');
-      await ref
+      final uploaded = await ref
           .read(billRepositoryProvider)
-          .addReceipt(widget.billId, Receipt(id: '', billId: widget.billId, url: file.path));
+          .addReceipt(widget.billId, Receipt(id: '', billId: widget.billId, url: pendingPath));
       debugPrint('P33: upload done');
+      _taken.removeWhere((t) => t.id == 'tmp-$pendingPath');
+      _taken.add(uploaded);
       ref.read(refreshProvider.notifier).bump();
+      if (mounted) setState(() {});
       if (mounted) showAaToast(context, '凭证已上传 ✓');
     } catch (e, st) {
       debugPrint('P33: error $e\n$st');
-      if (mounted) showAaToast(context, '拍/传失败：$e');
+      // 上传失败：移除临时预览并提示
+      if (mounted) {
+        setState(() => _taken.removeWhere((t) => t.id.startsWith('tmp-')));
+        showAaToast(context, '拍/传失败：$e');
+      }
     } finally {
       if (mounted) setState(() => _uploading = false);
     }
@@ -162,8 +202,24 @@ class _ReceiptScreenState extends ConsumerState<ReceiptScreen> {
 /// 相对路径 URL 归一化见 widgets/common.dart 的 absReceiptUrl
 
 class _CameraFrame extends StatelessWidget {
-  const _CameraFrame({required this.onCapture});
+  const _CameraFrame({
+    required this.onCapture,
+    this.preview,
+    this.previewCount = 0,
+  });
   final VoidCallback onCapture;
+
+  /// 最近一张凭证的缩略图（拍/选后展示在取景框内）
+  final Widget? preview;
+  final int previewCount;
+
+  static const _frameRadius = BorderRadius.only(
+    topLeft: Radius.circular(10),
+    topRight: Radius.circular(4),
+    bottomRight: Radius.circular(9),
+    bottomLeft: Radius.circular(5),
+  );
+
   @override
   Widget build(BuildContext context) {
     return PaperCard(
@@ -176,27 +232,49 @@ class _CameraFrame extends StatelessWidget {
             width: double.infinity,
             decoration: BoxDecoration(
               color: AAColors.paperDeep,
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(10),
-                topRight: Radius.circular(4),
-                bottomRight: Radius.circular(9),
-                bottomLeft: Radius.circular(5),
-              ),
+              borderRadius: _frameRadius,
               border: Border.all(color: AAColors.inkSoft, width: 2.5),
             ),
-            child: const Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Image(image: AssetImage('assets/icons/camera.png'), width: 62, height: 62),
-                SizedBox(height: 6),
-                Text('对准小票/截图',
-                    style: TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.ink)),
-                SizedBox(height: 2),
-                Text('4:3 · 支持9张 · 自动压缩',
-                    style: TextStyle(
-                        fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
-              ],
-            ),
+            child: preview != null
+                // 已有凭证：取景框内展示最近一张缩略图
+                ? ClipRRect(
+                    borderRadius: _frameRadius,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        preview!,
+                        Positioned(
+                          left: 8,
+                          bottom: 8,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: AAColors.ink.withValues(alpha: 0.72),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text('已拍 $previewCount 张',
+                                style: const TextStyle(
+                                    fontFamily: 'ZCOOLKuaiLe',
+                                    fontSize: 11,
+                                    color: AAColors.paper)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : const Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Image(image: AssetImage('assets/icons/camera.png'), width: 62, height: 62),
+                      SizedBox(height: 6),
+                      Text('对准小票/截图',
+                          style: TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 15, color: AAColors.ink)),
+                      SizedBox(height: 2),
+                      Text('4:3 · 支持9张 · 自动压缩',
+                          style: TextStyle(
+                              fontFamily: 'ZCOOLKuaiLe', fontSize: 12, color: AAColors.inkSoft)),
+                    ],
+                  ),
           ),
           const SizedBox(height: 10),
           // 按钮组（Demo .btn.mini x3）
@@ -259,22 +337,44 @@ class _PolaroidBox extends StatelessWidget {
                 borderRadius: BorderRadius.circular(2),
                 border: Border.all(color: AAColors.inkSoft, width: 2),
               ),
-              child: url.startsWith('🧾')
-                  ? const AaIconImage('assets/icons/receipt.png', size: 34)
-                  : Image.network(
-                      absReceiptUrl(url),
-                      width: 110,
-                      height: 70,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) =>
-                          const Text('🧾', style: TextStyle(fontSize: 22)),
-                    ),
+              child: _ReceiptThumb(url: url),
             ),
             const SizedBox(height: 4),
             const SizedBox(height: 18),
           ],
         ),
       ),
+    );
+  }
+}
+
+/// 凭证缩略图：Demo 🧾 占位 → 本地文件（刚拍/选）→ 服务端 URL。
+/// 取景框预览与拍立得列表共用，保证两者一致。
+class _ReceiptThumb extends StatelessWidget {
+  const _ReceiptThumb({required this.url});
+  final String url;
+
+  @override
+  Widget build(BuildContext context) {
+    if (url.startsWith('🧾')) {
+      return const AaIconImage('assets/icons/receipt.png', size: 34);
+    }
+    final isLocal = !url.startsWith('http') && File(url).existsSync();
+    if (isLocal) {
+      return Image.file(
+        File(url),
+        width: 110,
+        height: 70,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => const Text('🧾', style: TextStyle(fontSize: 22)),
+      );
+    }
+    return Image.network(
+      absReceiptUrl(url),
+      width: 110,
+      height: 70,
+      fit: BoxFit.cover,
+      errorBuilder: (_, _, _) => const Text('🧾', style: TextStyle(fontSize: 22)),
     );
   }
 }

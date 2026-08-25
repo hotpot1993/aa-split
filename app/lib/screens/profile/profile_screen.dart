@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import 'package:aa_design/aa_design.dart';
 
@@ -23,7 +24,18 @@ class ProfileScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider);
     if (user == null) {
-      return const AaScaffold(appBar: null, body: Center(child: EmptyState(title: '还没登录哦')));
+      // 未登录态（异常进入主框架时的兜底）：提供去登录入口，避免用户被困在空状态
+      return AaScaffold(
+        appBar: null,
+        body: Center(
+          child: EmptyState(
+            title: '还没登录哦',
+            subtitle: '登录后就能看到你的账本和好友啦',
+            buttonLabel: '🔑 去登录',
+            onButtonTap: () => context.go('/login'),
+          ),
+        ),
+      );
     }
     final groups = ref.watch(groupsProvider).value ?? const <Group>[];
     final bills = ref.watch(billsProvider).value ?? const <Bill>[];
@@ -44,19 +56,23 @@ class ProfileScreen extends ConsumerWidget {
           Center(
             child: Column(
               children: [
-                Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    _Wobble(
-                      child: SketchAvatar(
-                        emoji: user.avatarUrl,
-                        size: 86,
-                        name: user.nickname,
-                        background: const Color(0xFFFFF1EA),
+                GestureDetector(
+                  // 点击头像区域 → 更换头像（P50）
+                  onTap: () => _changeAvatar(context, ref),
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      _Wobble(
+                        child: SketchAvatar(
+                          emoji: user.avatarUrl,
+                          size: 86,
+                          name: user.nickname,
+                          background: const Color(0xFFFFF1EA),
+                        ),
                       ),
-                    ),
-                    const Positioned(right: -6, bottom: -2, child: Text('📷', style: TextStyle(fontSize: 18))),
-                  ],
+                      const Positioned(right: -6, bottom: -2, child: Text('📷', style: TextStyle(fontSize: 18))),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Text(user.nickname,
@@ -163,6 +179,8 @@ class ProfileScreen extends ConsumerWidget {
       title: '要退出登录吗？',
       subtitle: '下次来还要把这些账算清楚哦',
       confirmLabel: '退出',
+      // 退出弹窗保持简洁：不展示手绘吉祥物
+      showMascot: false,
     );
     if (ok == true && context.mounted) {
       await ref.read(authProvider.notifier).logout();
@@ -170,8 +188,69 @@ class ProfileScreen extends ConsumerWidget {
     }
   }
 
-  void _editProfile(BuildContext context, WidgetRef ref) {
+  /// 点击头像 → 拍一张 / 从相册选 / 恢复默认（P50 换头像）
+  Future<void> _changeAvatar(BuildContext context, WidgetRef ref) async {
     final user = ref.read(currentUserProvider);
+    if (user == null) return;
+    final choice = await showAaSheet<String>(
+      context,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text('换头像',
+              style:
+                  TextStyle(fontFamily: 'ZCOOLKuaiLe', fontSize: 18, color: AAColors.ink)),
+          const SizedBox(height: 12),
+          DoodleButton(
+            label: '📷 拍一张',
+            expand: true,
+            onPressed: () => Navigator.of(context).pop('camera'),
+          ),
+          const SizedBox(height: 8),
+          DoodleButton(
+            label: '🖼️ 从相册选',
+            type: DoodleButtonType.secondary,
+            expand: true,
+            onPressed: () => Navigator.of(context).pop('gallery'),
+          ),
+          const SizedBox(height: 8),
+          DoodleButton(
+            label: '🐼 恢复默认',
+            type: DoodleButtonType.ghost,
+            expand: true,
+            onPressed: () => Navigator.of(context).pop('default'),
+          ),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+    if (choice == null || !context.mounted) return;
+
+    if (choice == 'default') {
+      try {
+        await ref.read(authProvider.notifier).updateProfile(avatarUrl: '🐼');
+        if (context.mounted) showAaToast(context, '已恢复默认头像');
+      } catch (e) {
+        if (context.mounted) showAaToast(context, '换头像失败：$e');
+      }
+      return;
+    }
+    try {
+      final file = await ImagePicker().pickImage(
+        source: choice == 'camera' ? ImageSource.camera : ImageSource.gallery,
+        maxWidth: 800,
+        imageQuality: 85,
+      );
+      if (file == null || !context.mounted) return;
+      await ref.read(authProvider.notifier).updateProfile(avatarUrl: file.path);
+      if (context.mounted) showAaToast(context, '头像已更新 ✨');
+    } catch (e) {
+      if (context.mounted) showAaToast(context, '换头像失败：$e');
+    }
+  }
+
+  void _editProfile(BuildContext context, WidgetRef ref) {    final user = ref.read(currentUserProvider);
     if (user == null) return;
     showAaSheet(
       context,

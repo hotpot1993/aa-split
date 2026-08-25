@@ -23,6 +23,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   String? _error;
   bool _obscure = true;
   bool _remember = true;
+  bool _submitting = false;
 
   @override
   void dispose() {
@@ -34,13 +35,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool get _canSubmit =>
       _account.text.trim().isNotEmpty && _password.text.isNotEmpty;
 
-  void _submit() {
-    if (!_canSubmit) return;
+  Future<void> _submit() async {
+    if (!_canSubmit || _submitting) return;
+    setState(() {
+      _submitting = true;
+      _error = null;
+    });
     try {
-      ref.read(authProvider.notifier).login(_account.text, _password.text);
+      await ref.read(authProvider.notifier).login(_account.text, _password.text);
+      // 登录成功才进入主框架；失败停留在本页并给出错误提示
       if (mounted) context.go('/home');
     } on AuthException catch (e) {
-      setState(() => _error = e.message);
+      if (mounted) setState(() => _error = e.message);
+    } catch (e) {
+      if (mounted) setState(() => _error = '登录失败：$e');
+    } finally {
+      if (mounted) setState(() => _submitting = false);
     }
   }
 
@@ -158,9 +168,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         FieldError(message: _error),
         const SizedBox(height: 10),
         DoodleButton(
-          label: '登 录🐾',
+          label: _submitting ? '登录中…' : '登 录🐾',
           big: true,
-          onPressed: _canSubmit ? _submit : null,
+          onPressed: _canSubmit && !_submitting ? _submit : null,
         ),
         const SizedBox(height: 16),
         Row(

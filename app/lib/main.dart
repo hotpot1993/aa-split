@@ -33,7 +33,7 @@ class AaSplitApp extends ConsumerStatefulWidget {
 }
 
 class _AaSplitAppState extends ConsumerState<AaSplitApp> {
-  late final GoRouter _router = buildRouter();
+  late final GoRouter _router = buildRouter(ref);
 
   @override
   void initState() {

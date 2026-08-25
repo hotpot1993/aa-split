@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../screens/add/add_bill_screen.dart';
@@ -32,6 +33,7 @@ import '../screens/profile/settings_screen.dart';
 import '../screens/search/search_screen.dart';
 import '../screens/shell/shell_screen.dart';
 import '../screens/splash/splash_screen.dart';
+import '../providers/auth_provider.dart';
 
 final rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -58,10 +60,20 @@ Page<void> aaPage(GoRouterState state, Widget child) {
   );
 }
 
-GoRouter buildRouter() {
+GoRouter buildRouter(WidgetRef ref) {
   return GoRouter(
     navigatorKey: rootNavigatorKey,
     initialLocation: '/',
+    // 登录态守卫：未登录不允许进入主框架及其业务页；已登录访问登录页则回主框架
+    redirect: (context, state) {
+      final path = state.matchedLocation;
+      const publicPaths = ['/', '/login', '/register', '/forgot', '/forgot/reset'];
+      final loggedIn = ref.read(authProvider).isLoggedIn;
+      if (publicPaths.contains(path)) {
+        return loggedIn && path == '/login' ? '/home' : null;
+      }
+      return loggedIn ? null : '/login';
+    },
     routes: [
       // 接入层
       GoRoute(path: '/', builder: (c, s) => const SplashScreen()),

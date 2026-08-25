@@ -18,7 +18,6 @@ class SettingsScreen extends ConsumerWidget {
       appBar: AaAppBar(
         title: '设置',
         headIcon: 'assets/icons/settings.png',
-        icon: '🌗',
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
@@ -31,9 +30,6 @@ class SettingsScreen extends ConsumerWidget {
                     leadImage: 'assets/icons/notify.png',
                     trailing: const _Arrow(),
                     onTap: () => context.push('/messages/settings')),
-                _row('深色模式',
-                    leadImage: 'assets/icons/moon.png',
-                    value: '浅色（固定）'),
                 _row('隐私设置',
                     leadImage: 'assets/icons/locked.png',
                     value: '账单仅参与者可见 ▾'),
@@ -116,6 +112,8 @@ class SettingsScreen extends ConsumerWidget {
       title: '要退出登录吗？',
       subtitle: '账都记得好好的，随时回来',
       confirmLabel: '退出',
+      // 退出弹窗保持简洁：不展示手绘吉祥物
+      showMascot: false,
     );
     if (ok == true) {
       ref.read(authProvider.notifier).logout();

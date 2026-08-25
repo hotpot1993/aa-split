@@ -1,10 +1,10 @@
-﻿# 图标素材处理流水线（docs/pic -> app/assets/icons + Android 启动图标）
+﻿# 图标素材处理流水线（docs/pic -> app/assets/icons + Android/iOS 启动图标）
 # 用法：powershell -ExecutionPolicy Bypass -File scripts/process-icons.ps1
 # 功能：
-#   1) 去除白色背景（从边缘洪水填充，近白 => 透明）
+#   1) 去除背景色（从四角采样底色，边缘洪水填充 => 透明，兼容近白/奶油/浅紫等底色）
 #   2) 仅保留最大连通域（清除"AI生成"水印等孤立像素）
 #   3) 内容包围盒裁剪（去余白）-> 512x512 透明底居中
-#   4) app图标.png -> Android 全部 mipmap 密度（传统 + 自适应前景）
+#   4) app图标 -> 全部 Android mipmap 密度（传统全出血 + 自适应前景 62% 安全区）
 #
 # 素材命名约定：文件名 = 对应 emoji（⏰.png / 🔍.png ...），
 # 下方 $map 将该 emoji 映射为资产的 ASCII 文件名（供 Dart 侧引用）。
@@ -63,6 +63,8 @@ $map = [ordered]@{
 }
 
 # ---------- C# 处理核心（C# 5 兼容：无局部函数） ----------
+# 背景判定：与「四角采样出的底色」逐通道差 <= $tol 即可视为背景
+# （近白 244+ 由角落采样天然覆盖；兼容奶油/浅紫等非纯白底色）。
 $cs = @'
 using System;
 using System.Drawing;
@@ -71,15 +73,17 @@ using System.Drawing.Imaging;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 public static class IconProcessor {
-  static bool IsBg(byte[] p, int i) {
-    if (p[i * 4 + 3] != 255) return false;
+  const int BG_TOL = 16;
+  static bool IsBgNear(byte[] p, int i, int br, int bg, int bb) {
     int r = p[i * 4 + 2], g = p[i * 4 + 1], b = p[i * 4];
-    int mx = Math.Max(r, Math.Max(g, b)), mn = Math.Min(r, Math.Min(g, b));
-    return r >= 244 && g >= 244 && b >= 244 && (mx - mn) < 14;
+    int dr = r - br; if (dr < 0) dr = -dr;
+    int dg = g - bg; if (dg < 0) dg = -dg;
+    int db = b - bb; if (db < 0) db = -db;
+    return dr <= BG_TOL && dg <= BG_TOL && db <= BG_TOL;
   }
-  static void PushBg(byte[] p, bool[] v, Queue<int> q, int w, int h, int x, int y) {
+  static void PushBg(byte[] p, bool[] v, Queue<int> q, int w, int h, int x, int y, int br, int bg, int bb) {
     int i = y * w + x; if (i < 0 || i >= w * h) return;
-    if (!v[i] && IsBg(p, i)) { v[i] = true; q.Enqueue(i); }
+    if (!v[i] && IsBgNear(p, i, br, bg, bb)) { v[i] = true; q.Enqueue(i); }
   }
   public static void Cut(string src, string dst, int size) {
     using (var bmp = new Bitmap(src)) {
@@ -87,28 +91,51 @@ public static class IconProcessor {
       var data = bmp.LockBits(rect, ImageLockMode.ReadWrite, PixelFormat.Format32bppArgb);
       int w = bmp.Width, h = bmp.Height;
       var px = new byte[data.Stride * h]; Marshal.Copy(data.Scan0, px, 0, px.Length);
+      // 1) 四角 8x8 采样取底色（取与均值偏差最小的角，抗单角被内容污染）
+      long[] sums = new long[12]; int[] cnt = new int[4];
+      int[] cs = { 0 * 8, (w - 8) * 8, 0 * 8, (w - 8) * 8 };
+      int[] ys = { 0, 0, h - 8, h - 8 };
+      for (int k = 0; k < 4; k++) {
+        for (int y = ys[k]; y < ys[k] + 8; y++) for (int x = cs[k] / 8; x < cs[k] / 8 + 8; x++) {
+          int i = y * w + x; sums[k * 3] += px[i * 4 + 2]; sums[k * 3 + 1] += px[i * 4 + 1]; sums[k * 3 + 2] += px[i * 4];
+          cnt[k]++;
+        }
+      }
+      int[] avgs = new int[12];
+      for (int k = 0; k < 4; k++) { avgs[k * 3] = (int)(sums[k * 3] / cnt[k]); avgs[k * 3 + 1] = (int)(sums[k * 3 + 1] / cnt[k]); avgs[k * 3 + 2] = (int)(sums[k * 3 + 2] / cnt[k]); }
+      // 找两两相差最小的角（内容污染最少）
+      int bx = 0, by = 0, bz = 0, bestD = int.MaxValue;
+      for (int k = 0; k < 4; k++) {
+        for (int j = k + 1; j < 4; j++) {
+          int d = Math.Abs(avgs[k*3]-avgs[j*3]) + Math.Abs(avgs[k*3+1]-avgs[j*3+1]) + Math.Abs(avgs[k*3+2]-avgs[j*3+2]);
+          if (d < bestD) { bestD = d; bx = (avgs[k*3]+avgs[j*3])/2; by = (avgs[k*3+1]+avgs[j*3+1])/2; bz = (avgs[k*3+2]+avgs[j*3+2])/2; }
+        }
+      }
+      Console.WriteLine("  bg=(" + bx + "," + by + "," + bz + ")");
+      // 2) 边缘洪水填充背景 -> alpha 0
       var q = new Queue<int>(); var v1 = new bool[w * h];
-      for (int x = 0; x < w; x++) { PushBg(px, v1, q, w, h, x, 0); PushBg(px, v1, q, w, h, x, h - 1); }
-      for (int y = 0; y < h; y++) { PushBg(px, v1, q, w, h, 0, y); PushBg(px, v1, q, w, h, w - 1, y); }
+      for (int x = 0; x < w; x++) { PushBg(px, v1, q, w, h, x, 0, bx, by, bz); PushBg(px, v1, q, w, h, x, h - 1, bx, by, bz); }
+      for (int y = 0; y < h; y++) { PushBg(px, v1, q, w, h, 0, y, bx, by, bz); PushBg(px, v1, q, w, h, w - 1, y, bx, by, bz); }
       while (q.Count > 0) { int i = q.Dequeue(); int x = i % w, y = i / w;
-        PushBg(px, v1, q, w, h, x - 1, y); PushBg(px, v1, q, w, h, x + 1, y);
-        PushBg(px, v1, q, w, h, x, y - 1); PushBg(px, v1, q, w, h, x, y + 1); }
+        PushBg(px, v1, q, w, h, x - 1, y, bx, by, bz); PushBg(px, v1, q, w, h, x + 1, y, bx, by, bz);
+        PushBg(px, v1, q, w, h, x, y - 1, bx, by, bz); PushBg(px, v1, q, w, h, x, y + 1, bx, by, bz); }
       for (int i = 0; i < w * h; i++) if (v1[i]) px[i * 4 + 3] = 0;
+      // 3) 仅保留最大连通域
       var comp = new int[w * h];
       for (int i = 0; i < w * h; i++) comp[i] = -1;
       var v2 = new bool[w * h]; var sizes = new List<long>(); int cid = 0;
       for (int i = 0; i < w * h; i++) {
         if (px[i * 4 + 3] > 12 && !v2[i]) {
-          var cc = new Queue<int>(); cc.Enqueue(i); v2[i] = true; comp[i] = cid; long cnt = 0;
+          var cc = new Queue<int>(); cc.Enqueue(i); v2[i] = true; comp[i] = cid; long ccnt = 0;
           while (cc.Count > 0) {
-            int j = cc.Dequeue(); cnt++; int x = j % w, y = j / w;
+            int j = cc.Dequeue(); ccnt++; int x = j % w, y = j / w;
             int jl = j - 1, jr = j + 1, ju = j - w, jd = j + w;
             if (x > 0 && !v2[jl] && px[jl * 4 + 3] > 12) { v2[jl] = true; comp[jl] = cid; cc.Enqueue(jl); }
             if (x < w - 1 && !v2[jr] && px[jr * 4 + 3] > 12) { v2[jr] = true; comp[jr] = cid; cc.Enqueue(jr); }
             if (y > 0 && !v2[ju] && px[ju * 4 + 3] > 12) { v2[ju] = true; comp[ju] = cid; cc.Enqueue(ju); }
             if (y < h - 1 && !v2[jd] && px[jd * 4 + 3] > 12) { v2[jd] = true; comp[jd] = cid; cc.Enqueue(jd); }
           }
-          sizes.Add(cnt); cid++;
+          sizes.Add(ccnt); cid++;
         }
       }
       int best = -1; long bestS = -1;
@@ -151,7 +178,13 @@ foreach ($k in $map.Keys) {
     Write-Host "  $k -> $($map[$k])"
 }
 
+# ---------- Android 启动图标 ----------
+# 优先 docs/pic/app图标.png；缺失时回退商店主视觉（docs/store/icons/_master-1024.png）
 $appIcon = Join-Path $srcDir 'app图标.png'
+if (-not (Test-Path $appIcon)) {
+    $alt = Join-Path $root 'docs/store/icons/_master-1024.png'
+    if (Test-Path $alt) { $appIcon = $alt; Write-Host "使用商店主视觉作为启动图标源: $alt" }
+}
 if (Test-Path $appIcon) {
     Write-Host "== 生成 Android 启动图标 =="
     $legacy = @(@('mipmap-mdpi',48),@('mipmap-hdpi',72),@('mipmap-xhdpi',96),@('mipmap-xxhdpi',144),@('mipmap-xxxhdpi',192))
@@ -168,8 +201,13 @@ if (Test-Path $appIcon) {
         try { $outBmp.Save($Out, [System.Drawing.Imaging.ImageFormat]::Png) }
         finally { $outBmp.Dispose() }
     }
+    # 传统图标：原图全出血（保留纸米底色方块）
     foreach ($d in $legacy) { Resize-Icon $appIcon (Join-Path $resDir "$($d[0])\ic_launcher.png") $d[1] 0.0 }
-    foreach ($d in $fg) { Resize-Icon $appIcon (Join-Path $resDir "$($d[0])\ic_launcher_foreground.png") $d[1] 0.62 }
+    # 自适应前景：先去底转透明，再按 62% 居中（安全区 66/108）
+    $fgTmp = Join-Path $env:TEMP "aa_icon_fg_cut.png"
+    [IconProcessor]::Cut($appIcon, $fgTmp, 432)
+    foreach ($d in $fg) { Resize-Icon $fgTmp (Join-Path $resDir "$($d[0])\ic_launcher_foreground.png") $d[1] 0.62 }
+    Remove-Item -Force $fgTmp -ErrorAction SilentlyContinue
     Write-Host "  mipmaps updated"
 }
 Write-Host "== DONE =="

@@ -70,16 +70,21 @@ class AuthRepository {
       }
       return MockStore.instance.currentUser;
     }
-    final res = await ApiClient.instance.post('/auth/login', body: {
-      'accountName': accountName.trim(),
-      'password': password,
-    });
-    final data = res.data as Map? ?? const {};
-    final token = (data['accessToken'] ?? '').toString();
-    final user = parseUser(data['user']);
-    ApiClient.instance.setToken(token);
-    await _saveSession(token, user);
-    return user;
+    try {
+      final res = await ApiClient.instance.post('/auth/login', body: {
+        'accountName': accountName.trim(),
+        'password': password,
+      });
+      final data = res.data as Map? ?? const {};
+      final token = (data['accessToken'] ?? '').toString();
+      final user = parseUser(data['user']);
+      ApiClient.instance.setToken(token);
+      await _saveSession(token, user);
+      return user;
+    } on ApiException catch (e) {
+      // 服务端提示（如「账户名或密码错误」）原样透出给用户
+      throw AuthException(e.message);
+    }
   }
 
   /// 注册
@@ -107,19 +112,24 @@ class AuthRepository {
       MockStore.instance.currentUser = user;
       return user;
     }
-    final res = await ApiClient.instance.post('/auth/register', body: {
-      'accountName': accountName.trim(),
-      'password': password,
-      if (nickname.isNotEmpty) 'nickname': nickname,
-      'securityQuestion': securityQuestion,
-      'securityAnswer': securityAnswer,
-    });
-    final data = res.data as Map? ?? const {};
-    final token = (data['accessToken'] ?? '').toString();
-    final user = parseUser(data['user']);
-    ApiClient.instance.setToken(token);
-    await _saveSession(token, user);
-    return user;
+    try {
+      final res = await ApiClient.instance.post('/auth/register', body: {
+        'accountName': accountName.trim(),
+        'password': password,
+        if (nickname.isNotEmpty) 'nickname': nickname,
+        'securityQuestion': securityQuestion,
+        'securityAnswer': securityAnswer,
+      });
+      final data = res.data as Map? ?? const {};
+      final token = (data['accessToken'] ?? '').toString();
+      final user = parseUser(data['user']);
+      ApiClient.instance.setToken(token);
+      await _saveSession(token, user);
+      return user;
+    } on ApiException catch (e) {
+      // 服务端提示（如「账户名已被占用」「密码至少6位…」）原样透出给用户
+      throw AuthException(e.message);
+    }
   }
 
   /// 账户名唯一性校验（注册实时）。
