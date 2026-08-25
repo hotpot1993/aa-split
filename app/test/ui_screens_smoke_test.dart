@@ -28,9 +28,12 @@ import 'package:aa_split_app/screens/search/search_screen.dart';
 Future<void> _loadFont(String family, List<String> files) async {
   final loader = FontLoader(family);
   for (final f in files) {
-    final bytes = File(f).readAsBytesSync();
+    final file = File(f);
+    if (!file.existsSync()) continue; // 跨平台(如 Linux CI)缺失字体自动跳过
+    final bytes = file.readAsBytesSync();
     loader.addFont(Future.value(ByteData.view(bytes.buffer)));
   }
+  if (loader.fonts.isEmpty) return;
   await loader.load();
 }
 
