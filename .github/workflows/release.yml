@@ -81,6 +81,7 @@ jobs:
           ls -lh dist/release/
 
       - name: Verify release signing
+        working-directory: .
         run: |
           echo "== 证书指纹(应与正式 keystore 一致) =="
           APKSIGNER=$(ls "$ANDROID_HOME/build-tools"/*/apksigner 2>/dev/null | tail -1) || true
