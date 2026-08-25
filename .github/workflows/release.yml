@@ -89,7 +89,7 @@ jobs:
           [ -n "$APKSIGNER" ] || APKSIGNER=$(command -v apksigner)
           DIGEST=$("$APKSIGNER" verify --print-certs app/build/app/outputs/flutter-apk/app-release.apk | grep "SHA-256 digest" | head -1 | awk '{print $NF}')
           echo "cert SHA-256 digest: $DIGEST"
-          echo "$DIGEST" | grep -qi "d2ab2acce20f52dd82807a54c8468e8795ae527c922c033531abeb05c07bfa0d" || { echo "!! 签名证书不是正式 keystore(疑似 debug 签名),中止发布"; exit 1; }
+          echo "$DIGEST" | grep -qi "d2ab2acc2e0f52dd82807a54c8468e8795ae527c922c033531abeb05c07bfa0d" || { echo "!! 签名证书不是正式 keystore(疑似 debug 签名),中止发布"; exit 1; }
 
       - name: Publish release
         uses: softprops/action-gh-release@v2
