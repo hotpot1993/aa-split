@@ -199,13 +199,14 @@ await step('remind bob', async () => {
   });
   assert(r.remindedCount === 1, `reminded=${r.remindedCount}`);
 });
-await step('bob unread-count = 2 (new_bill + remind)', async () => {
+// 产品调整(v1.7): 新账单不再写通知库,只推静默 SSE 数据事件 → bob 仅剩 remind 这一条通知
+await step('bob unread-count = 1 (仅 remind; new_bill 已为静默数据事件)', async () => {
   const n = await api('GET', '/notifications/unread-count', { token: bt });
-  assert(n.count === 2, `count=${n.count}`);
+  assert(n.count === 1, `count=${n.count}`);
 });
-await step('bob notifications list >= 2', async () => {
+await step('bob notifications list >= 1 (仅 remind)', async () => {
   const l = await api('GET', '/notifications?page=1&pageSize=100', { token: bt });
-  assert(l.list.length >= 2, `list=${l.list.length}`);
+  assert(l.list.length >= 1, `list=${l.list.length}`);
 });
 
 console.log('== 8. mark paid -> settled ==');
