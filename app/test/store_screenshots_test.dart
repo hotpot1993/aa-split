@@ -90,6 +90,15 @@ Future<void> _shot(WidgetTester tester, String name) async {
 }
 
 void main() {
+  // Golden 基线在 Windows 生成(含系统 emoji 字体 seguiemj.ttf),字体渲染跨平台不一致,
+  // 非 Windows(如 Linux CI)跳过像素对比,避免无意义红。本机 Windows 仍完整校验 8 张截图。
+  if (!Platform.isWindows) {
+    test('商店截图 golden(仅 Windows 校验)', () {
+      markTestSkipped('golden 基线仅 Windows 生成,Linux CI 跳过像素对比');
+    });
+    return;
+  }
+
   setUpAll(_loadAllFonts);
 
   testWidgets('01 首页总览', (t) async {
