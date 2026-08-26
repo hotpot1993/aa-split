@@ -13,6 +13,7 @@
 | 4 | [技术方案](./AA分账App-技术方案.md) | Flutter + NestJS + PostgreSQL；数据库/API/结算算法/开发排期/成本 | ✅ |
 | 5 | [开发进度存档](./开发进度.md) | v1.8：UI 全量对齐 Demo / 字体系统 / 图标素材系统 / 真机修复记录 / **9 项需求修复轮 + 发版 SOP（v1.0.5 已发布）** | ✅ |
 | 6 | [自定义图标素材库](./pic/) | **文件名 = 对应 emoji**；`powershell -ExecutionPolicy Bypass -File scripts\process-icons.ps1` 一键处理 | ✅ |
+| 7 | [API 端点清单（自动生成）](./api-endpoints.generated.md) | 由 `scripts/sync-docs.mjs` 扫描控制器生成（40 端点，含鉴权/注释摘要）；`docs-sync.yml` 每次 master 推送自动刷新，勿手改 | ✅ |
 
 ## 快速入口
 

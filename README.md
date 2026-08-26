@@ -26,7 +26,7 @@
 ```
 aa-dsh/
 ├── docs/                     # 产品原型 / UI设计规范 / 技术方案 / 可交互Demo / 图标素材库(pic/)
-├── scripts/                  # build-release.ps1 / process-icons.ps1（图标素材流水线）/ smoke 等
+├── scripts/                  # build-release.ps1 / process-icons.ps1（图标素材流水线）/ sync-docs.mjs（文档自动同步）/ smoke 等
 ├── server/                   # NestJS 10 + Prisma + PostgreSQL（REST + SSE）
 │   ├── prisma/schema.prisma  # 数据库模型（金额一律以分存储）
 │   └── src/
@@ -101,6 +101,7 @@ flutter test                 # 组件/单元测试
 - ⚙️ [技术方案（数据库/API/算法/排期）](docs/AA分账App-技术方案.md)
 - 🖥️ [手绘风高保真 Demo（浏览器打开）](docs/ui-demo/index.html)
 - 📈 [开发进度存档 v1.8](docs/开发进度.md)（UI 对齐 / 字体 / 图标系统 / 9 项需求修复轮 / 发版 SOP）
+- 🔄 **文档自动同步**：每次 `master` 推送后由 [docs-sync.yml](.github/workflows/docs-sync.yml) 自动完成——用真实测试数刷新 README 状态表计数、同步版本串（pubspec → ui-demo）、重新生成 [API 端点清单](docs/api-endpoints.generated.md)；本地可 `node scripts/sync-docs.mjs` 手动执行
 - 🖼️ [自定义图标素材库 docs/pic](docs/pic/)（**文件名 = 对应 emoji** → `app/assets/icons`，脚本：`powershell -ExecutionPolicy Bypass -File scripts\process-icons.ps1`）
 - 🏪 [商店上架准备（素材/文案/法务/手册）](docs/store/上架手册.md)
   - 上架包：`make app-release` → `dist/release/`（AAB + 多 ABI APK + SHA256 + 签名指纹）
