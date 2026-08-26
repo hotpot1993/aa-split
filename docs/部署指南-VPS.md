@@ -40,7 +40,7 @@ docker compose up -d --build api           # 改源码后重建上线
 
 升级流程：pscp 上传 `server/` 变更 → `docker compose up -d --build api`（构建含 `npm ci`，本机网络约 10 分钟，请耐心）。
 
-**发版更新「检查更新」版本**（每轮发版照此执行，详见 [发版 SOP](./开发进度.md#十发版-sop每次发行照此执行)；更新包**默认由 App 从 Gitee 发行版拉取**，VPS 自建 `/apk/` 仅作备用源）：
+**发版更新「检查更新」版本**（每轮发版照此执行，详见 [发版 SOP](./开发进度.md#十发版-sop每次发行照此执行)；更新包**默认由 App 从 Gitee 发行版拉取**，VPS 自建 `/apk/` 仅作备用源；**代码镜像无需手动** —— GitHub 推送后由 `.github/workflows/mirror-gitee.yml` 自动同步到 Gitee 仓库）：
 
 ```bash
 # 1a. 首选源：上传 APK 到 Gitee 发行版附件（镜像仓库 hotpot1993/aa-split）
