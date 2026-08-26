@@ -22,6 +22,7 @@ import { LoginDto } from './dto/login.dto';
 import { ForgotVerifyDto } from './dto/forgot-verify.dto';
 import { ForgotResetDto } from './dto/forgot-reset.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { ChangeSecurityQuestionDto } from './dto/change-security-question.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { SecurityQuestionQueryDto } from './dto/security-question.dto';
 import { DeviceInfoDto } from './dto/device-info.dto';
@@ -74,6 +75,17 @@ export class AuthController {
     @Body() dto: ChangePasswordDto,
   ) {
     return this.authService.changePassword(user.sub, dto);
+  }
+
+  /** P52：修改安全问题（需当前密码验证） */
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @Post('change-security-question')
+  changeSecurityQuestion(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: ChangeSecurityQuestionDto,
+  ) {
+    return this.authService.changeSecurityQuestion(user.sub, dto);
   }
 
   @ApiBearerAuth()

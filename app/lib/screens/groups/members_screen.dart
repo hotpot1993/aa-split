@@ -8,6 +8,7 @@ import '../../models/group_member.dart';
 import '../../providers/data_providers.dart';
 import '../../providers/repositories.dart';
 import '../../providers/refresh_provider.dart';
+import '../../widgets/avatar.dart';
 import '../../widgets/common.dart';
 import '../../widgets/sheet.dart';
 
@@ -133,18 +134,44 @@ class _MemberLine extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Text.rich(TextSpan(children: [
-                TextSpan(
-                  text: '${member.avatarUrl} ${member.nickname}${isMe ? '（我）' : ''} ',
-                  style: TextStyle(
-                      fontFamily: AAFonts.title, fontSize: 15, color: AAColors.ink),
+              Expanded(
+                child: Row(
+                  children: [
+                    // 头像：emoji / 本地文件 / 网络图统一 SketchAvatar 渲染，
+                    // 换头像后随成员数据刷新同步显示新头像
+                    SketchAvatar(
+                      emoji: member.avatarUrl,
+                      size: 34,
+                      name: member.nickname,
+                      background: Color(0xFFFFF1EA),
+                    ),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text.rich(
+                        TextSpan(children: [
+                          TextSpan(
+                            text:
+                                '${member.nickname}${isMe ? '（我）' : ''} ',
+                            style: TextStyle(
+                                fontFamily: AAFonts.title,
+                                fontSize: 15,
+                                color: AAColors.ink),
+                          ),
+                          TextSpan(
+                            text: '@${member.accountName}',
+                            style: TextStyle(
+                                fontFamily: AAFonts.title,
+                                fontSize: 12,
+                                color: AAColors.inkSoft),
+                          ),
+                        ]),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
                 ),
-                TextSpan(
-                  text: '@${member.accountName}',
-                  style: TextStyle(
-                      fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft),
-                ),
-              ])),
+              ),
               if (member.isOwner)
                 Row(
                   children: [

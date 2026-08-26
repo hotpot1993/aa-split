@@ -34,7 +34,6 @@ import '../screens/profile/legal_content.dart';
 import '../screens/profile/legal_screen.dart';
 import '../screens/profile/profile_screen.dart';
 import '../screens/profile/security_screen.dart';
-import '../screens/profile/settings_screen.dart';
 import '../screens/search/search_screen.dart';
 import '../screens/shell/shell_screen.dart';
 import '../screens/splash/splash_screen.dart';
@@ -179,11 +178,6 @@ GoRouter buildRouter(WidgetRef ref) {
         path: '/search',
         parentNavigatorKey: rootNavigatorKey,
         pageBuilder: (c, s) => aaPage(s, const SearchScreen()),
-      ),
-      GoRoute(
-        path: '/settings',
-        parentNavigatorKey: rootNavigatorKey,
-        pageBuilder: (c, s) => aaPage(s, const SettingsScreen()),
       ),
       GoRoute(
         path: '/security',

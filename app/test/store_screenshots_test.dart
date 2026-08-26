@@ -15,6 +15,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:aa_split_app/core/utils/format.dart';
 import 'package:aa_split_app/screens/add/add_bill_screen.dart';
 import 'package:aa_split_app/screens/groups/groups_screen.dart';
 import 'package:aa_split_app/screens/groups/settlement_screen.dart';
@@ -86,6 +87,12 @@ Future<void> _pump(WidgetTester tester, Widget screen) async {
 }
 
 Future<void> _shot(WidgetTester tester, String name) async {
+  // 让真实的图片解码（Image.asset 走引擎异步）在真实事件循环中得到完成时机，
+  // 再补一帧绘制，避免截图时图标是否已解码的竞态（golden 出现/消失图标）
+  await tester.runAsync(
+    () => Future<void>.delayed(const Duration(milliseconds: 80)),
+  );
+  await tester.pump();
   await expectLater(
     find.byKey(_shotKey),
     matchesGoldenFile('store_screenshots/$name'),
@@ -102,7 +109,16 @@ void main() {
     return;
   }
 
-  setUpAll(_loadAllFonts);
+  setUpAll(() {
+    // 固定「当前时刻」：问候语（早上好/下午好…）、相对时间（昨天/x分钟前）、
+    // 演示数据日期、统计月份口径全部不再随运行时段漂移 → golden 跨小时/跨天稳定
+    Fmt.clock = () => DateTime(2026, 8, 26, 10, 30, 0);
+    return _loadAllFonts();
+  });
+
+  tearDownAll(() {
+    Fmt.clock = DateTime.now;
+  });
 
   testWidgets('01 首页总览', (t) async {
     await _pump(t, const HomeScreen());

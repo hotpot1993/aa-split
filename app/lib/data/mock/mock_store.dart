@@ -1,3 +1,4 @@
+import '../../core/utils/format.dart';
 import '../../models/bill.dart';
 import '../../models/bill_participant.dart';
 import '../../models/group.dart';
@@ -42,7 +43,7 @@ class MockStore {
       deviceName: '演示设备 · Android',
       osVersion: '15',
       ip: '127.0.0.1',
-      lastLoginAt: DateTime.now(),
+      lastLoginAt: Fmt.clock(),
     ),
     UserDevice(
       id: 'demo-dev-2',
@@ -51,7 +52,7 @@ class MockStore {
       deviceName: '旧手机 · iPhone 15',
       osVersion: '18',
       ip: '127.0.0.1',
-      lastLoginAt: DateTime.now().subtract(const Duration(days: 1)),
+      lastLoginAt: Fmt.clock().subtract(const Duration(days: 1)),
     ),
   ];
 
@@ -112,7 +113,8 @@ class MockStore {
 
   // ---------- 种子 ----------
   void _seed() {
-    final now = DateTime.now();
+    // 演示数据日期取自可注入时钟：配合 Fmt.clock 固定后，商店截图/测试跨时段稳定
+    final now = Fmt.clock();
     final me = currentUser;
 
     // 成员定义

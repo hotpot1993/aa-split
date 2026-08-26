@@ -38,13 +38,13 @@ class User {
         'createdAt': createdAt,
       };
 
-  User copyWith({String? nickname, String? avatarUrl, String? bio}) => User(
+  User copyWith({String? nickname, String? avatarUrl, String? bio, String? securityQuestion}) => User(
         id: id,
         accountName: accountName,
         nickname: nickname ?? this.nickname,
         avatarUrl: avatarUrl ?? this.avatarUrl,
         bio: bio ?? this.bio,
-        securityQuestion: securityQuestion,
+        securityQuestion: securityQuestion ?? this.securityQuestion,
         createdAt: createdAt,
       );
 }

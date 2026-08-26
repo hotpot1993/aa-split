@@ -8,7 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:aa_design/aa_design.dart';
 
 import 'package:aa_split_app/providers/settings_provider.dart';
-import 'package:aa_split_app/screens/profile/settings_screen.dart';
+import 'package:aa_split_app/screens/profile/profile_screen.dart';
 
 void main() {
   group('AAFonts 角色解析', () {
@@ -50,7 +50,7 @@ void main() {
     expect(num.style?.fontFamily, AAFonts.amountHand); // LongCang
   });
 
-  testWidgets('设置页可切换字体风格并即时生效', (tester) async {
+  testWidgets('「我的」主页可切换字体风格并即时生效', (tester) async {
     AAFonts.useStyle(AaFontStyle.hand);
     final container = ProviderContainer();
     addTearDown(container.dispose);
@@ -66,30 +66,33 @@ void main() {
         child: MaterialApp(
           debugShowCheckedModeBanner: false,
           theme: buildAaTheme(),
-          home: const SettingsScreen(),
+          home: const ProfileScreen(),
         ),
       ),
     );
     await tester.pump(const Duration(milliseconds: 300));
 
-    // 设置页行值默认「手绘风格」
+    // 「我的」设置行值默认「手绘风格」
     expect(container.read(fontStyleProvider), AaFontStyle.hand);
     expect(find.text('手绘风格'), findsWidgets);
 
     // 打开「字体风格」弹层：两种风格 + 实时预览
+    // （我的页头像有无限摇晃动效，不能用 pumpAndSettle，用固定时长推进）
     await tester.tap(find.text('字体风格'));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
     expect(find.text('标准风格'), findsOneWidget);
     expect(find.text('¥ 1,024.50'), findsWidgets);
 
     // 选择「标准风格」→ 立即生效 + 持久化
     await tester.ensureVisible(find.text('标准风格'));
     await tester.tap(find.text('标准风格'));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
 
     expect(container.read(fontStyleProvider), AaFontStyle.standard);
     expect(AAFonts.currentStyle, AaFontStyle.standard);
-    // 弹层已关闭，设置页行内值同步为「标准风格」
+    // 弹层已关闭，「我的」页行内值同步为「标准风格」
     expect(find.text('标准风格'), findsWidgets);
     expect(find.text('手绘风格'), findsNothing);
 

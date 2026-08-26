@@ -12,6 +12,8 @@ import '../../models/bill.dart';
 import '../../models/group.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/data_providers.dart';
+import '../../providers/refresh_provider.dart';
+import '../../providers/settings_provider.dart';
 import '../../widgets/avatar.dart';
 import '../../widgets/common.dart';
 import '../../widgets/sheet.dart';
@@ -40,6 +42,7 @@ class ProfileScreen extends ConsumerWidget {
     final groups = ref.watch(groupsProvider).value ?? const <Group>[];
     final bills = ref.watch(billsProvider).value ?? const <Bill>[];
     final totalAA = bills.fold<int>(0, (s, b) => s + b.amountCents);
+    final fontStyle = ref.watch(fontStyleProvider);
 
     return AaScaffold(
       appBar: AaAppBar(
@@ -111,16 +114,23 @@ class ProfileScreen extends ConsumerWidget {
             ),
           ),
           SizedBox(height: 16),
-          // 菜单卡（Demo .line 行）
+          // 菜单卡（Demo .line 行）：设置项（字体/通知/安全/导出/关于）直接落在「我的」主页
           PaperCard(
             padding: const EdgeInsets.fromLTRB(14, 2, 14, 2),
             child: Column(
               children: [
                 AaLine(
-                  child: _menuRow('数据导出',
-                      image: 'assets/icons/export.png',
-                      onTap: () => context.push('/export')),
-                  onTap: () => context.push('/export'),
+                  child: _menuRow('字体风格',
+                      image: 'assets/icons/notebook.png',
+                      value: fontStyle.label,
+                      onTap: () => _pickFontStyle(context, ref)),
+                  onTap: () => _pickFontStyle(context, ref),
+                ),
+                AaLine(
+                  child: _menuRow('通知设置',
+                      image: 'assets/icons/notify.png',
+                      onTap: () => context.push('/messages/settings')),
+                  onTap: () => context.push('/messages/settings'),
                 ),
                 AaLine(
                   child: _menuRow('账号安全',
@@ -129,10 +139,10 @@ class ProfileScreen extends ConsumerWidget {
                   onTap: () => context.push('/security'),
                 ),
                 AaLine(
-                  child: _menuRow('设置',
-                      image: 'assets/icons/settings.png',
-                      onTap: () => context.push('/settings')),
-                  onTap: () => context.push('/settings'),
+                  child: _menuRow('数据导出',
+                      image: 'assets/icons/export.png',
+                      onTap: () => context.push('/export')),
+                  onTap: () => context.push('/export'),
                 ),
                 AaLine(
                   showBorder: false,
@@ -157,7 +167,8 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  Widget _menuRow(String label, {String? image, VoidCallback? onTap}) {
+  Widget _menuRow(String label,
+      {String? image, String? value, VoidCallback? onTap}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -172,9 +183,34 @@ class ProfileScreen extends ConsumerWidget {
                     fontFamily: AAFonts.title, fontSize: 15, color: AAColors.ink)),
           ],
         ),
-        Text('→', style: TextStyle(fontSize: 15, color: AAColors.ink)),
+        Row(
+          children: [
+            if (value != null) ...[
+              Text(value,
+                  style: TextStyle(
+                      fontFamily: AAFonts.title,
+                      fontSize: 15,
+                      color: AAColors.inkSoft)),
+              SizedBox(width: 8),
+            ],
+            Text('→', style: TextStyle(fontSize: 15, color: AAColors.ink)),
+          ],
+        ),
       ],
     );
+  }
+
+  /// 字体风格选择（原设置页功能迁入「我的」，即时生效）
+  Future<void> _pickFontStyle(BuildContext context, WidgetRef ref) async {
+    final current = ref.read(fontStyleProvider);
+    final picked = await showAaSheet<AaFontStyle>(
+      context,
+      child: _FontStylePicker(selected: current),
+    );
+    if (picked == null || picked == current || !context.mounted) return;
+    await ref.read(fontStyleProvider.notifier).setStyle(picked);
+    if (!context.mounted) return;
+    showAaToast(context, '已切换到「${picked.label}」');
   }
 
   Future<void> _logout(BuildContext context, WidgetRef ref) async {
@@ -237,6 +273,8 @@ class ProfileScreen extends ConsumerWidget {
     if (choice == 'default') {
       try {
         await ref.read(authProvider.notifier).updateProfile(avatarUrl: '🐼');
+        // 群组成员列表/账单参与人同步刷新头像
+        ref.read(refreshProvider.notifier).bump();
         if (context.mounted) showAaToast(context, '已恢复默认头像');
       } catch (e) {
         if (context.mounted) showAaToast(context, '换头像失败：$e');
@@ -251,6 +289,8 @@ class ProfileScreen extends ConsumerWidget {
       );
       if (file == null || !context.mounted) return;
       await ref.read(authProvider.notifier).updateProfile(avatarUrl: file.path);
+      // 群组成员列表/账单参与人同步刷新头像
+      ref.read(refreshProvider.notifier).bump();
       if (context.mounted) showAaToast(context, '头像已更新 ✨');
     } catch (e) {
       if (context.mounted) showAaToast(context, '换头像失败：$e');
@@ -387,7 +427,6 @@ class _EditProfileSheet extends StatefulWidget {
 class _EditProfileSheetState extends State<_EditProfileSheet> {
   late final TextEditingController _nickname = TextEditingController(text: widget.nickname);
   late final TextEditingController _bio = TextEditingController(text: widget.bio);
-
   @override
   void dispose() {
     _nickname.dispose();
@@ -422,6 +461,118 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
         ),
         SizedBox(height: 8),
       ],
+    );
+  }
+}
+
+/// 字体风格选择弹层：两种风格各一张卡片（标题/说明 + 实时预览）
+/// —— 原「设置」页功能迁入「我的」主页。
+class _FontStylePicker extends StatelessWidget {
+  const _FontStylePicker({required this.selected});
+
+  final AaFontStyle selected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text('字体风格',
+            textAlign: TextAlign.center, style: Theme.of(context).textTheme.headlineSmall),
+        const SizedBox(height: 4),
+        Text('选择后立即生效，所有页面跟着换',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+                fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft)),
+        const SizedBox(height: 16),
+        for (final style in AaFontStyle.values) ...[
+          _StyleCard(
+            style: style,
+            selected: style == selected,
+            onTap: () => Navigator.of(context).pop(style),
+          ),
+          const SizedBox(height: 12),
+        ],
+        const SizedBox(height: 4),
+      ],
+    );
+  }
+}
+
+/// 单个风格选项卡片：以该风格的字体渲染预览（金额 + 正文），选中态描边高亮
+class _StyleCard extends StatelessWidget {
+  const _StyleCard({required this.style, required this.selected, required this.onTap});
+
+  final AaFontStyle style;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    // 预览固定使用「该风格」对应的字体家族（不随全局切换变化）
+    final bodyFamily = style == AaFontStyle.hand ? AAFonts.titleHand : AAFonts.bodyStandard;
+    final amountFamily = style == AaFontStyle.hand ? AAFonts.amountHand : AAFonts.amountStandard;
+    return PaperCard(
+      onTap: onTap,
+      color: selected ? AAColors.paperDeep : AAColors.cardWhite,
+      borderColor: selected ? AAColors.mint : AAColors.ink,
+      borderWidth: selected ? 3 : AATokens.stroke,
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(style.label,
+                  style: TextStyle(fontFamily: bodyFamily, fontSize: 16, color: AAColors.ink)),
+              if (selected) ...[
+                const SizedBox(width: 6),
+                AaIconImage('assets/icons/check.png', size: 11),
+                SizedBox(width: 3),
+                Text('当前使用',
+                    style: TextStyle(
+                        fontFamily: bodyFamily, fontSize: 11, color: AAColors.mint)),
+              ],
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(style.description,
+              style: TextStyle(
+                  fontFamily: bodyFamily, fontSize: 12, color: AAColors.inkSoft, height: 1.4)),
+          const SizedBox(height: 10),
+          // 预览：金额保留小数 + 一行正文（¥ 统一 JetBrains Mono，数字用该风格字体）
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text.rich(
+                TextSpan(children: [
+                  TextSpan(
+                    text: '¥ ',
+                    style: TextStyle(
+                        fontFamily: AAFonts.currency,
+                        fontSize: 14,
+                        color: AAColors.coral,
+                        height: 1.1),
+                  ),
+                  TextSpan(
+                    text: '1,024.50',
+                    style: TextStyle(
+                        fontFamily: amountFamily,
+                        fontSize: 22,
+                        color: AAColors.coral,
+                        height: 1.1),
+                  ),
+                ]),
+              ),
+              const SizedBox(width: 8),
+              Text('周末露营 4 人 AA 账单',
+                  style: TextStyle(fontFamily: bodyFamily, fontSize: 13, color: AAColors.ink)),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

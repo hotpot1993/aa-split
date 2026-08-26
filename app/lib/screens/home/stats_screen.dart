@@ -44,10 +44,10 @@ class StatsScreen extends ConsumerWidget {
         ),
     ];
 
-    // 月度趋势（近 6 个月）
+    // 月度趋势（近 6 个月）—— 与演示数据同一时钟，统计口径跨时段一致
     final labels = <String>[];
     final values = <double>[];
-    final now = DateTime.now();
+    final now = Fmt.clock();
     for (var i = 5; i >= 0; i--) {
       final d = DateTime(now.year, now.month - i, 1);
       labels.add('${d.month}月');

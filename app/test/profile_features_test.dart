@@ -10,7 +10,6 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:aa_split_app/screens/add/receipt_screen.dart';
 import 'package:aa_split_app/screens/profile/profile_screen.dart';
-import 'package:aa_split_app/screens/profile/settings_screen.dart';
 import 'package:aa_split_app/widgets/avatar.dart';
 
 Widget _app(Widget home) => ProviderScope(
@@ -31,21 +30,23 @@ Future<void> _pump(WidgetTester tester, Widget home) async {
 }
 
 void main() {
-  testWidgets('设置页不再展示深色模式选项', (tester) async {
-    await _pump(tester, const SettingsScreen());
+  testWidgets('「我的」主页展示设置项（设置已迁入主页，无深色模式）', (tester) async {
+    await _pump(tester, const ProfileScreen());
 
+    // 设置项直接落在「我的」主页；「设置→设置」二级页已删除
+    expect(find.text('字体风格'), findsOneWidget);
     expect(find.text('通知设置'), findsOneWidget);
     expect(find.text('深色模式'), findsNothing);
     expect(find.text('浅色（固定）'), findsNothing);
   });
 
   testWidgets('退出登录弹窗不展示吉祥物元素', (tester) async {
-    await _pump(tester, const SettingsScreen());
+    await _pump(tester, const ProfileScreen());
 
     // 滚到退出登录按钮并点击
-    await tester.scrollUntilVisible(find.text('退出登录'), 200,
+    await tester.scrollUntilVisible(find.textContaining('退出登录'), 200,
         scrollable: find.byType(Scrollable).first);
-    await tester.tap(find.text('退出登录'));
+    await tester.tap(find.textContaining('退出登录'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 350));
 

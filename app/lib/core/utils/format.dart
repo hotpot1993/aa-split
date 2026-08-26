@@ -5,6 +5,11 @@ import '../../models/group.dart';
 
 /// 金额（分 → ¥xx.xx）与日期文案工具
 abstract final class Fmt {
+  /// 当前时间源：默认取系统时间；测试可替换为固定时刻，
+  /// 让「问候语/相对时间/演示数据日期」等时段文案不随运行时刻漂移
+  /// （商店截图 golden 跨小时/跨天稳定，见 store_screenshots_test 的 setUpAll）。
+  static DateTime Function() clock = DateTime.now;
+
   /// 分 → "¥xx.xx"（不含符号极性）；trimZero 时整数省略 .00
   static String yuan(int cents, {bool trimZero = false}) {
     final negative = cents < 0;
@@ -28,7 +33,7 @@ abstract final class Fmt {
 
   /// 相对时间：刚刚 / x分钟前 / x小时前 / 昨天 / 更早
   static String relative(DateTime d) {
-    final diff = DateTime.now().difference(d);
+    final diff = clock().difference(d);
     if (diff.inMinutes < 1) return '刚刚';
     if (diff.inHours < 1) return '${diff.inMinutes}分钟前';
     if (diff.inDays < 1) return '${diff.inHours}小时前';
@@ -38,7 +43,7 @@ abstract final class Fmt {
 
   /// 今晨问候
   static String greeting() {
-    final h = DateTime.now().hour;
+    final h = clock().hour;
     if (h < 6) return '夜深啦';
     if (h < 11) return '早上好';
     if (h < 14) return '中午好';

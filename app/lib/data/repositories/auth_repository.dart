@@ -205,6 +205,28 @@ class AuthRepository {
     });
   }
 
+  /// 修改安全问题（P52：需当前密码验证）
+  Future<void> changeSecurityQuestion({
+    required String currentPassword,
+    required String securityQuestion,
+    required String securityAnswer,
+  }) async {
+    if (AppConfig.useMock) {
+      if (currentPassword.isEmpty) {
+        throw const AuthException('请输入当前密码');
+      }
+      final updated = MockStore.instance.currentUser
+          .copyWith(securityQuestion: securityQuestion);
+      MockStore.instance.currentUser = updated;
+      return;
+    }
+    await ApiClient.instance.post('/auth/change-security-question', body: {
+      'currentPassword': currentPassword,
+      'securityQuestion': securityQuestion,
+      'securityAnswer': securityAnswer,
+    });
+  }
+
   /// 更新个人资料（P50）：真实模式 PATCH /auth/me，成功后同步本地会话。
   Future<User> updateProfile({
     required String nickname,

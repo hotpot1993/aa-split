@@ -13,6 +13,7 @@ import '../../providers/refresh_provider.dart';
 import '../../providers/repositories.dart';
 import '../../widgets/common.dart';
 import '../../widgets/sheet.dart';
+import '../auth/auth_widgets.dart';
 
 /// P52 账号安全 —— 对齐 docs/ui-demo/index.html
 class SecurityScreen extends ConsumerStatefulWidget {
@@ -47,6 +48,20 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
       _confirmPwd.clear();
     } on AuthException catch (e) {
       showAaToast(context, e.message);
+    }
+  }
+
+  /// 修改安全问题（P52：需当前密码验证）→ 两步弹层：验证密码 → 新问题+答案
+  Future<void> _changeSecurityQuestion() async {
+    final me = ref.read(currentUserProvider);
+    final ok = await showAaSheet<bool>(
+      context,
+      child: _SecurityQuestionSheet(
+        currentQuestion: me?.securityQuestion ?? '',
+      ),
+    );
+    if (ok == true && mounted) {
+      showAaToast(context, '🛡 安全问题已更新');
     }
   }
 
@@ -118,8 +133,8 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
               children: [
                 _tapLine(
                   '修改安全问题',
-                  value: '你第一个朋友的名字？ ▾',
-                  onTap: () => showAaToast(context, '演示：需当前密码验证'),
+                  value: '${ref.watch(currentUserProvider)?.securityQuestion.isNotEmpty == true ? ref.watch(currentUserProvider)!.securityQuestion : securityQuestions.first} ▾',
+                  onTap: _changeSecurityQuestion,
                 ),
               ],
             ),
@@ -314,4 +329,156 @@ class _SecDash extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter old) => false;
+}
+
+/// 修改安全问题两步弹层：
+/// 第 1 步：当前密码验证；第 2 步：选择新问题 + 填写新答案。
+/// 保存成功后 pop(true)；当前密码错误回退第 1 步并提示。
+class _SecurityQuestionSheet extends ConsumerStatefulWidget {
+  const _SecurityQuestionSheet({required this.currentQuestion});
+  final String currentQuestion;
+  @override
+  ConsumerState<_SecurityQuestionSheet> createState() =>
+      _SecurityQuestionSheetState();
+}
+
+class _SecurityQuestionSheetState extends ConsumerState<_SecurityQuestionSheet> {
+  final _password = TextEditingController();
+  final _answer = TextEditingController();
+  int _step = 1;
+  bool _saving = false;
+  late String _question = securityQuestions.contains(widget.currentQuestion)
+      ? widget.currentQuestion
+      : securityQuestions.first;
+
+  @override
+  void initState() {
+    super.initState();
+    // 密码输入变化时刷新「下一步」可用态
+    _password.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _password.dispose();
+    _answer.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: _step == 1 ? _step1(text) : _step2(text),
+    );
+  }
+
+  List<Widget> _step1(TextTheme text) => [
+        Text('修改安全问题', style: text.headlineSmall),
+        SizedBox(height: 8),
+        Text('先验证当前密码', style: text.bodySmall),
+        SizedBox(height: 12),
+        HandTextField(
+          controller: _password,
+          hint: '••••••••',
+          obscure: true,
+          textAlign: TextAlign.end,
+        ),
+        SizedBox(height: 16),
+        DoodleButton(
+          label: '下一步',
+          expand: true,
+          onPressed: _password.text.isNotEmpty && !_saving ? _toStep2 : null,
+        ),
+        SizedBox(height: 8),
+      ];
+
+  List<Widget> _step2(TextTheme text) => [
+        Text('修改安全问题', style: text.headlineSmall),
+        SizedBox(height: 8),
+        Text('选择新问题并填写答案（用于找回密码）', style: text.bodySmall),
+        SizedBox(height: 12),
+        Text('安全问题', style: text.bodyMedium),
+        DropdownButtonHideUnderline(
+          child: DropdownButton<String>(
+            value: _question,
+            isExpanded: true,
+            alignment: Alignment.centerRight,
+            icon: Text('▾',
+                style:
+                    TextStyle(fontSize: 16, color: AAColors.inkSoft, height: 1)),
+            items: [
+              for (final q in securityQuestions)
+                DropdownMenuItem(
+                  value: q,
+                  child: Text(q,
+                      style: TextStyle(
+                          fontFamily: AAFonts.title,
+                          fontSize: 14,
+                          color: AAColors.ink)),
+                ),
+            ],
+            onChanged: (v) {
+              if (v != null) setState(() => _question = v);
+            },
+          ),
+        ),
+        SizedBox(height: 12),
+        Text('答案', style: text.bodyMedium),
+        HandTextField(controller: _answer, hint: '如 小虎'),
+        SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: DoodleButton(
+                label: '上一步',
+                type: DoodleButtonType.secondary,
+                expand: true,
+                onPressed: _saving ? null : () => setState(() => _step = 1),
+              ),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: DoodleButton(
+                label: _saving ? '保存中…' : '保存',
+                expand: true,
+                onPressed: _saving ? null : _save,
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: 8),
+      ];
+
+  void _toStep2() {
+    setState(() => _step = 2);
+  }
+
+  Future<void> _save() async {
+    if (_answer.text.trim().isEmpty || _saving) return;
+    setState(() => _saving = true);
+    try {
+      await ref.read(authProvider.notifier).changeSecurityQuestion(
+            currentPassword: _password.text,
+            securityQuestion: _question,
+            securityAnswer: _answer.text.trim(),
+          );
+      if (mounted) Navigator.of(context).pop(true);
+    } on AuthException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        // 当前密码（或验证）失败 → 回第 1 步重新输入
+        _step = 1;
+        _password.text = '';
+      });
+      showAaToast(context, e.message);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+      showAaToast(context, '保存失败，请稍后再试');
+    }
+  }
 }

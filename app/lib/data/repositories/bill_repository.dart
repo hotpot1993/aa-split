@@ -162,14 +162,22 @@ class BillRepository {
     await ApiClient.instance.delete('/bills/$id');
   }
 
-  /// 编辑账单（标题/金额/日期/备注）—— P14 编辑
+  /// 编辑账单（标题/金额/日期/备注/垫付人/分摊方式）—— P14 编辑
   Future<void> update(String id,
-      {String? title, int? amountCents, DateTime? date, String? location}) async {
+      {String? title,
+      int? amountCents,
+      DateTime? date,
+      String? location,
+      String? payerId,
+      String? payerName,
+      SplitType? splitType,
+      List<BillParticipant>? participants}) async {
     if (AppConfig.useMock) {
       final store = MockStore.instance;
       final idx = store.bills.indexWhere((b) => b.id == id);
       if (idx < 0) return;
       final b = store.bills[idx];
+      final ps = participants ?? b.participants;
       store.bills[idx] = Bill(
         id: b.id,
         groupId: b.groupId,
@@ -179,13 +187,13 @@ class BillRepository {
         billDate: date ?? b.billDate,
         location: location ?? b.location,
         category: b.category,
-        payerId: b.payerId,
-        payerName: b.payerName,
-        participants: b.participants,
-        splitType: b.splitType,
+        payerId: payerId ?? b.payerId,
+        payerName: payerName ?? b.payerName,
+        participants: ps,
+        splitType: splitType ?? b.splitType,
         receipts: b.receipts,
         isRegular: b.isRegular,
-        settleStatus: b.settleStatus,
+        settleStatus: participants != null ? billStatusOf(ps) : b.settleStatus,
         createdAt: b.createdAt,
       );
       store.refreshGroup(b.groupId);
@@ -196,6 +204,18 @@ class BillRepository {
       'amountCents': ?amountCents,
       'billDate': ?(date == null ? null : _dateStr(date)),
       'location': ?location,
+      'payerId': ?payerId,
+      'splitType': ?splitType?.name,
+      'participants': ?(participants == null
+          ? null
+          : [
+              for (final p in participants)
+                {
+                  'userId': p.userId,
+                  'shareAmountCents': p.shareAmountCents,
+                  'exempt': p.exempt,
+                },
+            ]),
     });
   }
 

@@ -182,4 +182,50 @@ describe('AuthService', () => {
       service.updateProfile('ghost', { nickname: 'x' }),
     ).rejects.toBeInstanceOf(UnauthorizedException);
   });
+
+  it('修改安全问题：当前密码正确则更新问题与答案哈希', async () => {
+    prismaMock.user.findUnique.mockResolvedValue({
+      id: 'u1',
+      accountName: 'tuanzi_t',
+      passwordHash,
+    });
+    prismaMock.user.update.mockResolvedValue({ id: 'u1' });
+    const res = await service.changeSecurityQuestion('u1', {
+      currentPassword: 'abc123ABC',
+      securityQuestion: '你最喜欢的城市？',
+      securityAnswer: '重庆',
+    });
+    expect(res.success).toBe(true);
+    const updateData = prismaMock.user.update.mock.calls[0][0].data;
+    expect(updateData.securityQuestion).toBe('你最喜欢的城市？');
+    expect(updateData.securityAnswerHash).toMatch(/^\$2/);
+    expect(bcrypt.compareSync('重庆', updateData.securityAnswerHash)).toBe(true);
+  });
+
+  it('修改安全问题：当前密码错误抛 UnauthorizedException 且不更新', async () => {
+    prismaMock.user.findUnique.mockResolvedValue({
+      id: 'u1',
+      accountName: 'tuanzi_t',
+      passwordHash,
+    });
+    await expect(
+      service.changeSecurityQuestion('u1', {
+        currentPassword: 'wrongpass1',
+        securityQuestion: '你最喜欢的城市？',
+        securityAnswer: '重庆',
+      }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(prismaMock.user.update).not.toHaveBeenCalled();
+  });
+
+  it('修改安全问题：用户不存在抛 UnauthorizedException', async () => {
+    prismaMock.user.findUnique.mockResolvedValue(null);
+    await expect(
+      service.changeSecurityQuestion('ghost', {
+        currentPassword: 'abc123ABC',
+        securityQuestion: '你最喜欢的城市？',
+        securityAnswer: '重庆',
+      }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
 });

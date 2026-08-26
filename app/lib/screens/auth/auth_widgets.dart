@@ -2,6 +2,14 @@ import 'package:flutter/material.dart';
 
 import 'package:aa_design/aa_design.dart';
 
+/// 预设安全问题（注册设置 / 账号安全「修改安全问题」共用）
+const securityQuestions = [
+  '你第一个朋友的名字？',
+  '你妈妈的姓氏？',
+  '你最喜欢的城市？',
+  '你的小学名字？',
+];
+
 /// 行内红章错误提示（Demo 异常态：小印章，不弹窗打断）
 class FieldError extends StatelessWidget {
   const FieldError({super.key, this.message});

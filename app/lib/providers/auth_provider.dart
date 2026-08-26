@@ -96,6 +96,25 @@ class AuthController extends Notifier<AuthState> {
     return updated;
   }
 
+  /// 修改安全问题（P52）：服务端校验当前密码后更新；成功同步本地用户态。
+  Future<void> changeSecurityQuestion({
+    required String currentPassword,
+    required String securityQuestion,
+    required String securityAnswer,
+  }) async {
+    final user = state.user;
+    if (user == null) throw StateError('未登录');
+    await ref.read(authRepositoryProvider).changeSecurityQuestion(
+          currentPassword: currentPassword,
+          securityQuestion: securityQuestion,
+          securityAnswer: securityAnswer,
+        );
+    state = AuthState(
+      user: user.copyWith(securityQuestion: securityQuestion),
+      token: state.token,
+    );
+  }
+
   /// 重置密码后强制登出（P05）
   void forceLogout() {
     state = const AuthState();

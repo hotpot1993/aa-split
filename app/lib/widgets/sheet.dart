@@ -199,40 +199,47 @@ class _AaSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final surface = Theme.of(context).colorScheme.surface;
-    return FractionallySizedBox(
-      heightFactor: maxHeight,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Positioned.fill(
-            child: Container(
-              decoration: ShapeDecoration(
-                color: surface,
-                shape: _SheetTopShape(),
-                shadows: [
-                  BoxShadow(
-                    color: AAColors.ink,
-                    offset: Offset(0, -3),
-                  ),
-                ],
+    // 弹层宽度撑满屏幕，高度按内容自适应（上限 maxHeight 屏高）：
+    // 此前 FractionallySizedBox 会同时把宽度与高度强制拉满 —— 小内容弹窗
+    // 左右出现留边、下方出现大面积空白（记一笔分类弹窗右缘内容被截/比例失调）。
+    final maxH = MediaQuery.sizeOf(context).height * maxHeight;
+    return SizedBox(
+      width: double.infinity,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: maxH),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned.fill(
+              child: Container(
+                decoration: ShapeDecoration(
+                  color: surface,
+                  shape: _SheetTopShape(),
+                  shadows: [
+                    BoxShadow(
+                      color: AAColors.ink,
+                      offset: Offset(0, -3),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-          Positioned(
-            top: 6,
-            left: 14,
-            child: PinDecorator(),
-          ),
-          SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 26, 20, 16),
-              child: SingleChildScrollView(
-                child: child,
+            Positioned(
+              top: 6,
+              left: 14,
+              child: PinDecorator(),
+            ),
+            SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 26, 20, 16),
+                child: SingleChildScrollView(
+                  child: child,
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

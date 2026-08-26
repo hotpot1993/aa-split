@@ -51,29 +51,15 @@ class _AboutScreenState extends State<AboutScreen> {
             ),
           ),
           SizedBox(height: 2),
-          // 版本号与构建号：单一来源 AppConfig（与 pubspec.yaml 一致，见 version_consistency_test）
+          // 版本号：单一来源 AppConfig（与 pubspec.yaml 一致，见 version_consistency_test）
           // 英文/数字点缀（规范 §4 第五级：Caveat 手写体）
           Center(
-            child: Text.rich(
-              TextSpan(
-                children: [
-                  TextSpan(
-                    text: 'v${AppConfig.appVersion}',
-                    style: TextStyle(
-                      fontFamily: AAFonts.accent,
-                      fontSize: 15,
-                      color: AAColors.inkSoft,
-                    ),
-                  ),
-                  TextSpan(
-                    text: ' · 构建 ${AppConfig.appBuildNumber} · 由团团和程序员们一起做 💕',
-                    style: TextStyle(
-                      fontFamily: AAFonts.title,
-                      fontSize: 12,
-                      color: AAColors.inkSoft,
-                    ),
-                  ),
-                ],
+            child: Text(
+              'v${AppConfig.appVersion}',
+              style: TextStyle(
+                fontFamily: AAFonts.accent,
+                fontSize: 15,
+                color: AAColors.inkSoft,
               ),
             ),
           ),

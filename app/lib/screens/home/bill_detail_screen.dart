@@ -9,11 +9,14 @@ import 'package:aa_design/aa_design.dart';
 import '../../core/utils/format.dart';
 import '../../models/bill.dart';
 import '../../models/bill_participant.dart';
+import '../../models/group_member.dart';
 import '../../providers/data_providers.dart';
 import '../../providers/repositories.dart';
 import '../../providers/refresh_provider.dart';
 import '../../widgets/common.dart';
 import '../../widgets/sheet.dart';
+import '../add/bill_draft.dart';
+import '../add/split_panel.dart';
 
 /// P14 账单详情页
 class BillDetailScreen extends ConsumerStatefulWidget {
@@ -245,12 +248,23 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
   void _edit(Bill bill) {
     showAaSheet(
       context,
-      child: _EditSheet(bill: bill, onSave: (title, cents) async {
-        await ref.read(billRepositoryProvider).update(bill.id, title: title, amountCents: cents);
-        if (!mounted) return;
-        ref.read(refreshProvider.notifier).bump();
-        showAaToast(context, '账单已更新');
-      }),
+      child: _EditSheet(
+        bill: bill,
+        onSave: (title, cents, payerId, payerName, splitType, participants) async {
+          await ref.read(billRepositoryProvider).update(
+                bill.id,
+                title: title,
+                amountCents: cents,
+                payerId: payerId,
+                payerName: payerName,
+                splitType: splitType,
+                participants: participants,
+              );
+          if (!mounted) return;
+          ref.read(refreshProvider.notifier).bump();
+          showAaToast(context, '账单已更新');
+        },
+      ),
     );
   }
 
@@ -491,18 +505,33 @@ class _MarkPaidSheetState extends ConsumerState<_MarkPaidSheet> {
   }
 }
 
-class _EditSheet extends StatefulWidget {
+/// 编辑账单（P14）：标题 / 金额 + 重新选择垫付人 / 修改分摊方式（P31 面板）。
+/// 分摊明细在保存时随结果重算；改金额后需重新确认分摊方式（防合计错位）。
+class _EditSheet extends ConsumerStatefulWidget {
   const _EditSheet({required this.bill, required this.onSave});
   final Bill bill;
-  final void Function(String title, int cents) onSave;
+  final Future<void> Function(String title, int cents, String payerId,
+      String payerName, SplitType splitType, List<BillParticipant> participants)
+      onSave;
   @override
-  State<_EditSheet> createState() => _EditSheetState();
+  ConsumerState<_EditSheet> createState() => _EditSheetState();
 }
 
-class _EditSheetState extends State<_EditSheet> {
+class _EditSheetState extends ConsumerState<_EditSheet> {
   late final TextEditingController _title = TextEditingController(text: widget.bill.title);
   late final TextEditingController _amount = TextEditingController(
       text: '${(widget.bill.amountCents ~/ 100)}.${(widget.bill.amountCents % 100).toString().padLeft(2, '0')}');
+  late String _payerId = widget.bill.payerId;
+
+  /// 用户在分摊面板中显式确认的分摊结果（null = 沿用原明细，走金额/垫付人校验）
+  SplitResult? _split;
+
+  @override
+  void initState() {
+    super.initState();
+    // 金额输入变化时刷新「是否需重新确认分摊方式」状态
+    _amount.addListener(() => setState(() {}));
+  }
 
   @override
   void dispose() {
@@ -511,10 +540,54 @@ class _EditSheetState extends State<_EditSheet> {
     super.dispose();
   }
 
+  /// 可选项 = 账单参与人 ∪ 群组成员（含已退群但仍留在账单里的人）
+  List<GroupMember> get _members {
+    final map = <String, GroupMember>{};
+    for (final p in widget.bill.participants) {
+      map[p.userId] = GroupMember(
+        id: p.userId,
+        userId: p.userId,
+        nickname: p.nickname,
+        accountName: '',
+        avatarUrl: p.avatarUrl,
+        isOwner: false,
+      );
+    }
+    for (final m
+        in ref.read(groupMembersProvider).value?[widget.bill.groupId] ??
+            const <GroupMember>[]) {
+      map[m.userId] = m;
+    }
+    return map.values.toList();
+  }
+
+  String get _payerName {
+    for (final m in _members) {
+      if (m.userId == _payerId) return m.nickname;
+    }
+    for (final p in widget.bill.participants) {
+      if (p.userId == _payerId) return p.nickname;
+    }
+    return widget.bill.payerName;
+  }
+
+  int? get _cents => _parseCents(_amount.text);
+
+  /// 当前分摊明细是否与金额/垫付人一致（不一致则要求用户在面板中重新确认）
+  bool get _sharesOk {
+    if (_split != null) return true;
+    final cents = _cents;
+    if (cents == null) return false;
+    final sum = widget.bill.participants
+        .fold<int>(0, (s, p) => s + p.shareAmountCents);
+    return sum == cents &&
+        widget.bill.participants.any((p) => p.userId == _payerId);
+  }
+
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
-    final cents = _parseCents(_amount.text);
+    final members = _members;
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -526,20 +599,135 @@ class _EditSheetState extends State<_EditSheet> {
         SizedBox(height: 12),
         Text('金额', style: text.bodyMedium),
         HandTextField(controller: _amount, keyboardType: TextInputType.number),
+        SizedBox(height: 12),
+        Text('垫付人', style: text.bodyMedium),
+        DropdownButtonHideUnderline(
+          child: DropdownButton<String>(
+            value: _payerId,
+            isExpanded: true,
+            alignment: Alignment.centerRight,
+            icon: Text('▾',
+                style: TextStyle(fontSize: 16, color: AAColors.inkSoft, height: 1)),
+            items: [
+              for (final m in members)
+                DropdownMenuItem(value: m.userId, child: Text(m.nickname)),
+            ],
+            onChanged: (v) => setState(() {
+              if (v == null) return;
+              _payerId = v;
+              // 垫付人换了：未在面板重确认前，原明细的垫付人标记不再成立
+              _split = null;
+            }),
+          ),
+        ),
+        SizedBox(height: 12),
+        Text('分摊方式', style: text.bodyMedium),
+        GestureDetector(
+          onTap: _pickSplit,
+          behavior: HitTestBehavior.opaque,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  _split?.summary ??
+                      '${SplitText.label(widget.bill.splitType)} · 点击调整',
+                  style: TextStyle(
+                      fontFamily: AAFonts.title,
+                      fontSize: 15,
+                      color: _sharesOk ? AAColors.ink : AAColors.berry),
+                ),
+              ),
+              Text('▾',
+                  style: TextStyle(fontSize: 16, color: AAColors.inkSoft, height: 1)),
+            ],
+          ),
+        ),
+        if (!_sharesOk) ...[
+          SizedBox(height: 4),
+          Text('金额或垫付人已变化，请点击上方确认新的分摊方式',
+              style: TextStyle(
+                  fontFamily: AAFonts.title, fontSize: 12, color: AAColors.berry)),
+        ],
         SizedBox(height: 16),
         DoodleButton(
           label: '保存',
           expand: true,
-          onPressed: cents != null && _title.text.isNotEmpty
-              ? () {
-                  widget.onSave(_title.text, cents);
-                  Navigator.of(context).pop();
-                }
+          onPressed: _cents != null && _title.text.isNotEmpty && _sharesOk
+              ? _save
               : null,
         ),
         SizedBox(height: 8),
       ],
     );
+  }
+
+  Future<void> _pickSplit() async {
+    final cents = _cents;
+    if (cents == null) return;
+    final result = await showAaSheet<SplitResult>(
+      context,
+      child: SplitPanel(
+        amountCents: cents,
+        members: _members,
+        initialType: _split?.type ?? widget.bill.splitType,
+        initialShares: _split == null
+            ? {
+                for (final p in widget.bill.participants)
+                  p.userId: p.shareAmountCents,
+              }
+            : {for (final l in _split!.lines) l.userId: l.amountCents},
+        initialExempt: _split == null
+            ? {
+                for (final p in widget.bill.participants)
+                  if (p.exempt) p.userId,
+              }
+            : {for (final l in _split!.lines) if (l.exempt) l.userId},
+      ),
+    );
+    if (result != null && mounted) setState(() => _split = result);
+  }
+
+  void _save() {
+    final cents = _cents;
+    if (cents == null) return;
+    final participants = _resolveParticipants(cents);
+    widget
+        .onSave(_title.text, cents, _payerId, _payerName,
+            _split?.type ?? widget.bill.splitType, participants)
+        .then((_) {
+      if (mounted) Navigator.of(context).pop();
+    });
+  }
+
+  /// 保存时的分摊明细：显式面板结果优先；否则沿用原明细（只更新垫付人标记）
+  List<BillParticipant> _resolveParticipants(int cents) {
+    final prevPaid = {
+      for (final p in widget.bill.participants) p.userId: p.paid,
+    };
+    if (_split == null) {
+      return widget.bill.participants
+          .map((p) => BillParticipant(
+                userId: p.userId,
+                nickname: p.nickname,
+                avatarUrl: p.avatarUrl,
+                shareAmountCents: p.shareAmountCents,
+                paid: p.userId == _payerId || (prevPaid[p.userId] ?? false),
+                exempt: p.exempt,
+                remindCount: p.remindCount,
+              ))
+          .toList();
+    }
+    return _split!.lines
+        .map((l) => BillParticipant(
+              userId: l.userId,
+              nickname: l.name,
+              avatarUrl: l.avatarUrl,
+              shareAmountCents: l.exempt ? 0 : l.amountCents,
+              paid: l.userId == _payerId || (prevPaid[l.userId] ?? false),
+              exempt: l.exempt,
+            ))
+        .toList();
   }
 
   int? _parseCents(String s) {

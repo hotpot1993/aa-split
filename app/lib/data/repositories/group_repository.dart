@@ -137,12 +137,17 @@ class GroupRepository {
       final net = _netBalances(store, groupId);
       return store.activeMembersOf(groupId).map((m) {
         final balance = net[m.userId] ?? 0;
+        // 当前用户资料（昵称/头像）以最新为准：换头像后成员列表即时同步
+        final isMe = m.userId == store.currentUser.id;
+        final nickname = isMe ? store.currentUser.nickname : m.nickname;
+        final accountName = isMe ? store.currentUser.accountName : m.accountName;
+        final avatarUrl = isMe ? store.currentUser.avatarUrl : m.avatarUrl;
         return GroupMember(
           id: m.id,
           userId: m.userId,
-          nickname: m.nickname,
-          accountName: m.accountName,
-          avatarUrl: m.avatarUrl,
+          nickname: nickname,
+          accountName: accountName,
+          avatarUrl: avatarUrl,
           isOwner: m.isOwner,
           status: m.status,
           joinedAt: m.joinedAt,

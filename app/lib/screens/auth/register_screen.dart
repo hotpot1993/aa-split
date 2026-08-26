@@ -10,13 +10,6 @@ import '../../providers/repositories.dart';
 import '../../widgets/common.dart';
 import 'auth_widgets.dart';
 
-const _questions = [
-  '你第一个朋友的名字？',
-  '你妈妈的姓氏？',
-  '你最喜欢的城市？',
-  '你的小学名字？',
-];
-
 /// P03 注册页
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -34,7 +27,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   String? _passwordErr;
   String? _confirmErr;
   String? _answerErr;
-  String _question = _questions.first;
+  String _question = securityQuestions.first;
   bool _agree = false;
   bool _obscure = true;
 
@@ -215,7 +208,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     value: _question,
                     icon: Text('▾',
                         style: TextStyle(fontSize: 16, color: AAColors.inkSoft, height: 1)),
-                    items: _questions
+                    items: securityQuestions
                         .map((q) => DropdownMenuItem(value: q, child: Text(q)))
                         .toList(),
                     onChanged: (v) => setState(() => _question = v ?? _question),

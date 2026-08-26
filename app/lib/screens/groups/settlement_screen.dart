@@ -1,12 +1,21 @@
+import 'dart:async';
+import 'dart:io' show File;
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show RenderRepaintBoundary;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:open_filex/open_filex.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 import 'package:aa_design/aa_design.dart';
 
 import '../../core/utils/format.dart';
 import '../../models/bill.dart';
+import '../../models/group.dart';
 import '../../models/transfer.dart';
 import '../../providers/data_providers.dart';
 import '../../providers/refresh_provider.dart';
@@ -138,7 +147,7 @@ class _SettlementScreenState extends ConsumerState<SettlementScreen> {
                   type: DoodleButtonType.ghost,
                   mini: true,
                   expand: true,
-                  onPressed: () => showAaToast(context, '收款码卡片已生成'),
+                  onPressed: () => _genCard(transfers),
                 ),
               ),
             ],
@@ -193,6 +202,60 @@ class _SettlementScreenState extends ConsumerState<SettlementScreen> {
     }
     Clipboard.setData(ClipboardData(text: sb.toString()));
     showAaToast(context, '💬 转账文案已复制');
+  }
+
+  /// 收款码卡片：把当前结算方案渲染成图片并保存到手机本地。
+  /// 卡片先挂在 Overlay 屏幕外（保证完成布局与绘制），RepaintBoundary 截屏后保存 PNG。
+  Future<void> _genCard(List<Transfer> transfers) async {
+    if (transfers.isEmpty) {
+      showAaToast(context, '全群已清账，没有可生成的结算方案');
+      return;
+    }
+    final groupName = _groupName();
+    final key = GlobalKey();
+    final entry = OverlayEntry(
+      builder: (_) => Positioned(
+        left: -2400,
+        top: 0,
+        child: RepaintBoundary(
+          key: key,
+          child: _PaymentCard(
+            transfers: transfers,
+            groupName: groupName,
+            groupId: widget.groupId,
+          ),
+        ),
+      ),
+    );
+    Overlay.of(context, rootOverlay: true).insert(entry);
+    await WidgetsBinding.instance.endOfFrame;
+    try {
+      final boundary = key.currentContext!.findRenderObject()!
+          as RenderRepaintBoundary;
+      final image = await boundary.toImage(pixelRatio: 3);
+      final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+      if (bytes == null) throw StateError('图片编码失败');
+      // 优先应用专属外部目录（用户可直接看到）；iOS 等回退 Documents
+      final dir = await getExternalStorageDirectory() ??
+          await getApplicationDocumentsDirectory();
+      final path =
+          '${dir.path}/aa-settlement-${DateTime.now().millisecondsSinceEpoch}.png';
+      await File(path).writeAsBytes(bytes.buffer.asUint8List());
+      if (!mounted) return;
+      showAaToast(context, '📱 收款码卡片已保存到本地');
+      unawaited(OpenFilex.open(path));
+    } catch (e) {
+      if (mounted) showAaToast(context, '生成收款码卡片失败：$e');
+    } finally {
+      entry.remove();
+    }
+  }
+
+  String _groupName() {
+    for (final g in ref.read(groupsProvider).value ?? const <Group>[]) {
+      if (g.id == widget.groupId) return g.name;
+    }
+    return '';
   }
 
   /// 一键结清：确认后把群内全部未结清账单标记为已付
@@ -310,4 +373,149 @@ class _ArrowSvgPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter old) => false;
+}
+
+/// 收款码卡片（截屏对象）：手绘纸卡样式，包含结算方案摘要 + 转账明细 + 二维码。
+/// 二维码内容为可扫描的结算清单摘要（资金仍走微信/支付宝自理）。
+class _PaymentCard extends StatelessWidget {
+  const _PaymentCard({
+    required this.transfers,
+    required this.groupName,
+    required this.groupId,
+  });
+
+  final List<Transfer> transfers;
+  final String groupName;
+  final String groupId;
+
+  @override
+  Widget build(BuildContext context) {
+    final total = transfers.fold<int>(0, (s, t) => s + t.amountCents);
+    final now = Fmt.clock();
+    final qrData = 'AA分账·一键智能结算\n'
+        '群组:$groupName\n'
+        '$groupId\n'
+        '${transfers.length}笔 · ${Fmt.yuanNoSymbol(total)}元\n'
+        '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    return Container(
+      width: 300,
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
+      decoration: BoxDecoration(
+        color: AAColors.cardWhite,
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(14),
+          topRight: Radius.circular(6),
+          bottomLeft: Radius.circular(6),
+          bottomRight: Radius.circular(14),
+        ),
+        border: Border.all(color: AAColors.ink, width: 2.5),
+        boxShadow: [AATokens.cardShadow],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('收款码卡片',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  fontFamily: AAFonts.title, fontSize: 20, color: AAColors.ink)),
+          SizedBox(height: 2),
+          Text('AA分账 · 一键智能结算方案',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft)),
+          SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              AaIconImage('assets/icons/group.png', size: 16),
+              SizedBox(width: 6),
+              Flexible(
+                child: Text(groupName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        fontFamily: AAFonts.title,
+                        fontSize: 16,
+                        color: AAColors.ink)),
+              ),
+            ],
+          ),
+          SizedBox(height: 4),
+          Text('共 ${transfers.length} 笔 · 合计 ${Fmt.yuan(total)}',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  fontFamily: AAFonts.title, fontSize: 13, color: AAColors.ink)),
+          SizedBox(height: 10),
+          ...transfers.take(8).map((t) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 5),
+                child: Row(
+                  children: [
+                    Text('${t.fromName} → ${t.toName}',
+                        style: TextStyle(
+                            fontFamily: AAFonts.title,
+                            fontSize: 13,
+                            color: AAColors.ink)),
+                    Spacer(),
+                    Text(Fmt.yuan(t.amountCents, trimZero: true),
+                        style: TextStyle(
+                            fontFamily: AAFonts.currency,
+                            fontSize: 14,
+                            color: AASemantic.amountNeg)),
+                  ],
+                ),
+              )),
+          if (transfers.length > 8)
+            Text('… 等共 ${transfers.length} 笔',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    fontFamily: AAFonts.title,
+                    fontSize: 11,
+                    color: AAColors.inkSoft)),
+          SizedBox(height: 10),
+          Center(
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: AARadii.qr,
+                border: Border.all(color: AAColors.ink, width: 2),
+              ),
+              child: QrImageView(
+                data: qrData,
+                size: 116,
+                eyeStyle: QrEyeStyle(
+                  eyeShape: QrEyeShape.square,
+                  color: AAColors.ink,
+                ),
+                dataModuleStyle: QrDataModuleStyle(
+                  dataModuleShape: QrDataModuleShape.circle,
+                  color: AAColors.ink,
+                ),
+              ),
+            ),
+          ),
+          SizedBox(height: 6),
+          Text('扫码查看结算清单 · 资金请走微信/支付宝',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  fontFamily: AAFonts.title,
+                  fontSize: 11,
+                  color: AAColors.inkSoft)),
+          SizedBox(height: 2),
+          Text(getFormattedNow(now),
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  fontFamily: AAFonts.accent,
+                  fontSize: 12,
+                  color: AAColors.inkSoft)),
+        ],
+      ),
+    );
+  }
+
+  static String getFormattedNow(DateTime now) =>
+      '${now.year}-${now.month.toString().padLeft(2, '0')}-'
+      '${now.day.toString().padLeft(2, '0')} '
+      '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
 }

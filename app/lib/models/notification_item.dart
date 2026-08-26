@@ -1,3 +1,5 @@
+import '../core/utils/format.dart';
+
 /// 通知类型
 enum NotifyType { newBill, remind, invite, regular, settled, member }
 
@@ -23,9 +25,9 @@ class NotificationItem {
   final String refType;
   final String refId;
 
-  /// 归入"今天"还是"更早"
+  /// 归入"今天"还是"更早"（与数据种子同一时钟，保证截图/测试跨时段一致）
   bool get isToday {
-    final now = DateTime.now();
+    final now = Fmt.clock();
     return createdAt.year == now.year &&
         createdAt.month == now.month &&
         createdAt.day == now.day;

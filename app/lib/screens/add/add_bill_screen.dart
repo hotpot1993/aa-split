@@ -34,7 +34,8 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
   final _amountCtrl = TextEditingController();
   final _titleCtrl = TextEditingController();
   int _amountCents = 0;
-  DateTime _date = DateTime.now();
+  // 日期取自可注入时钟：golden 截图跨时段稳定（默认即系统时间）
+  late DateTime _date = Fmt.clock();
   late String _groupId = '';
   /// 旅行常用货币（默认人民币）
   TravelCurrency _currency = travelCurrencies.first;
@@ -212,6 +213,7 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
                         child: DropdownButton<String>(
                           value: _currency.code,
                           isExpanded: true,
+                          alignment: Alignment.centerRight,
                           icon: Text('▾',
                               style: TextStyle(
                                   fontSize: 16,
@@ -264,6 +266,7 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
                               child: DropdownButton<String>(
                                 value: _groupId,
                                 isExpanded: true,
+                                alignment: Alignment.centerRight,
                                 icon: Text('▾',
                                     style: TextStyle(fontSize: 16, color: AAColors.inkSoft, height: 1)),
                                 items: groups
@@ -488,6 +491,7 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
       child: DropdownButton<String>(
         value: _payerId.isEmpty ? null : _payerId,
         isExpanded: true,
+        alignment: Alignment.centerRight,
         icon: Text('▾', style: TextStyle(fontSize: 16, color: AAColors.inkSoft, height: 1)),
         items: members.map((m) => DropdownMenuItem(value: m.userId, child: Text(m.nickname))).toList(),
         onChanged: (v) => setState(() {

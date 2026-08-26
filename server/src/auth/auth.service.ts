@@ -241,6 +241,30 @@ export class AuthService {
     return { success: true };
   }
 
+  /** 修改安全问题（需当前密码验证） */
+  async changeSecurityQuestion(
+    userId: string,
+    dto: {
+      currentPassword: string;
+      securityQuestion: string;
+      securityAnswer: string;
+    },
+  ) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new UnauthorizedException('用户不存在');
+    if (!(await bcrypt.compare(dto.currentPassword, user.passwordHash))) {
+      throw new UnauthorizedException('当前密码错误');
+    }
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        securityQuestion: dto.securityQuestion,
+        securityAnswerHash: this.hash(dto.securityAnswer),
+      },
+    });
+    return { success: true };
+  }
+
   /** 获取当前用户资料 */
   async me(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
