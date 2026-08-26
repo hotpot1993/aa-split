@@ -1,6 +1,6 @@
 # AA分账App — VPS 部署指南（docker compose 单机）
 
-> 首次部署：2026-08-24 · 验证：smoke 22/22 + SSE 实时推送 ✅ · 关联：[开发进度](./开发进度.md)
+> 首次部署：2026-08-24 · 验证：smoke 22/22 + SSE 实时推送 ✅ · 2026-08-26 **v1.0.5 更新链路已验证**（检查更新 → APK 下载安装）
 
 ## 一、服务器概况
 
@@ -40,13 +40,34 @@ docker compose up -d --build api           # 改源码后重建上线
 
 升级流程：pscp 上传 `server/` 变更 → `docker compose up -d --build api`（构建含 `npm ci`，本机网络约 10 分钟，请耐心）。
 
-数据卷：`aa-split_pgdata` / `aa-split_redisdata` / `aa-split_miniodata`（`docker volume ls`）。
-
-远程回归（仓库根目录）：
+**发版更新「检查更新」版本**（每轮发版照此执行，详见 [发版 SOP](./开发进度.md#十发版-sop每次发行照此执行)）：
 
 ```bash
-AA_API_BASE=http://103.11.77.228:3000/api/v1 node scripts/smoke-api.mjs   # 22/22 全绿
-AA_API_BASE=http://103.11.77.228:3000/api/v1 node scripts/sse-check.mjs   # SSE 事件
+# 1. APK 放到 nginx 站点根（Cloudflare 后经 /apk/ 直出）
+curl -fL -o /www/wwwroot/api.hotpot1993.top/apk/aa-split-vX.Y.Z.apk \
+  https://github.com/hotpot1993/aa-split/releases/download/vX.Y.Z/app-release.apk
+
+# 2. 更新 .env 四项（APP_VERSION_LATEST / BUILD / URL / NOTES）
+sed -i 's|^APP_VERSION_LATEST=.*|APP_VERSION_LATEST=X.Y.Z|' /opt/aa-split/.env
+sed -i 's|^APP_VERSION_BUILD=.*|APP_VERSION_BUILD=BBBB|' /opt/aa-split/.env
+sed -i 's|^APP_VERSION_URL=.*|APP_VERSION_URL=https://api.hotpot1993.top/apk/aa-split-vX.Y.Z.apk|' /opt/aa-split/.env
+sed -i 's|^APP_VERSION_NOTES=.*|APP_VERSION_NOTES=更新说明|' /opt/aa-split/.env
+
+# 3. 重建容器让 .env 生效（restart 不会重新注入 env）
+cd /opt/aa-split && docker compose up -d api
+
+# 4. 验证
+curl -s https://api.hotpot1993.top/api/v1/app/version   # latestVersion=X.Y.Z
+curl -sIL https://api.hotpot1993.top/apk/aa-split-vX.Y.Z.apk   # HTTP/2 200
+```
+
+数据卷：`aa-split_pgdata` / `aa-split_redisdata` / `aa-split_miniodata`（`docker volume ls`）。
+
+远程回归（仓库根目录，域名与直连均可用）：
+
+```bash
+AA_API_BASE=https://api.hotpot1993.top/api/v1 node scripts/smoke-api.mjs   # 22/22 全绿
+AA_API_BASE=https://api.hotpot1993.top/api/v1 node scripts/sse-check.mjs   # SSE 事件
 ```
 
 ## 四、部署过程踩坑记录（重要）
@@ -61,11 +82,7 @@ AA_API_BASE=http://103.11.77.228:3000/api/v1 node scripts/sse-check.mjs   # SSE 
 
 ## 五、待办 / 建议
 
-1. **接入域名与 HTTPS**（前提：域名记录已就绪——`hotpot1993.top` 目前**无 A/AAAA 记录**，需先在 Cloudflare DNS 添加）：
-   - Cloudflare 添加：`api.hotpot1993.top A 103.11.77.228`（灰云=仅 DNS，或橙云=CDN 代理）
-   - 宝塔 nginx 反代配置**已预写好并通过 `nginx -t`**：`/www/server/nginx/conf/vhost/aa-split-api.conf`
-     （server_name api.hotpot1993.top → proxy_pass 127.0.0.1:3000，`proxy_buffering off` + 3600s 超时，SSE 友好）
-   - DNS 生效后 `curl -H "Host: api.hotpot1993.top" http://127.0.0.1` 本地验证；随后可 `ufw delete allow 3000`
+1. ~~**接入域名与 HTTPS**~~ ✅ 已完成（2026-08-26）：Cloudflare 解析 `api.hotpot1993.top A 103.11.77.228`（橙云代理），宝塔 nginx 反代 `/www/server/nginx/conf/vhost/aa-split-api.conf`（`proxy_buffering off` + 3600s 超时，SSE 友好），HTTPS + `/apk/` 静态导出均实测可用
 2. **备份**：`pgdata` 卷 + `.env`（每周建议快照）。
 3. **监控**：`docker compose ps` + 每周跑一次 `node scripts/smoke-api.mjs`；CI（smoke.yml）已备好，推送远端后自动回归。
 4. **安全加固**：轮换 root 密码、改 SSH Key 登录、BT 面板 24381 仅白名单 IP。
