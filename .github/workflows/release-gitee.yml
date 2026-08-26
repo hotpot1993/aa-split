@@ -1,15 +1,15 @@
 name: Release to Gitee
 
 # GitHub 发行版（Release）发布事件 → 自动同步到 Gitee 发行版。
-# 采用「release2gitee」（hepengju/release2gitee v1.2.1）在 **VPS（中国侧）中转执行**：
-#   - GitHub Actions 负责：触发 + 把 release2gitee CLI 部署到 VPS
-#   - VPS 上运行 release2gitee：GitHub↔VPS 下载快（92MB 约 4s），VPS↔Gitee 上传快；
-#     规避 GitHub 美国 runner 直连 Gitee 上传被 CLI 硬编码 60s 超时（跨国链路不可达）
-#   - 特性：幂等（已存在发行版跳过）、同步最近 5 个发行版、最近 3 个保留附件、
+# 引擎：release2gitee（hepengju/release2gitee v1.2.1，Rust CLI）：
+#   - 幂等（已存在发行版跳过）、同步最近 5 个发行版、最近 3 个保留附件、
 #     body 中 GitHub 下载地址自动替换为 Gitee、进度条
+# 运行位置：**自托管 Runner（relay-cn）**——GitHub 托管 runner（美国）与 VPS（美国）
+#   直连 Gitee 附件上传会被拦截挂起（实测 60s/300s 超时；release2gitee CLI 硬编码 60s 超时）；
+#   中国网络节点上传 20MB 仅 ~4s。故在本机（中国网络）注册 relay-cn 标签的自托管 Runner。
 # 规范：更新包文件名 = app-release.apk（AppConfig.giteeUpdateUrl / APP_VERSION_URL 均指向
 #       https://gitee.com/hotpot1993/aa-split/releases/download/vX.Y.Z/app-release.apk）
-# 凭据：GITEE_ACCESS_TOKEN（Gitee PAT）/ VPS_SSH_KEY + VPS_HOST + VPS_USER（root 免密）
+# 凭据：GITEE_ACCESS_TOKEN（Gitee PAT）+ github.token（GitHub API 速率）
 on:
   release:
     types: [published]
@@ -24,45 +24,42 @@ concurrency:
 
 jobs:
   sync:
-    name: Sync releases to Gitee (release2gitee @ VPS relay)
-    runs-on: ubuntu-latest
+    name: Sync releases to Gitee (release2gitee @ CN relay)
+    runs-on: [self-hosted, relay-cn]
     env:
-      GITEE_TOKEN: ${{ secrets.GITEE_ACCESS_TOKEN }}
+      GITEE_ACCESS_TOKEN: ${{ secrets.GITEE_ACCESS_TOKEN }}
       GITHUB_TOKEN: ${{ github.token }}
-      VPS_HOST: ${{ secrets.VPS_HOST }}
-      VPS_USER: ${{ secrets.VPS_USER }}
     steps:
-      - name: Install SSH key to VPS relay
-        run: |
-          mkdir -p "$HOME/.ssh" && chmod 700 "$HOME/.ssh"
-          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > "$HOME/.ssh/id_vps"
-          chmod 600 "$HOME/.ssh/id_vps"
-          ssh-keyscan -H "${VPS_HOST}" >> "$HOME/.ssh/known_hosts" 2>/dev/null || true
-
-      - name: Deploy release2gitee CLI to VPS
+      - name: Install release2gitee CLI (Windows)
         env:
           VER: v1.2.1
+        shell: pwsh
         run: |
-          curl -fsSL -o /tmp/release2gitee.tgz \
-            "https://github.com/hepengju/release2gitee/releases/download/${VER}/release2gitee-x86_64-unknown-linux-gnu.tar.gz"
-          tar -xzf /tmp/release2gitee.tgz -C /tmp
-          scp -i "$HOME/.ssh/id_vps" -o IdentitiesOnly=yes /tmp/release2gitee \
-            "${VPS_USER}@${VPS_HOST}:/usr/local/bin/release2gitee"
-          ssh -i "$HOME/.ssh/id_vps" -o IdentitiesOnly=yes "${VPS_USER}@${VPS_HOST}" \
-            "chmod 755 /usr/local/bin/release2gitee && /usr/local/bin/release2gitee --help | head -3"
+          $zip = "$env:TEMP\release2gitee.zip"
+          curl.exe -fsSL -o $zip "https://github.com/hepengju/release2gitee/releases/download/$env:VER/release2gitee-x86_64-pc-windows-msvc.zip"
+          $dir = "$env:TEMP\release2gitee"
+          if (Test-Path $dir) { Remove-Item $dir -Recurse -Force }
+          Expand-Archive -Path $zip -DestinationPath $dir -Force
+          & "$dir\release2gitee.exe" --help | Select-Object -First 5
 
-      - name: Sync latest GitHub releases to Gitee (via VPS relay)
+      - name: Sync latest GitHub releases to Gitee
+        shell: pwsh
         run: |
-          ssh -i "$HOME/.ssh/id_vps" -o IdentitiesOnly=yes "${VPS_USER}@${VPS_HOST}" \
-            "GITHUB_OWNER=hotpot1993 GITHUB_REPO=aa-split GITEE_OWNER=hotpot1993 GITEE_REPO=aa-split GITEE_TOKEN='${GITEE_TOKEN}' GITHUB_TOKEN='${GITHUB_TOKEN}' release2gitee"
+          $dir = "$env:TEMP\release2gitee"
+          $env:GITHUB_OWNER = "hotpot1993"
+          $env:GITHUB_REPO = "aa-split"
+          $env:GITEE_OWNER = "hotpot1993"
+          $env:GITEE_REPO = "aa-split"
+          $env:GITEE_TOKEN = $env:GITEE_ACCESS_TOKEN
+          & "$dir\release2gitee.exe"
+          if ($LASTEXITCODE -ne 0) { throw "release2gitee 同步失败 (exit $LASTEXITCODE)" }
 
       - name: Verify latest Gitee download URL
-        env:
-          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
         run: |
-          TAG=$(gh release list --repo "$GITHUB_REPOSITORY" --json tagName --jq '.[0].tagName')
-          URL="https://gitee.com/hotpot1993/aa-split/releases/download/${TAG}/app-release.apk"
-          CODE=$(curl -sIL -o /dev/null -w "%{http_code}" --max-time 60 "$URL" | tail -1)
-          echo "check $URL -> http=$CODE"
-          [ "$CODE" = "200" ] || [ "$CODE" = "302" ] || { echo "::error::Gitee 下载地址不可用"; exit 1; }
-          echo "::notice::Gitee 发行版已同步：$URL"
+          $rel = curl.exe -s -H "Authorization: Bearer $env:GITHUB_TOKEN" "https://api.github.com/repos/hotpot1993/aa-split/releases/latest" | ConvertFrom-Json
+          $url = "https://gitee.com/hotpot1993/aa-split/releases/download/$($rel.tag_name)/app-release.apk"
+          $code = (curl.exe -sIL -o NUL -w "%{http_code}" --max-time 60 $url | Select-Object -Last 1)
+          Write-Host "check $url -> http=$code"
+          if ($code -ne "200" -and $code -ne "302") { throw "Gitee 下载地址不可用: http=$code" }
+          Write-Host "Gitee 发行版已同步：$url"
