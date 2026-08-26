@@ -56,4 +56,15 @@ abstract final class AppConfig {
 
   /// 邀请链接前缀（P22 深链：`aafen://join/群码`）
   static const String inviteScheme = 'aafen://join/';
+
+  // ---------- 更新包下载源 ----------
+
+  /// 更新包默认下载基址：**Gitee 发行版**（镜像仓库，公开可匿名下载）。
+  /// 服务端 `/app/version` 返回的 downloadUrl 存在时以服务端为准（线上渠道切换走 VPS .env），
+  /// 未返回/为空时客户端按「Gitee 发行版 `vX.Y.Z/aa-split-vX.Y.Z.apk`」兜底。
+  static const String updateReleaseBase = 'https://gitee.com/hotpot1993/aa-split/releases/download';
+
+  /// 兜底拼接 Gitee 版更新包 URL（`https://gitee.com/hotpot1993/aa-split/releases/download/vX.Y.Z/aa-split-vX.Y.Z.apk`）
+  static String giteeUpdateUrl(String version) =>
+      '$updateReleaseBase/v$version/aa-split-v$version.apk';
 }

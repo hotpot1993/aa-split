@@ -15,13 +15,20 @@ class AppVersionInfo {
   final String downloadUrl;
   final String notes;
 
-  factory AppVersionInfo.fromJson(Map<String, dynamic> json) => AppVersionInfo(
-        latestVersion: json['latestVersion'] as String? ?? AppConfig.appVersion,
-        latestBuild:
-            (json['latestBuild'] as num?)?.toInt() ?? int.parse(AppConfig.appBuildNumber),
-        downloadUrl: json['downloadUrl'] as String? ?? '',
-        notes: json['notes'] as String? ?? '',
-      );
+  factory AppVersionInfo.fromJson(Map<String, dynamic> json) {
+    final version =
+        json['latestVersion'] as String? ?? AppConfig.appVersion;
+    return AppVersionInfo(
+      latestVersion: version,
+      latestBuild:
+          (json['latestBuild'] as num?)?.toInt() ?? int.parse(AppConfig.appBuildNumber),
+      // 下载源优先级：服务端返回的 downloadUrl > Gitee 发行版兜底（默认渠道）
+      downloadUrl: (json['downloadUrl'] as String? ?? '').isNotEmpty
+          ? json['downloadUrl'] as String
+          : AppConfig.giteeUpdateUrl(version),
+      notes: json['notes'] as String? ?? '',
+    );
+  }
 }
 
 /// 语义化版本比较：'1.0.3' vs '1.0.10' → -1（a 更旧）。
