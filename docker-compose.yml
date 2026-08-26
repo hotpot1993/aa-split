@@ -96,6 +96,11 @@ services:
       JPUSH_ENABLED: ${JPUSH_ENABLED:-true}
       CORS_ORIGINS: ${CORS_ORIGINS:-*}
       SWAGGER_ENABLED: ${SWAGGER_ENABLED:-true}
+      # 检查更新：最新版信息（App 内「检查更新」读取；发版时更新 .env + 上传 apk 到 nginx /apk/）
+      APP_VERSION_LATEST: ${APP_VERSION_LATEST:-1.0.4}
+      APP_VERSION_BUILD: ${APP_VERSION_BUILD:-2005}
+      APP_VERSION_URL: "${APP_VERSION_URL:-https://api.hotpot1993.top/apk/aa-split-v1.0.4.apk}"
+      APP_VERSION_NOTES: "${APP_VERSION_NOTES:-}"
     ports:
       - "3000:3000"
     volumes:
