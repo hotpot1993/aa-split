@@ -1,16 +1,10 @@
-name: Release to Gitee
+﻿name: Release to Gitee
 
-# GitHub 发行版（Release）发布事件 → 自动同步到 Gitee 发行版。
-# 引擎：release2gitee（hepengju/release2gitee v1.2.1，Rust CLI）：
-#   - 幂等（已存在发行版跳过）、同步最近 5 个发行版、最近 3 个保留附件、
-#     body 中 GitHub 下载地址自动替换为 Gitee、进度条
-# 运行位置：**自托管 Runner（relay-cn）**——GitHub 托管 runner（美国）与 VPS（美国）
-#   直连 Gitee 附件上传会被拦截挂起（实测 60s/300s 超时；release2gitee CLI 硬编码 60s 超时）；
-#   中国网络节点上传 20MB 仅 ~4s。故在本机（中国网络）注册 relay-cn 标签的自托管 Runner。
-# 规范：更新包文件名 = app-release.apk（AppConfig.giteeUpdateUrl / APP_VERSION_URL 均指向
-#       https://gitee.com/hotpot1993/aa-split/releases/download/vX.Y.Z/app-release.apk）
-# 凭据：GITEE_ACCESS_TOKEN（Gitee PAT）+ github.token（GitHub API 速率）
-on:
+# GitHub 鍙戣鐗堬紙Release锛夊彂甯冧簨浠?鈫?鑷姩鍚屾鍒?Gitee 鍙戣鐗堛€?# 寮曟搸锛歳elease2gitee锛坔epengju/release2gitee v1.2.1锛孯ust CLI锛夛細
+#   - 骞傜瓑锛堝凡瀛樺湪鍙戣鐗堣烦杩囷級銆佸悓姝ユ渶杩?5 涓彂琛岀増銆佹渶杩?3 涓繚鐣欓檮浠躲€?#     body 涓?GitHub 涓嬭浇鍦板潃鑷姩鏇挎崲涓?Gitee銆佽繘搴︽潯
+# 杩愯浣嶇疆锛?*鑷墭绠?Runner锛坮elay-cn锛?*鈥斺€擥itHub 鎵樼 runner锛堢編鍥斤級涓?VPS锛堢編鍥斤級
+#   鐩磋繛 Gitee 闄勪欢涓婁紶浼氳鎷︽埅鎸傝捣锛堝疄娴?60s/300s 瓒呮椂锛況elease2gitee CLI 纭紪鐮?60s 瓒呮椂锛夛紱
+#   涓浗缃戠粶鑺傜偣涓婁紶 20MB 浠?~4s銆傛晠鍦ㄦ湰鏈猴紙涓浗缃戠粶锛夋敞鍐?relay-cn 鏍囩鐨勮嚜鎵樼 Runner銆?# 瑙勮寖锛氭洿鏂板寘鏂囦欢鍚?= app-release.apk锛圓ppConfig.giteeUpdateUrl / APP_VERSION_URL 鍧囨寚鍚?#       https://gitee.com/hotpot1993/aa-split/releases/download/vX.Y.Z/app-release.apk锛?# 鍑嵁锛欸ITEE_ACCESS_TOKEN锛圙itee PAT锛? github.token锛圙itHub API 閫熺巼锛?on:
   release:
     types: [published]
   workflow_dispatch:
@@ -33,7 +27,7 @@ jobs:
       - name: Install release2gitee CLI (Windows)
         env:
           VER: v1.2.1
-        shell: pwsh
+        shell: powershell
         run: |
           $zip = "$env:TEMP\release2gitee.zip"
           curl.exe -fsSL -o $zip "https://github.com/hepengju/release2gitee/releases/download/$env:VER/release2gitee-x86_64-pc-windows-msvc.zip"
@@ -43,7 +37,7 @@ jobs:
           & "$dir\release2gitee.exe" --help | Select-Object -First 5
 
       - name: Sync latest GitHub releases to Gitee
-        shell: pwsh
+        shell: powershell
         run: |
           $dir = "$env:TEMP\release2gitee"
           $env:GITHUB_OWNER = "hotpot1993"
@@ -52,14 +46,14 @@ jobs:
           $env:GITEE_REPO = "aa-split"
           $env:GITEE_TOKEN = $env:GITEE_ACCESS_TOKEN
           & "$dir\release2gitee.exe"
-          if ($LASTEXITCODE -ne 0) { throw "release2gitee 同步失败 (exit $LASTEXITCODE)" }
+          if ($LASTEXITCODE -ne 0) { throw "release2gitee 鍚屾澶辫触 (exit $LASTEXITCODE)" }
 
       - name: Verify latest Gitee download URL
-        shell: pwsh
+        shell: powershell
         run: |
           $rel = curl.exe -s -H "Authorization: Bearer $env:GITHUB_TOKEN" "https://api.github.com/repos/hotpot1993/aa-split/releases/latest" | ConvertFrom-Json
           $url = "https://gitee.com/hotpot1993/aa-split/releases/download/$($rel.tag_name)/app-release.apk"
           $code = (curl.exe -sIL -o NUL -w "%{http_code}" --max-time 60 $url | Select-Object -Last 1)
           Write-Host "check $url -> http=$code"
-          if ($code -ne "200" -and $code -ne "302") { throw "Gitee 下载地址不可用: http=$code" }
-          Write-Host "Gitee 发行版已同步：$url"
+          if ($code -ne "200" -and $code -ne "302") { throw "Gitee 涓嬭浇鍦板潃涓嶅彲鐢? http=$code" }
+          Write-Host "Gitee 鍙戣鐗堝凡鍚屾锛?url"
