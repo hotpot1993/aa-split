@@ -14,7 +14,7 @@
 | 结算算法（`server/src/settlement/`，含"已付份额排除"修复） | ✅ | 13 个金标准单测全绿 |
 | 基础设施（docker-compose / Makefile / CI / 字体 asset） | ✅ | — |
 | **真实联调**（线上 API smoke + SSE） | ✅ | `node scripts/smoke-api.mjs` **22/22** · `node scripts/sse-check.mjs` SSE 实时事件 ✅（v1.0.5 部署后 2026-08-26 复跑通过） |
-| **发行**（v1.0.6+3000，GitHub Actions 正式签名） | ✅ | [GitHub Release](https://github.com/hotpot1993/aa-split/releases/tag/v1.0.6)：AAB + 通用 APK + arm64 APK；**更新包已上传 VPS `/apk/aa-split-v1.0.6-3000.apk`，`/app/version` 返回 VPS 下载 URL（1.0.6+3000）**；VPS 已部署：迁移 `20260901000000` 已应用、线上 smoke **22/22**；3000 = 版本冲突安全档（规避 HyperOS/MIUI -25 降级误判） |
+| **发行**（v1.0.7+4000，GitHub Actions 正式签名） | ✅ | [GitHub Release](https://github.com/hotpot1993/aa-split/releases/tag/v1.0.7)：AAB + 通用 APK + arm64 APK；**更新包已上传 VPS `/apk/aa-split-v1.0.7-4000.apk`，`/app/version` 返回 VPS 下载 URL（1.0.7+4000）**；VPS 已部署：迁移 `20260901000000` 已应用、线上 smoke **22/22**；4000 = 版本冲突安全档（v1.0.6 系列在 HyperOS 4 出现 -25 降级误判，版本名+构建号双跳档规避） |
 | **更新源（VPS 自托管）** | ✅ | 更新流程：GitHub 发布新版本（Actions 正式签名构建）→ 安装包上传至 VPS `/apk/`（nginx 静态托管）→ 服务端 `/app/version` 下发 VPS 下载 URL → 客户端从 VPS 拉取安装；客户端兜底 = API 同源 `/apk/`。Gitee 代码/发行版自动同步（mirror-gitee.yml / release-gitee.yml 及本地自托管 Runner）已移除 |
 
 **说明**：客户端默认 **Demo 模式**（`--dart-define=AA_USE_MOCK=false` 切真实后端，见
