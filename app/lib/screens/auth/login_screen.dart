@@ -7,7 +7,6 @@ import 'package:aa_design/aa_design.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/common.dart';
-import '../../widgets/sheet.dart';
 import 'auth_widgets.dart';
 
 /// P02 登录页 —— 对齐 docs/ui-demo/index.html
@@ -203,15 +202,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ),
           ],
         ),
-        SizedBox(height: 24),
-        Center(
-          child: TextButton(
-            onPressed: () => showAaToast(context, '演示账号：tuanzi / 任意密码'),
-            child: Text('演示一下',
-                style: TextStyle(color: AAColors.inkSoft, fontFamily: AAFonts.title)),
-          ),
-        ),
-        SizedBox(height: 16),
+        SizedBox(height: 40),
       ],
     );
   }
