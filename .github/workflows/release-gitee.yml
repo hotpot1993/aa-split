@@ -69,31 +69,30 @@ jobs:
             @{ name = "app-arm64-v8a-release.apk"; src = "$dir\app-arm64-v8a-release.apk" },
             @{ name = "app-release.aab"; src = "$dir\app-release.aab" }
           )
-          # 1) 找到/创建 Gitee 发行版
-          $list = curl.exe -s "$api/releases?per_page=100&access_token=$tok" | ConvertFrom-Json
+          # 1) 找到/创建 Gitee 发行版（tag_name 命中优先）
+          $listJson = curl.exe -s "$api/releases?per_page=100&access_token=$tok"
+          $list = $listJson | ConvertFrom-Json
           $rid = ($list | Where-Object { $_.tag_name -eq $env:TAG } | Select-Object -First 1).id
           if (-not $rid) {
-            $body = [uri]::EscapeDataString("AA-Split $($env:TAG) 发行版（由 GitHub Actions 自动同步，下载地址见 body）")
-            $resp = curl.exe -s -X POST "$api/releases?access_token=$tok" `
-              -d "tag_name=$($env:TAG)" -d "target_commitish=master" -d "name=AA-Split $($env:TAG)" `
-              -d "body=$body" | ConvertFrom-Json
-            $rid = $resp.id
-            if (-not $rid) { throw "Gitee 发行版创建失败" }
+            $createdJson = curl.exe -s -X POST "$api/releases?access_token=$tok" -d "tag_name=$($env:TAG)" -d "target_commitish=master" -d "name=AA-Split $($env:TAG)" -d "body=AA-Split $($env:TAG) release synced from GitHub Actions"
+            $created = $createdJson | ConvertFrom-Json
+            $rid = $created.id
+            if (-not $rid) { throw "Gitee 发行版创建失败: $createdJson" }
           }
           Write-Host "gitee release id=$rid tag=$($env:TAG)"
-          # 2) 按新产物幂等替换附件（同名先删后传）
+          # 2) 按新产物幂等替换附件（同名先删后传，Gitee 中国网络上传顺畅）
           foreach ($f in $files) {
             $name = $f.name
-            $attrs = curl.exe -s "$api/releases/$rid/attach_files?access_token=$tok" | ConvertFrom-Json
+            $attrsJson = curl.exe -s "$api/releases/$rid/attach_files?access_token=$tok"
+            $attrs = $attrsJson | ConvertFrom-Json
             foreach ($a in ($attrs | Where-Object { $_.name -eq $name })) {
               curl.exe -s -X DELETE "$api/releases/$rid/attach_files/$($a.id)?access_token=$tok" | Out-Null
               Write-Host "replaced $name (old id=$($a.id))"
             }
-            $up = curl.exe -s -X POST "$api/releases/$rid/attach_files?access_token=$tok" `
-              -F "file=@$($f.src);filename=$name"
-            $upId = ($up | ConvertFrom-Json).id
-            if (-not $upId) { throw "上传失败 $name : $up" }
-            Write-Host "uploaded $name -> attachment id=$upId"
+            $upJson = curl.exe -s -X POST "$api/releases/$rid/attach_files?access_token=$tok" -F "file=@$($f.src);filename=$name"
+            $up = $upJson | ConvertFrom-Json
+            if (-not $up.id) { throw "上传失败 $name : $upJson" }
+            Write-Host "uploaded $name -> attachment id=$($up.id)"
           }
 
       - name: Verify latest Gitee download URL
