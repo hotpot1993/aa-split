@@ -9,6 +9,9 @@
     <uses-permission android:name="android.permission.VIBRATE"/>
     <!-- 扫一扫：扫描群组邀请二维码（mobile_scanner 相机取景） -->
     <uses-permission android:name="android.permission.CAMERA"/>
+    <!-- 检查更新：应用内下载 APK 后调起系统安装器（用户需在系统
+         「安装未知应用」中授权；仅主动触发，不自动安装） -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
     <!-- 上架合规：移除极光 SDK 声明的敏感权限（本 App 为记账工具，
          不收集定位/设备标识/应用列表，也不写外部存储） -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" tools:node="remove"/>

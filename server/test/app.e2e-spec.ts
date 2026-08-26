@@ -23,6 +23,7 @@ import { PrismaService } from '../src/prisma/prisma.service';
 import { SettlementModule } from '../src/settlement/settlement.module';
 import { StorageModule } from '../src/storage/storage.module';
 import { UsersModule } from '../src/users/users.module';
+import { AppVersionModule } from '../src/app-version/app-version.module';
 import { AllExceptionsFilter } from '../src/common/filters/all-exceptions.filter';
 import { JwtAuthGuard } from '../src/common/guards/jwt-auth.guard';
 import { TransformInterceptor } from '../src/common/interceptors/transform.interceptor';
@@ -58,6 +59,7 @@ describe('核心链路 e2e（注册→建群→记账→结算→催款→已付
         BillsModule,
         SettlementModule,
         NotificationsModule,
+        AppVersionModule,
       ],
       providers: [
         { provide: APP_GUARD, useClass: ThrottlerGuard },
@@ -567,5 +569,16 @@ describe('核心链路 e2e（注册→建群→记账→结算→催款→已付
       .set('Authorization', `Bearer ${alice.token}`)
       .expect(200);
     expect(list3.body.data).toHaveLength(0);
+  });
+
+  describe('App 版本信息（检查更新）(e2e)', () => {
+    it('公开访问 GET /api/v1/app/version 返回最新版本信息', async () => {
+      const res = await request(server()).get('/api/v1/app/version').expect(200);
+      expect(res.body.code).toBe(0);
+      expect(res.body.data.latestVersion).toBeTruthy();
+      expect(res.body.data.latestBuild).toBeGreaterThan(0);
+      expect(res.body.data.downloadUrl).toMatch(/^https:\/\//);
+      expect(typeof res.body.data.notes).toBe('string');
+    });
   });
 });

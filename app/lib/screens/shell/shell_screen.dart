@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:aa_design/aa_design.dart';
 
+import '../../core/config.dart';
+import '../../core/update/app_update.dart';
 import '../../providers/data_providers.dart';
 import '../../widgets/sheet.dart';
 import 'app_bottom_nav.dart';
@@ -26,6 +29,40 @@ class ShellScreen extends ConsumerStatefulWidget {
 class _ShellScreenState extends ConsumerState<ShellScreen> {
   /// 首页最近一次返回键按下时间（双击退出用）
   DateTime? _lastBackAt;
+
+  @override
+  void initState() {
+    super.initState();
+    _maybePromptUpdate();
+  }
+
+  /// 启动静默检查更新：延迟 2s 后查一次（真实模式、每个新版本只提示一次），
+  /// 用户可从弹窗进入「关于页」完成下载/安装；失败静默不打扰。
+  Future<void> _maybePromptUpdate() async {
+    if (AppConfig.useMock) return;
+    try {
+      await Future.delayed(const Duration(seconds: 2));
+      if (!mounted) return;
+      final repo = AppUpdateRepository();
+      final info = await repo.check();
+      if (!repo.hasUpdate(info)) return;
+      final prefs = await SharedPreferences.getInstance();
+      final key = 'prompt_update_${info.latestVersion}_${info.latestBuild}';
+      if (prefs.getBool(key) ?? false) return;
+      await prefs.setBool(key, true);
+      if (!mounted) return;
+      final go = await showAaConfirm(
+        context,
+        title: '发现新版本 v${info.latestVersion}',
+        subtitle: '本次更新:${info.notes.isEmpty ? '体验优化与修复' : info.notes}',
+        confirmLabel: '去查看',
+        showMascot: false,
+      );
+      if (go == true && mounted) context.push('/about');
+    } catch (_) {
+      // 静默检查失败不影响正常使用
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

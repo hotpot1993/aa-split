@@ -47,6 +47,8 @@ dependencies:
   jpush_flutter: ^3.5.5
   permission_handler: ^13.0.1
   mobile_scanner: ^7.4.0
+  path_provider: ^2.1.5
+  open_filex: ^4.7.0
 
 dev_dependencies:
   flutter_test:

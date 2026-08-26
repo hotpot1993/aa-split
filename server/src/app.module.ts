@@ -21,6 +21,7 @@ import { RegularBillsModule } from './regular-bills/regular-bills.module';
 import { ExportModule } from './export/export.module';
 import { StatisticsModule } from './statistics/statistics.module';
 import { HealthModule } from './health/health.module';
+import { AppVersionModule } from './app-version/app-version.module';
 
 @Module({
   imports: [
@@ -61,6 +62,7 @@ import { HealthModule } from './health/health.module';
     ExportModule,
     StatisticsModule,
     HealthModule,
+    AppVersionModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
