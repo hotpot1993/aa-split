@@ -112,7 +112,8 @@ class GroupDetailScreen extends ConsumerWidget {
                 ),
                 SizedBox(height: 12),
                 DoodleButton(
-                  label: '✨ 一键智能结算',
+                  label: '一键智能结算',
+                  leadingImage: 'assets/icons/sparkle.png',
                   big: true,
                   onPressed: allSettled ? null : () => context.push('/groups/$groupId/settlement'),
                 ),

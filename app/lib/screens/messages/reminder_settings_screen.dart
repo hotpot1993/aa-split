@@ -49,9 +49,12 @@ class _ReminderSettingsScreenState extends ConsumerState<ReminderSettingsScreen>
             padding: const EdgeInsets.fromLTRB(14, 4, 14, 4),
             child: Column(
               children: [
-                _line('📢 催款提醒', prefs.remind, (v) => ctrl.set(remind: v)),
-                _line('⏰ 定期账单提醒', prefs.regular, (v) => ctrl.set(regular: v)),
-                _line('👥 群组动态@我', prefs.mention, (v) => ctrl.set(mention: v)),
+                _line('催款提醒', prefs.remind, (v) => ctrl.set(remind: v),
+                    leadImage: 'assets/icons/broadcast.png'),
+                _line('定期账单提醒', prefs.regular, (v) => ctrl.set(regular: v),
+                    leadImage: 'assets/icons/clock.png'),
+                _line('群组动态@我', prefs.mention, (v) => ctrl.set(mention: v),
+                    leadImage: 'assets/icons/group.png'),
                 _line(
                   '免打扰时段 ${prefs.dndStart} - ${prefs.dndEnd} ▾',
                   prefs.dndEnabled,

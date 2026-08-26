@@ -88,7 +88,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300)); // 账户可用性检查
 
     // 同帧连点两次（快速双击）
-    final btn = find.text('注册并开始 🎉');
+    final btn = find.text('注册并开始');
     await tester.tap(btn);
     await tester.tap(btn);
     await tester.pump();

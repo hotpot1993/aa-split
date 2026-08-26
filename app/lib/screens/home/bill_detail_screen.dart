@@ -103,7 +103,8 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
                 GestureDetector(
                   onTap: () => context.push('/bills/${bill.id}/receipt'),
                   child: _Polaroid(
-                      emoji: '📷', image: 'assets/icons/camera.png', caption: '拍小票📷', rotate: -2),
+                      emoji: '📷', image: 'assets/icons/camera.png', caption: '拍小票',
+                      captionImage: 'assets/icons/camera.png', rotate: -2),
                 )
               else ...[
                 for (var i = 0; i < bill.receipts.take(2).length; i++)
@@ -114,7 +115,8 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
                       image: i == 0
                           ? 'assets/icons/receipt.png'
                           : 'assets/icons/food.png',
-                      caption: i == 0 ? '小票📷' : '凭据',
+                      caption: i == 0 ? '小票' : '凭据',
+                      captionImage: i == 0 ? 'assets/icons/camera.png' : null,
                       rotate: i == 0 ? -2 : 2,
                       url: bill.receipts[i].url,
                       // 点击缩略图：大图预览 + 重新拍照/相册换图
@@ -169,8 +171,15 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('👥 谁还没付？',
-                    style: TextStyle(fontFamily: AAFonts.title, fontSize: 14, color: AAColors.ink)),
+                Row(
+                  children: [
+                    AaIconImage('assets/icons/group.png', size: 18),
+                    SizedBox(width: 6),
+                    Text('谁还没付？',
+                        style: TextStyle(
+                            fontFamily: AAFonts.title, fontSize: 14, color: AAColors.ink)),
+                  ],
+                ),
                 SizedBox(height: 4),
                 ...bill.participants.map((p) => _ParticipantLine(
                       participant: p,
@@ -185,7 +194,8 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
             children: [
               Expanded(
                 child: DoodleButton(
-                  label: '📢 催款',
+                  label: '催款',
+                  leadingImage: 'assets/icons/broadcast.png',
                   type: DoodleButtonType.secondary,
                   mini: true,
                   expand: true,
@@ -272,11 +282,15 @@ class _Polaroid extends StatelessWidget {
     required this.rotate,
     this.url = '',
     this.image,
+    this.captionImage,
     this.onTap,
   });
   final String emoji;
   final String? image;
   final String caption;
+
+  /// caption 文字右侧的小图标（替代角标里的文字 emoji，如「小票📷」）
+  final String? captionImage;
   final double rotate;
   final String url;
   final VoidCallback? onTap;
@@ -325,9 +339,18 @@ class _Polaroid extends StatelessWidget {
                         ),
             ),
             SizedBox(height: 4),
-            Text(caption,
-                style: TextStyle(
-                    fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft)),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(caption,
+                    style: TextStyle(
+                        fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft)),
+                if (captionImage != null) ...[
+                  SizedBox(width: 3),
+                  AaIconImage(captionImage!, size: 12),
+                ],
+              ],
+            ),
             SizedBox(height: 18),
           ],
         ),

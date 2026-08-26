@@ -62,7 +62,11 @@ class _InviteScreenState extends ConsumerState<InviteScreen> {
     }
 
     return AaScaffold(
-      appBar: AaAppBar(title: '📮 邀请成员', icon: '🎁'),
+      appBar: AaAppBar(
+        title: '邀请成员',
+        headIcon: 'assets/icons/mailbox.png',
+        iconImage: 'assets/icons/gift.png',
+      ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: [
@@ -153,7 +157,8 @@ class _InviteScreenState extends ConsumerState<InviteScreen> {
                             width: 130,
                             child: HandTextField(
                               controller: _account,
-                              hint: '🔍 输入账户名',
+                              hint: '输入账户名',
+                              hintPrefixImage: 'assets/icons/search.png',
                               textAlign: TextAlign.end,
                             ),
                           ),

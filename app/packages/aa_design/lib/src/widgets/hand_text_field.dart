@@ -9,6 +9,7 @@ class HandTextField extends StatefulWidget {
     this.controller,
     this.focusNode,
     this.hint,
+    this.hintPrefixImage,
     this.onChanged,
     this.keyboardType,
     this.textAlign,
@@ -22,6 +23,9 @@ class HandTextField extends StatefulWidget {
   final TextEditingController? controller;
   final FocusNode? focusNode;
   final String? hint;
+
+  /// hint 左侧小图标（自有素材 assets/icons/*.png），替代文字 emoji 前缀
+  final String? hintPrefixImage;
   final ValueChanged<String>? onChanged;
   final TextInputType? keyboardType;
   final TextAlign? textAlign;
@@ -70,6 +74,17 @@ class _HandTextFieldState extends State<HandTextField> {
               fontSize: widget.maxLines > 1 ? 15 : 17,
               color: AAColors.inkSoft.withValues(alpha: 0.7),
             ),
+            prefixIcon: widget.hintPrefixImage == null
+                ? null
+                : Padding(
+                    padding: const EdgeInsets.only(right: 4),
+                    child: Image.asset(
+                      widget.hintPrefixImage!,
+                      width: 15,
+                      height: 15,
+                    ),
+                  ),
+            prefixIconConstraints: const BoxConstraints(minWidth: 19, minHeight: 19),
             isDense: true,
             border: InputBorder.none,
             focusedBorder: InputBorder.none,

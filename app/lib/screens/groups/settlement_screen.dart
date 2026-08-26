@@ -49,7 +49,8 @@ class _SettlementScreenState extends ConsumerState<SettlementScreen> {
 
     return AaScaffold(
       appBar: AaAppBar(
-        title: '✨ 一键智能结算',
+        title: '一键智能结算',
+        headIcon: 'assets/icons/sparkle.png',
         iconImage: 'assets/icons/abacus.png',
       ),
       body: ListView(
@@ -64,8 +65,12 @@ class _SettlementScreenState extends ConsumerState<SettlementScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text.rich(TextSpan(children: [
+                  WidgetSpan(
+                    alignment: PlaceholderAlignment.middle,
+                    child: AaIconImage('assets/icons/party.png', size: 24),
+                  ),
                   TextSpan(
-                      text: '🎉 最少 ',
+                      text: '最少 ',
                       style: TextStyle(
                           fontFamily: AAFonts.title, fontSize: 26, color: AAColors.ink)),
                   TextSpan(
@@ -127,7 +132,8 @@ class _SettlementScreenState extends ConsumerState<SettlementScreen> {
               SizedBox(width: 10),
               Expanded(
                 child: DoodleButton(
-                  label: '📱 收款码卡片',
+                  label: '收款码卡片',
+                  leadingImage: 'assets/icons/phone.png',
                   type: DoodleButtonType.ghost,
                   mini: true,
                   expand: true,
@@ -138,7 +144,8 @@ class _SettlementScreenState extends ConsumerState<SettlementScreen> {
           ),
           SizedBox(height: 16),
           DoodleButton(
-            label: '📢 开始催款',
+            label: '开始催款',
+            leadingImage: 'assets/icons/broadcast.png',
             big: true,
             onPressed: () => context.push('/groups/${widget.groupId}/remind'),
           ),

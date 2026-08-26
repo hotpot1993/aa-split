@@ -57,7 +57,7 @@ class GroupsScreen extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
               children: [
                 const _JoinEntryRow(),
-                SectionTitle('最近', emoji: '📔'),
+                SectionTitle('最近', emojiImage: 'assets/icons/notebook.png'),
                 for (var i = 0; i < groups.length; i++)
                   _GroupCard(
                     group: groups[i],
@@ -137,7 +137,7 @@ class _JoinEntryRow extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SectionTitle('加入群组', emoji: '🎒'),
+        SectionTitle('加入群组', emojiImage: 'assets/icons/backpack.png'),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -253,7 +253,7 @@ class _GroupCard extends StatelessWidget {
                               fontFamily: AAFonts.title, fontSize: 15, color: AAColors.ink)),
                       if (isOwner) ...[
                         SizedBox(width: 6),
-                        Text('👑', style: TextStyle(fontSize: 14)),
+                        AaIconImage('assets/icons/crown.png', size: 14),
                       ],
                     ],
                   ),

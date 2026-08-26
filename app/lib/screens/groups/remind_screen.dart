@@ -134,7 +134,8 @@ class _RemindScreenState extends ConsumerState<RemindScreen> {
           ),
           SizedBox(height: 16),
           DoodleButton(
-            label: '发送催款 ✈️',
+            label: '发送催款',
+            trailingImage: 'assets/icons/plane.png',
             big: true,
             onPressed: sending ? _send : null,
           ),

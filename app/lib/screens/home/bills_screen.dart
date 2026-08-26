@@ -55,8 +55,9 @@ class _BillsScreenState extends ConsumerState<BillsScreen> {
 
     return AaScaffold(
       appBar: AaAppBar(
-        title: '📒 全部账单',
-        icon: '📊',
+        title: '全部账单',
+        headIcon: 'assets/icons/notebook.png',
+        iconImage: 'assets/icons/chart.png',
         onIconTap: () => context.push('/stats'),
       ),
       body: filtered.isEmpty

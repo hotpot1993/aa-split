@@ -21,6 +21,8 @@ class DoodleButton extends StatefulWidget {
     this.onPressed,
     this.type = DoodleButtonType.primary,
     this.icon,
+    this.leadingImage,
+    this.trailingImage,
     this.expand = false,
     this.mini = false,
     this.big = false,
@@ -34,6 +36,10 @@ class DoodleButton extends StatefulWidget {
   final VoidCallback? onPressed;
   final DoodleButtonType type;
   final IconData? icon;
+
+  /// label 前 / 后的自有素材图标（assets/icons/*.png），替代文字 emoji
+  final String? leadingImage;
+  final String? trailingImage;
 
   /// 拉伸到可用宽度（.btn.big width:100%；普通按钮 expand=true 时同样占满）
   final bool expand;
@@ -107,6 +113,10 @@ class _DoodleButtonState extends State<DoodleButton> {
             Icon(widget.icon, size: _fontSize - 2, color: textColor),
             SizedBox(width: 6),
           ],
+          if (widget.leadingImage != null) ...[
+            Image.asset(widget.leadingImage!, width: _fontSize, height: _fontSize),
+            SizedBox(width: 6),
+          ],
           Text(
             widget.label,
             style: TextStyle(
@@ -116,6 +126,10 @@ class _DoodleButtonState extends State<DoodleButton> {
               height: 1.3,
             ),
           ),
+          if (widget.trailingImage != null) ...[
+            SizedBox(width: 6),
+            Image.asset(widget.trailingImage!, width: _fontSize, height: _fontSize),
+          ],
         ],
       );
     }

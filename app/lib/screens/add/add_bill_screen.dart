@@ -337,9 +337,18 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
                         children: [
                           GestureDetector(
                             onTap: _addReceipt,
-                            child: Text('📷 拍照/相册',
-                                style: TextStyle(
-                                    fontFamily: AAFonts.title, fontSize: 15, color: AAColors.sky)),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                AaIconImage('assets/icons/camera.png', size: 16),
+                                SizedBox(width: 4),
+                                Text('拍照/相册',
+                                    style: TextStyle(
+                                        fontFamily: AAFonts.title,
+                                        fontSize: 15,
+                                        color: AAColors.sky)),
+                              ],
+                            ),
                           ),
                           if (_receipts.isNotEmpty) ...[
                             SizedBox(width: 8),
@@ -362,7 +371,9 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
                             onChanged: () => setState(() => _isRegular = !_isRegular),
                           ),
                           SizedBox(width: 8),
-                          Text('⏰ 设为定期账单（每月自动生成）',
+                          AaIconImage('assets/icons/clock.png', size: 14),
+                          SizedBox(width: 4),
+                          Text('设为定期账单（每月自动生成）',
                               style: TextStyle(
                                   fontFamily: AAFonts.title, fontSize: 12, color: AAColors.ink)),
                         ],

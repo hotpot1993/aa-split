@@ -256,7 +256,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         ),
         SizedBox(height: 14),
         DoodleButton(
-          label: _submitting ? '注册中…' : '注册并开始 🎉',
+          label: _submitting ? '注册中…' : '注册并开始',
+          trailingImage: _submitting ? null : 'assets/icons/party.png',
           big: true,
           onPressed: _canSubmit && !_submitting ? _submit : null,
         ),

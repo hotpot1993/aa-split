@@ -40,13 +40,13 @@ class HomeScreen extends ConsumerWidget {
             onSettle: () => _goSettle(context, ref, groups, bills, user?.id ?? 'me'),
             onDetail: () => context.push('/bills'),
           ),
-          SectionTitle('快捷入口', emoji: '🔜'),
+          SectionTitle('快捷入口', emojiImage: 'assets/icons/fast-forward.png'),
           _QuickActions(
             onAdd: () => context.push('/add'),
             onInvite: () => _goInvite(context, groups),
             onRemind: () => _goRemind(context, groups, bills, user?.id ?? 'me'),
           ),
-          SectionTitle('最近账单', emoji: '🍃'),
+          SectionTitle('最近账单', emojiImage: 'assets/icons/leaf.png'),
           if (recent.isEmpty)
             EmptyState(
               title: '账本空空如也，记一笔吧！',
@@ -186,16 +186,24 @@ class _Header extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Expanded(
-          child: Text(
-            '${Fmt.greeting()}，$name 👋',
+          child: Text.rich(
+            TextSpan(
+              text: '${Fmt.greeting()}，$name ',
+              style: TextStyle(
+                fontFamily: AAFonts.title,
+                fontSize: 22,
+                color: AAColors.ink,
+                height: 1.2,
+              ),
+              children: [
+                WidgetSpan(
+                  alignment: PlaceholderAlignment.middle,
+                  child: AaIconImage('assets/icons/wave.png', size: 20),
+                ),
+              ],
+            ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontFamily: AAFonts.title,
-              fontSize: 22,
-              color: AAColors.ink,
-              height: 1.2,
-            ),
           ),
         ),
         InkWell(
