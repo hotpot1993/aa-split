@@ -72,8 +72,12 @@ class AppBottomNav extends StatelessWidget {
 
 /// 中央 ➕（记一笔）：68px 珊瑚橙圆（34px 的两倍）+ 2.5px 墨线 + 白色铅笔，
 /// 垂直居中放置于导航栏内（不再上浮出栏），提升视觉平衡与点击区域。
+/// 尺寸缩放 0.6（整体缩小 40%）：圆 68→40.8、铅笔 52→31.2、内边距/描边同步。
 class _AddButton extends StatelessWidget {
   const _AddButton({required this.onTap});
+
+  /// 缩小 40% = 原始尺寸 × 0.6
+  static const double _scale = 0.6;
 
   final VoidCallback onTap;
 
@@ -87,19 +91,19 @@ class _AddButton extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 68,
-              height: 68,
+              width: 68 * _scale,
+              height: 68 * _scale,
               alignment: Alignment.center,
-              padding: const EdgeInsets.all(8),
+              padding: EdgeInsets.all(8 * _scale),
               decoration: ShapeDecoration(
                 color: AAColors.coral,
                 shape: CircleBorder(
-                  side: BorderSide(color: AAColors.ink, width: 2.5),
+                  side: BorderSide(color: AAColors.ink, width: 2.5 * _scale),
                 ),
                 shadows: [AATokens.buttonShadow],
               ),
               child: CustomPaint(
-                size: Size(52, 52),
+                size: Size(52 * _scale, 52 * _scale),
                 painter: _PencilIconPainter(),
               ),
             ),
