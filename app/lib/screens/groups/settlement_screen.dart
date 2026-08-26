@@ -122,7 +122,8 @@ class _SettlementScreenState extends ConsumerState<SettlementScreen> {
             children: [
               Expanded(
                 child: DoodleButton(
-                  label: '💬 复制转账文案',
+                  label: '复制转账文案',
+                  leadingImage: 'assets/icons/chat.png',
                   type: DoodleButtonType.ghost,
                   mini: true,
                   expand: true,
@@ -151,7 +152,8 @@ class _SettlementScreenState extends ConsumerState<SettlementScreen> {
           ),
           SizedBox(height: 10),
           DoodleButton(
-            label: _settling ? '结清中…' : '✅ 一键结清（全部标记已付）',
+            label: _settling ? '结清中…' : '一键结清（全部标记已付）',
+            leadingImage: _settling ? null : 'assets/icons/check.png',
             type: DoodleButtonType.danger,
             big: true,
             onPressed: hasUnsettled && !_settling ? _settleAll : null,
@@ -160,14 +162,21 @@ class _SettlementScreenState extends ConsumerState<SettlementScreen> {
           // 模式切换提示（Demo 底部 mini dim 文案）
           InkWell(
             onTap: () => setState(() => _perBill = !_perBill),
-            child: Text(
-              _perBill
-                  ? '🔀 已选：逐笔结算模式 · 切换到最少笔数'
-                  : '🔀 已选：最少笔数模式 · 切换到逐笔结算',
-              textAlign: TextAlign.center,
+            child: Text.rich(TextSpan(
+              children: [
+                WidgetSpan(
+                  alignment: PlaceholderAlignment.middle,
+                  child: AaIconImage('assets/icons/swap.png', size: 14),
+                ),
+                TextSpan(
+                  text: _perBill
+                      ? ' 已选：逐笔结算模式 · 切换到最少笔数'
+                      : ' 已选：最少笔数模式 · 切换到逐笔结算',
+                ),
+              ],
               style: TextStyle(
                   fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft),
-            ),
+            )),
           ),
           SizedBox(height: 16),
         ],

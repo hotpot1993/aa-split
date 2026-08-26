@@ -120,7 +120,7 @@ class GroupDetailScreen extends ConsumerWidget {
               ],
             ),
           ),
-          SectionTitle('成员', emoji: '🐾'),
+          SectionTitle('成员', emojiImage: 'assets/icons/paw.png'),
           // 成员头像行（52px 淡彩底）
           Row(
             children: [
@@ -148,7 +148,7 @@ class GroupDetailScreen extends ConsumerWidget {
               ],
             ],
           ),
-          SectionTitle('账单流水', emoji: '🧾'),
+          SectionTitle('账单流水', emojiImage: 'assets/icons/receipt.png'),
           if (bills.isEmpty)
             EmptyState(
               title: '记第一笔账，开启AA之旅',

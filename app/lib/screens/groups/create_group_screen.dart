@@ -68,7 +68,11 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
   @override
   Widget build(BuildContext context) {
     return AaScaffold(
-      appBar: AaAppBar(title: '🏕 创建群组', icon: '🎨'),
+      appBar: AaAppBar(
+        title: '创建群组',
+        headIcon: 'assets/icons/tent.png',
+        iconImage: 'assets/icons/palette.png',
+      ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: [

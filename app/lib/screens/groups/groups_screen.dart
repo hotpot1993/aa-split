@@ -88,12 +88,12 @@ class GroupsScreen extends ConsumerWidget {
           Text('「${g.name}」', style: Theme.of(context).textTheme.headlineSmall),
           SizedBox(height: 8),
           _SheetAction(
-            emoji: '📌',
+            image: 'assets/icons/pin.png',
             label: '置顶群组',
             onTap: () => Navigator.of(context).pop('pin'),
           ),
           _SheetAction(
-            emoji: '🔗',
+            image: 'assets/icons/link.png',
             label: '复制邀请链接',
             onTap: () async {
               final link = await ref.read(groupRepositoryProvider).inviteLink(g.id);
@@ -113,14 +113,14 @@ class GroupsScreen extends ConsumerWidget {
 }
 
 class _SheetAction extends StatelessWidget {
-  const _SheetAction({required this.emoji, required this.label, required this.onTap});
-  final String emoji;
+  const _SheetAction({required this.image, required this.label, required this.onTap});
+  final String image;
   final String label;
   final VoidCallback onTap;
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      leading: Text(emoji, style: TextStyle(fontSize: 20)),
+      leading: AaIconImage(image, size: 20),
       title: Text(label, style: TextStyle(fontFamily: AAFonts.title, fontSize: 15, color: AAColors.ink)),
       trailing: Text('→', style: TextStyle(fontSize: 15, color: AAColors.inkSoft)),
       onTap: onTap,
@@ -143,7 +143,7 @@ class _JoinEntryRow extends StatelessWidget {
           children: [
             Expanded(
               child: _JoinEntry(
-                emoji: '📷',
+                image: 'assets/icons/camera.png',
                 tint: const Color(0xFFF0F6FB),
                 title: '扫一扫',
                 subtitle: '扫群组二维码入群',
@@ -153,7 +153,7 @@ class _JoinEntryRow extends StatelessWidget {
             SizedBox(width: 12),
             Expanded(
               child: _JoinEntry(
-                emoji: '🔗',
+                image: 'assets/icons/link.png',
                 tint: const Color(0xFFEDF7EE),
                 title: '邀请链接',
                 subtitle: '粘贴链接加入群组',
@@ -167,17 +167,17 @@ class _JoinEntryRow extends StatelessWidget {
   }
 }
 
-/// 单个入群入口小卡（emoji 圆底 + 标题 + 副行）
+/// 单个入群入口小卡（素材图标圆底 + 标题 + 副行）
 class _JoinEntry extends StatelessWidget {
   const _JoinEntry({
-    required this.emoji,
+    required this.image,
     required this.tint,
     required this.title,
     required this.subtitle,
     required this.onTap,
   });
 
-  final String emoji;
+  final String image;
   final Color tint;
   final String title;
   final String subtitle;
@@ -199,7 +199,7 @@ class _JoinEntry extends StatelessWidget {
               shape: BoxShape.circle,
               border: Border.all(color: AAColors.ink, width: 2.5),
             ),
-            child: Text(emoji, style: const TextStyle(fontSize: 20)),
+            child: AaIconImage(image, size: 22),
           ),
           SizedBox(height: 8),
           Text(title,
@@ -272,7 +272,8 @@ class _GroupCard extends StatelessWidget {
             ),
             SizedBox(width: 8),
             StampBadge(
-              text: group.pendingBillCount > 0 ? '${group.pendingBillCount}笔待清' : '✅已清',
+              text: group.pendingBillCount > 0 ? '${group.pendingBillCount}笔待清' : '已清',
+              image: group.pendingBillCount > 0 ? null : 'assets/icons/check.png',
               color: group.pendingBillCount > 0
                   ? AASemantic.stampMoney
                   : AASemantic.stampDone,

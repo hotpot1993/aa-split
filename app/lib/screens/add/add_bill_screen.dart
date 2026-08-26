@@ -545,13 +545,15 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
               style: TextStyle(fontFamily: AAFonts.title, fontSize: 18, color: AAColors.ink)),
           SizedBox(height: 12),
           DoodleButton(
-            label: '📷 拍一张',
+            label: '拍一张',
+            leadingImage: 'assets/icons/camera.png',
             expand: true,
             onPressed: () => Navigator.of(context).pop(ImageSource.camera),
           ),
           SizedBox(height: 8),
           DoodleButton(
-            label: '🖼️ 从相册选',
+            label: '从相册选',
+            leadingImage: 'assets/icons/picture.png',
             type: DoodleButtonType.secondary,
             expand: true,
             onPressed: () => Navigator.of(context).pop(ImageSource.gallery),

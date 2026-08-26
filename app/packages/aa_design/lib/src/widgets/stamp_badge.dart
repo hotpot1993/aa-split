@@ -13,12 +13,16 @@ class StampBadge extends StatelessWidget {
   const StampBadge({
     super.key,
     required this.text,
+    this.image,
     this.color = AAColors.ink,
     this.rotate = -8,
     this.size = 56,
   });
 
   final String text;
+
+  /// 文字前的素材图标（替代文字 emoji，如「✅已清」→ check 图标 + 已清）
+  final String? image;
   final Color color;
 
   /// 旋转角度（度）
@@ -29,6 +33,16 @@ class StampBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final label = Text(
+      text,
+      textAlign: TextAlign.center,
+      style: TextStyle(
+        fontFamily: AAFonts.title,
+        fontSize: 11,
+        height: 1.2,
+        color: color,
+      ),
+    );
     return Transform.rotate(
       angle: rotate * pi / 180,
       child: Container(
@@ -38,16 +52,16 @@ class StampBadge extends StatelessWidget {
           border: Border.all(color: color, width: 2),
           borderRadius: BorderRadius.circular(999),
         ),
-        child: Text(
-          text,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontFamily: AAFonts.title,
-            fontSize: 11,
-            height: 1.2,
-            color: color,
-          ),
-        ),
+        child: image == null
+            ? label
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Image.asset(image!, width: 11, height: 11),
+                  SizedBox(width: 4),
+                  label,
+                ],
+              ),
       ),
     );
   }

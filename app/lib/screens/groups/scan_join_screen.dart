@@ -109,7 +109,12 @@ class _ScanJoinScreenState extends ConsumerState<ScanJoinScreen> {
   @override
   Widget build(BuildContext context) {
     return AaScaffold(
-      appBar: AaAppBar(title: '📷 扫一扫', icon: '🔦', onIconTap: _toggleTorch),
+      appBar: AaAppBar(
+        title: '扫一扫',
+        headIcon: 'assets/icons/camera.png',
+        iconImage: 'assets/icons/torch.png',
+        onIconTap: _toggleTorch,
+      ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: [
@@ -177,14 +182,16 @@ class _ScanJoinScreenState extends ConsumerState<ScanJoinScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     DoodleButton(
-                      label: '🖼 从相册扫',
+                      label: '从相册扫',
+                      leadingImage: 'assets/icons/picture.png',
                       type: DoodleButtonType.ghost,
                       mini: true,
                       onPressed: _pickFromAlbum,
                     ),
                     SizedBox(width: 8),
                     DoodleButton(
-                      label: '🔗 粘贴链接',
+                      label: '粘贴链接',
+                      leadingImage: 'assets/icons/link.png',
                       type: DoodleButtonType.ghost,
                       mini: true,
                       onPressed: () => context.push('/groups/join-link'),
@@ -226,8 +233,7 @@ class _CameraError extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('😿',
-              style: TextStyle(fontSize: 26, color: AAColors.paper)),
+          AaIconImage('assets/icons/sad.png', size: 26),
           SizedBox(height: 6),
           Text(
             permissionDenied

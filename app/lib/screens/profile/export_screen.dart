@@ -29,7 +29,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
       appBar: AaAppBar(
         title: '数据导出',
         headIcon: 'assets/icons/export.png',
-        icon: '📤',
+        iconImage: 'assets/icons/share.png',
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
@@ -86,7 +86,8 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
           ),
           SizedBox(height: 16),
           DoodleButton(
-            label: _packing || _done ? '开始导出 ✈️' : '开始导出 ✈️',
+            label: '开始导出',
+            trailingImage: 'assets/icons/plane.png',
             big: true,
             onPressed: _packing ? null : _startPack,
           ),

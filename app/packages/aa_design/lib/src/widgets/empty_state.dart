@@ -17,6 +17,7 @@ class EmptyState extends StatelessWidget {
     required this.title,
     this.subtitle,
     this.buttonLabel,
+    this.buttonImage,
     this.onButtonTap,
     this.emotion = TuanTuanEmotion.sleepy,
     this.mascotSize = 130,
@@ -29,6 +30,9 @@ class EmptyState extends StatelessWidget {
   final String title;
   final String? subtitle;
   final String? buttonLabel;
+
+  /// 按钮 label 前的素材图标（替代文字 emoji，如「✏️ 记一笔」）
+  final String? buttonImage;
   final VoidCallback? onButtonTap;
   final TuanTuanEmotion emotion;
   final double mascotSize;
@@ -80,7 +84,12 @@ class EmptyState extends StatelessWidget {
         ],
         if (buttonLabel != null) ...[
           SizedBox(height: 10),
-          DoodleButton(label: buttonLabel!, onPressed: onButtonTap, mini: true),
+          DoodleButton(
+            label: buttonLabel!,
+            leadingImage: buttonImage,
+            onPressed: onButtonTap,
+            mini: true,
+          ),
         ],
       ],
     );

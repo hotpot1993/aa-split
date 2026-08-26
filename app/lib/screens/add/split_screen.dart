@@ -40,7 +40,11 @@ class _SplitScreenState extends ConsumerState<SplitScreen> {
     final members = bill.participants.map(_toMember).toList();
 
     return AaScaffold(
-      appBar: AaAppBar(title: '🍕 分摊方式', iconImage: 'assets/icons/abacus.png'),
+      appBar: AaAppBar(
+        title: '分摊方式',
+        headIcon: 'assets/icons/pizza.png',
+        iconImage: 'assets/icons/abacus.png',
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [

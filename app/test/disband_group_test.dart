@@ -42,8 +42,8 @@ void main() {
     expect(find.text('群组设置'), findsOneWidget);
 
     // 解散群组 → 二次确认
-    await tester.ensureVisible(find.text('🔥 解散群组'));
-    await tester.tap(find.text('🔥 解散群组'));
+    await tester.ensureVisible(find.text('解散群组'));
+    await tester.tap(find.text('解散群组'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 350));
     expect(find.text('要解散「饭友群」吗？'), findsOneWidget);

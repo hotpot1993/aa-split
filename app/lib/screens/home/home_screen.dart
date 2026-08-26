@@ -52,7 +52,8 @@ class HomeScreen extends ConsumerWidget {
               title: '账本空空如也，记一笔吧！',
               tag: 'P11/P12 账单列表',
               artImage: 'assets/icons/notebook.png',
-              buttonLabel: '✏️ 记一笔',
+              buttonLabel: '记一笔',
+              buttonImage: 'assets/icons/edit.png',
               onButtonTap: () => context.push('/add'),
             )
           else
@@ -440,7 +441,8 @@ class _RecentRow extends StatelessWidget {
           HandAmount(amountCents: bill.amountCents, size: 24, trimZero: true),
           SizedBox(width: 10),
           StampBadge(
-            text: bill.fullySettled ? '✅已结清' : '待结算',
+            text: bill.fullySettled ? '已结清' : '待结算',
+            image: bill.fullySettled ? 'assets/icons/check.png' : null,
             color: bill.fullySettled ? AASemantic.stampDone : AASemantic.stampMoney,
           ),
         ],

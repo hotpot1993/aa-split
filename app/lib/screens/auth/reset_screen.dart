@@ -66,7 +66,11 @@ class _ResetScreenState extends ConsumerState<ResetScreen> {
               ),
             ]
           : [
-              AaAppBar(title: '🔑 重设密码', icon: '✔️'),
+              AaAppBar(
+                title: '重设密码',
+                headIcon: 'assets/icons/key.png',
+                iconImage: 'assets/icons/check.png',
+              ),
               SizedBox(height: 26),
               PaperCard(
                 padding: const EdgeInsets.fromLTRB(14, 4, 14, 4),

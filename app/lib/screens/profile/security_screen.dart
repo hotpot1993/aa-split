@@ -84,7 +84,7 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
       appBar: AaAppBar(
         title: '账号安全',
         headIcon: 'assets/icons/lock.png',
-        icon: '🛡',
+        iconImage: 'assets/icons/shield.png',
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),

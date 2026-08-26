@@ -63,8 +63,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           clipBehavior: Clip.none,
           children: [
             SizedBox(height: 0),
-            Positioned(top: -16, right: 8, child: Text('⭐', style: TextStyle(fontSize: 18, color: AAColors.ink))),
-            Positioned(top: 70, left: 0, child: Text('💛', style: TextStyle(fontSize: 18, color: AAColors.ink))),
+            Positioned(top: -16, right: 8, child: AaIconImage('assets/icons/star.png', size: 18)),
+            Positioned(top: 70, left: 0, child: AaIconImage('assets/icons/heart.png', size: 18)),
             const SizedBox.shrink(),
           ],
         ),
@@ -142,8 +142,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     isDense: true,
                     contentPadding: EdgeInsets.zero,
                     suffixIcon: IconButton(
-                      icon: Text(_obscure ? '🙈' : '👁️',
-                          style: TextStyle(fontSize: 15)),
+                      icon: Image.asset(
+                        _obscure
+                            ? 'assets/icons/hide.png'
+                            : 'assets/icons/eye.png',
+                        width: 17,
+                        height: 17,
+                      ),
                       onPressed: () => setState(() => _obscure = !_obscure),
                     ),
                   ),

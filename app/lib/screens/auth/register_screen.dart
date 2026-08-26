@@ -126,7 +126,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     if (_account.text.trim().isNotEmpty) ...[
                       SizedBox(width: 6),
                       StampBadge(
-                        text: _accountTaken ? '占用' : '✅ 可用',
+                        text: _accountTaken ? '占用' : '可用',
+                        image: _accountTaken ? null : 'assets/icons/check.png',
                         rotate: -8,
                         color: _accountTaken ? AAColors.berry : AASemantic.stampDone,
                       ),
@@ -165,8 +166,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         ),
                       ),
                       IconButton(
-                        icon: Text(_obscure ? '🙈' : '👁️',
-                            style: TextStyle(fontSize: 15)),
+                        icon: Image.asset(
+                          _obscure
+                              ? 'assets/icons/hide.png'
+                              : 'assets/icons/eye.png',
+                          width: 17,
+                          height: 17,
+                        ),
                         onPressed: () => setState(() => _obscure = !_obscure),
                       ),
                     ],

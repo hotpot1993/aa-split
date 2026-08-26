@@ -40,7 +40,11 @@ class _ParticipantsScreenState extends ConsumerState<ParticipantsScreen> {
     final members = _toMembers(bill);
 
     return AaScaffold(
-      appBar: AaAppBar(title: '👥 选择参与人', icon: '🪄'),
+      appBar: AaAppBar(
+        title: '选择参与人',
+        headIcon: 'assets/icons/group.png',
+        iconImage: 'assets/icons/magic.png',
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [

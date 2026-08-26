@@ -22,7 +22,12 @@ class MembersScreen extends ConsumerWidget {
     final me = ref.watch(currentUserProvider)?.id ?? 'me';
 
     return AaScaffold(
-      appBar: AaAppBar(title: '👑 成员管理', icon: '➕', onIconTap: () => context.push('/groups/$groupId/invite')),
+      appBar: AaAppBar(
+        title: '成员管理',
+        headIcon: 'assets/icons/crown.png',
+        iconImage: 'assets/icons/plus.png',
+        onIconTap: () => context.push('/groups/$groupId/invite'),
+      ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: [
@@ -141,9 +146,17 @@ class _MemberLine extends StatelessWidget {
                 ),
               ])),
               if (member.isOwner)
-                Text('👑 群主',
-                    style: TextStyle(
-                        fontFamily: AAFonts.title, fontSize: 15, color: AAColors.ink))
+                Row(
+                  children: [
+                    AaIconImage('assets/icons/crown.png', size: 16),
+                    SizedBox(width: 4),
+                    Text('群主',
+                        style: TextStyle(
+                            fontFamily: AAFonts.title,
+                            fontSize: 15,
+                            color: AAColors.ink)),
+                  ],
+                )
               else if (canManage)
                 InkWell(
                   onTap: onRemove,
@@ -151,9 +164,7 @@ class _MemberLine extends StatelessWidget {
                     children: [
                       HandTag('正常', dense: true, variant: ChipVariant.blue),
                       SizedBox(width: 6),
-                      Text('✗',
-                          style: TextStyle(
-                              fontFamily: AAFonts.title, fontSize: 13, color: AAColors.inkSoft)),
+                      AaIconImage('assets/icons/cross.png', size: 13),
                       SizedBox(width: 2),
                       Text('移除',
                           style: TextStyle(

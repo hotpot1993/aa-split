@@ -210,7 +210,9 @@ class _StyleCard extends StatelessWidget {
                   style: TextStyle(fontFamily: bodyFamily, fontSize: 16, color: AAColors.ink)),
               if (selected) ...[
                 const SizedBox(width: 6),
-                Text('✓ 当前使用',
+                AaIconImage('assets/icons/check.png', size: 11),
+                SizedBox(width: 3),
+                Text('当前使用',
                     style: TextStyle(
                         fontFamily: bodyFamily, fontSize: 11, color: AAColors.mint)),
               ],

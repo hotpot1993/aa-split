@@ -65,9 +65,9 @@ void main() {
     await tester.pump(const Duration(milliseconds: 350));
 
     expect(find.text('换头像'), findsOneWidget);
-    expect(find.text('📷 拍一张'), findsOneWidget);
-    expect(find.text('🖼️ 从相册选'), findsOneWidget);
-    expect(find.text('🐼 恢复默认'), findsOneWidget);
+    expect(find.text('拍一张'), findsOneWidget);
+    expect(find.text('从相册选'), findsOneWidget);
+    expect(find.text('恢复默认'), findsOneWidget);
   });
 
   testWidgets('P33 凭证页：拍照/相册弹模拟提示，确认后更新张数与预览', (tester) async {
@@ -76,7 +76,7 @@ void main() {
     expect(find.text('已拍 0 张：'), findsOneWidget);
 
     // 点「从相册选」→ 弹出模拟拍摄凭证提示
-    await tester.tap(find.text('🖼 从相册选'));
+    await tester.tap(find.text('从相册选'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 350));
     expect(find.text('模拟拍摄凭证'), findsOneWidget);
@@ -89,7 +89,7 @@ void main() {
     expect(find.text('已拍 1 张'), findsWidgets);
 
     // 再拍一张 → 2 张
-    await tester.tap(find.text('📸 拍一张'));
+    await tester.tap(find.text('拍一张'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.text('模拟拍摄凭证'), findsOneWidget);

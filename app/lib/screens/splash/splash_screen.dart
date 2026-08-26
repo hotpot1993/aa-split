@@ -60,8 +60,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
         children: [
           const Positioned.fill(child: CustomPaint(painter: _SplashPainter())),
           // 散落涂鸦（Demo .doodle）—— 替换为匹配素材
-          Positioned(top: 130, left: 36, child: Text('⭐', style: TextStyle(fontSize: 18, color: AAColors.ink))),
-          Positioned(top: 230, right: 40, child: Text('💛', style: TextStyle(fontSize: 18, color: AAColors.ink))),
+          Positioned(top: 130, left: 36, child: AaIconImage('assets/icons/star.png', size: 18)),
+          Positioned(top: 230, right: 40, child: AaIconImage('assets/icons/heart.png', size: 18)),
           Positioned(
             top: 400,
             left: 56,

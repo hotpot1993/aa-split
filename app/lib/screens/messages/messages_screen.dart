@@ -110,7 +110,8 @@ class _MsgCard extends ConsumerWidget {
                     fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft)),
             SizedBox(height: 8),
             DoodleButton(
-              label: '去处理 ✓',
+              label: '去处理',
+              trailingImage: 'assets/icons/check.png',
               mini: true,
               onPressed: open,
             ),
@@ -146,7 +147,8 @@ class _MsgCard extends ConsumerWidget {
               children: [
                 Expanded(
                   child: DoodleButton(
-                    label: '接受 ✓',
+                    label: '接受',
+                    trailingImage: 'assets/icons/check.png',
                     mini: true,
                     expand: true,
                     color: AAColors.mint,
@@ -157,7 +159,8 @@ class _MsgCard extends ConsumerWidget {
                 SizedBox(width: 8),
                 Expanded(
                   child: DoodleButton(
-                    label: '拒绝 ✗',
+                    label: '拒绝',
+                    trailingImage: 'assets/icons/cross.png',
                     mini: true,
                     expand: true,
                     onPressed: () => showAaToast(context, '已拒绝邀请'),

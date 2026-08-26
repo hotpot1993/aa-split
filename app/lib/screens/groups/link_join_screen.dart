@@ -60,7 +60,11 @@ class _LinkJoinScreenState extends ConsumerState<LinkJoinScreen> {
   Widget build(BuildContext context) {
     final code = _previewCode;
     return AaScaffold(
-      appBar: AaAppBar(title: '🔗 邀请链接入群', icon: '🎁'),
+      appBar: AaAppBar(
+        title: '邀请链接入群',
+        headIcon: 'assets/icons/link.png',
+        iconImage: 'assets/icons/gift.png',
+      ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: [

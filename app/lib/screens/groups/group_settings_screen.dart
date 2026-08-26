@@ -161,7 +161,8 @@ class _GroupSettingsScreenState extends ConsumerState<GroupSettingsScreen> {
           SizedBox(height: 10),
           if (isOwner)
             DoodleButton(
-              label: '🔥 解散群组',
+              label: '解散群组',
+              leadingImage: 'assets/icons/flame.png',
               type: DoodleButtonType.danger,
               big: true,
               onPressed: () => _disband(g),

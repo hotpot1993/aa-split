@@ -215,7 +215,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           ),
           SizedBox(width: 8),
           StampBadge(
-            text: g.pendingBillCount > 0 ? '${g.pendingBillCount}笔待清' : '✅已清',
+            text: g.pendingBillCount > 0 ? '${g.pendingBillCount}笔待清' : '已清',
+            image: g.pendingBillCount > 0 ? null : 'assets/icons/check.png',
             color: g.pendingBillCount > 0 ? AASemantic.stampMoney : AASemantic.stampDone,
           ),
         ],

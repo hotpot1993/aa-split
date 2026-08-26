@@ -65,7 +65,7 @@ class StatsScreen extends ConsumerWidget {
       appBar: AaAppBar(
         title: '统计',
         headIcon: 'assets/icons/chart.png',
-        icon: '🌗',
+        iconImage: 'assets/icons/moon.png',
         backLabel: '‹ 返回',
       ),
       body: ListView(
@@ -84,8 +84,15 @@ class StatsScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('🗓 月度消费趋势',
-                    style: TextStyle(fontFamily: AAFonts.title, fontSize: 14, color: AAColors.ink)),
+                Row(
+                  children: [
+                    AaIconImage('assets/icons/calendar.png', size: 16),
+                    SizedBox(width: 4),
+                    Text('月度消费趋势',
+                        style: TextStyle(
+                            fontFamily: AAFonts.title, fontSize: 14, color: AAColors.ink)),
+                  ],
+                ),
                 SizedBox(height: 4),
                 CrayonBarChart(
                   labels: labels,
@@ -102,8 +109,15 @@ class StatsScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('🍩 分类占比（甜甜圈）',
-                    style: TextStyle(fontFamily: AAFonts.title, fontSize: 14, color: AAColors.ink)),
+                Row(
+                  children: [
+                    AaIconImage('assets/icons/donut.png', size: 16),
+                    SizedBox(width: 4),
+                    Text('分类占比（甜甜圈）',
+                        style: TextStyle(
+                            fontFamily: AAFonts.title, fontSize: 14, color: AAColors.ink)),
+                  ],
+                ),
                 SizedBox(height: 10),
                 if (sections.isEmpty)
                   SizedBox(height: 132)
@@ -161,7 +175,7 @@ class StatsScreen extends ConsumerWidget {
             EmptyState(
               title: '还没有账单',
               tag: 'P13 统计',
-              art: '📊😴',
+              artImage: 'assets/icons/chart.png',
               compact: true,
             )
           else

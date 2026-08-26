@@ -7,6 +7,7 @@ import 'package:aa_design/aa_design.dart';
 import '../../core/utils/format.dart';
 import '../../models/bill.dart';
 import '../../models/group_member.dart';
+import '../../widgets/common.dart';
 import '../../widgets/sheet.dart';
 import 'bill_draft.dart';
 
@@ -276,10 +277,10 @@ class _TypeRowWidget extends StatelessWidget {
   final ValueChanged<SplitType> onSelect;
 
   static const _items = [
-    (SplitType.even, '🍕', '均摊（最常用）', '每人 ¥xx · 平分成N块披萨', '推荐', ChipVariant.green),
-    (SplitType.custom, '✍️', '自定义金额', '每人不同，如酒店各住不同天数', '', ChipVariant.plain),
-    (SplitType.ratio, '🧈', '按比例分摊', '按天数/里程占比自动算', '', ChipVariant.plain),
-    (SplitType.exempt, '🏅', '免分摊人员', '请客的人/司机不参与，剩余人重新算', '', ChipVariant.blue),
+    (SplitType.even, 'assets/icons/pizza.png', '均摊（最常用）', '每人 ¥xx · 平分成N块披萨', '推荐', ChipVariant.green),
+    (SplitType.custom, 'assets/icons/hand.png', '自定义金额', '每人不同，如酒店各住不同天数', '', ChipVariant.plain),
+    (SplitType.ratio, 'assets/icons/butter.png', '按比例分摊', '按天数/里程占比自动算', '', ChipVariant.plain),
+    (SplitType.exempt, 'assets/icons/medal.png', '免分摊人员', '请客的人/司机不参与，剩余人重新算', '', ChipVariant.blue),
   ];
 
   @override
@@ -300,7 +301,7 @@ class _TypeRowWidget extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  Text(it.$2, style: TextStyle(fontSize: 26)),
+                  AaIconImage(it.$2, size: 26),
                   SizedBox(width: 12),
                   Expanded(
                     child: Column(
