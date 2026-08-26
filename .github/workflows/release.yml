@@ -79,6 +79,12 @@ jobs:
           cp app/build/app/outputs/bundle/release/app-release.aab dist/release/
           cp app/build/app/outputs/flutter-apk/app-release.apk dist/release/
           cp app/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk dist/release/
+          # 版本元数据：与安装包同批构建，供 VPS 自动同步脚本（scripts/vps-sync-update.sh）读取，
+          # 避免解析标签提交时与安装包实际版本不一致（标签重打场景）
+          V=$(grep -m1 '^version:' app/pubspec.yaml | tr -d ' \r')
+          V=${V#version:}
+          printf 'versionName=%s\nversionCode=%s\n' "${V%%+*}" "${V#*+}" > dist/release/aa-version.txt
+          cat dist/release/aa-version.txt
           ls -lh dist/release/
 
       - name: Verify release signing
@@ -111,3 +117,4 @@ jobs:
             dist/release/app-release.aab
             dist/release/app-release.apk
             dist/release/app-arm64-v8a-release.apk
+            dist/release/aa-version.txt

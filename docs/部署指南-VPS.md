@@ -1,6 +1,6 @@
 # AA分账App — VPS 部署指南（docker compose 单机）
 
-> 首次部署：2026-08-24 · 验证：smoke 22/22 + SSE 实时推送 ✅ · 2026-08-26 **v1.0.5 更新链路已验证**（检查更新 → APK 下载安装）
+> 首次部署：2026-08-24 · 验证：smoke 22/22 + SSE 实时推送 ✅ · 2026-08-26 **v1.0.5 更新链路已验证**（检查更新 → APK 下载安装）· 2026-08-27 **更新源全自动**（v1.0.7+5000）：`sync-update.sh` 定时任务自动从 GitHub 拉取安装包 + 同步版本接口 ✅
 
 ## 一、服务器概况
 
@@ -40,25 +40,34 @@ docker compose up -d --build api           # 改源码后重建上线
 
 升级流程：pscp 上传 `server/` 变更 → `docker compose up -d --build api`（构建含 `npm ci`，本机网络约 10 分钟，请耐心）。
 
-**发版更新「检查更新」版本**（每轮发版照此执行，详见 [发版 SOP](./开发进度.md#十发版-sop每次发行照此执行)；**更新源 = VPS 自托管**：GitHub Release 发布 → 安装包上传 VPS `/apk/`（nginx 静态托管）→ App 从 VPS 拉取下载安装；Gitee 代码/发行版自动同步已移除）：
+**发版更新「检查更新」版本**（更新源 = VPS 自托管 + **GitHub 自动拉取**，详见 [发版 SOP](./开发进度.md#十发版-sop每次发行照此执行)：GitHub Release 发布新版本 → VPS 定时任务自动从 GitHub 下载安装包到 `/apk/` 并同步更新版本接口 → App 从 VPS 拉取下载安装；**无任何人工上传步骤**）：
+
+**① 一次性安装自动同步任务**（发版后 ≤15 分钟自动生效；支持手动立即执行）：
 
 ```bash
-# 1. 从 GitHub Release 下载安装包到 VPS /apk/（nginx location ^~ /apk/ 直出）
-curl -fL -o /www/wwwroot/api.hotpot1993.top/apk/aa-split-vX.Y.Z.apk \
-  https://github.com/hotpot1993/aa-split/releases/download/vX.Y.Z/app-release.apk
+# 脚本落位（仓库已推送到 GitHub 则 raw 直取；否则从本仓库 scripts/vps-sync-update.sh 上传）
+mkdir -p /opt/aa-split/scripts /opt/aa-split/logs
+curl -fsSL https://raw.githubusercontent.com/hotpot1993/aa-split/master/scripts/vps-sync-update.sh \
+  -o /opt/aa-split/scripts/sync-update.sh
+chmod +x /opt/aa-split/scripts/sync-update.sh
 
-# 2. 更新 .env 四项（APP_VERSION_LATEST / BUILD / URL / NOTES；URL = VPS /apk/）
-sed -i 's|^APP_VERSION_LATEST=.*|APP_VERSION_LATEST=X.Y.Z|' /opt/aa-split/.env
-sed -i 's|^APP_VERSION_BUILD=.*|APP_VERSION_BUILD=BBBB|' /opt/aa-split/.env
-sed -i 's|^APP_VERSION_URL=.*|APP_VERSION_URL=https://api.hotpot1993.top/apk/aa-split-vX.Y.Z.apk|' /opt/aa-split/.env
-sed -i 's|^APP_VERSION_NOTES=.*|APP_VERSION_NOTES=更新说明|' /opt/aa-split/.env
+# 安装定时任务（每 15 分钟；幂等，保留已有 crontab 条目）
+( crontab -l 2>/dev/null | grep -vF '/opt/aa-split/scripts/sync-update.sh'
+  echo '*/15 * * * * /opt/aa-split/scripts/sync-update.sh' ) | crontab -
 
-# 3. 重建容器让 .env 生效（restart 不会重新注入 env）
-cd /opt/aa-split && docker compose up -d api
+# 立即手动同步一次（首次运行会把 VPS 对齐到 GitHub 当前最新版）
+/opt/aa-split/scripts/sync-update.sh
+tail -n 20 /opt/aa-split/logs/sync-update.log
+```
 
-# 4. 验证（确保新包 versionCode 大于已装版本，否则系统报「降级」）
-curl -s https://api.hotpot1993.top/api/v1/app/version       # latestVersion=X.Y.Z + VPS URL
-curl -sIL https://api.hotpot1993.top/apk/aa-split-vX.Y.Z.apk  # HTTP/2 200
+**② 自动同步做什么**：GitHub `releases/latest` 取最新标签 → 版本号（发行版资产 `aa-version.txt` 优先，回退标签提交 `app/pubspec.yaml`）→ 与 `.env` `APP_VERSION_BUILD` 比较（更大才更新，相同直接跳过）→ 下载 `app-release.apk` 到 `/www/wwwroot/api.hotpot1993.top/apk/aa-split-vX.Y.Z-BBBBB.apk`（`.part` 临时文件 + ZIP 完整性校验 + 同源兜底硬链）→ 更新 `.env` 四项（`APP_VERSION_LATEST / BUILD / URL / NOTES`）→ `docker compose up -d api` → 校验 `GET /api/v1/app/version` 返回新版本+新 URL → 清理旧包（保留 6 个）。重复运行无副作用。
+
+**③ 验证**：
+
+```bash
+DRY_RUN=1 /opt/aa-split/scripts/sync-update.sh              # 只打印同步计划（不下载/不改配置/不重建）
+curl -s https://api.hotpot1993.top/api/v1/app/version       # latestVersion=X.Y.Z build=BBBBB + VPS URL
+curl -sIL https://api.hotpot1993.top/apk/aa-split-vX.Y.Z-BBBBB.apk  # HTTP/2 200
 ```
 
 数据卷：`aa-split_pgdata` / `aa-split_redisdata` / `aa-split_miniodata`（`docker volume ls`）。

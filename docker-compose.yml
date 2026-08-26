@@ -96,9 +96,10 @@ services:
       JPUSH_ENABLED: ${JPUSH_ENABLED:-true}
       CORS_ORIGINS: ${CORS_ORIGINS:-*}
       SWAGGER_ENABLED: ${SWAGGER_ENABLED:-true}
-      # 检查更新：最新版信息（App 内「检查更新」读取）
-      # 更新流程：GitHub 发布新版本（打 v* 标签 → Actions 正式签名构建）→ 把安装包
-      # 上传至 VPS `/apk/`（nginx 静态托管）→ 更新此处 + .env 的 APP_VERSION_URL 指向 VPS
+      # 检查更新：最新版信息（App 内「检查更新」读取；VPS 线上由同步脚本热切换 .env）
+      # 更新流程：GitHub 发布新版本（打 v* 标签 → Actions 正式签名构建并发布 Release）→
+      # VPS 定时任务（scripts/vps-sync-update.sh，cron 每 15 分钟）自动从 GitHub 拉取安装包
+      # 到 VPS /apk/（nginx 静态托管）并同步更新本项 + .env 的 APP_VERSION_URL 指向 VPS
       APP_VERSION_LATEST: ${APP_VERSION_LATEST:-1.0.6}
       APP_VERSION_BUILD: ${APP_VERSION_BUILD:-2008}
       APP_VERSION_URL: "${APP_VERSION_URL:-https://api.hotpot1993.top/apk/aa-split-v1.0.6.apk}"
