@@ -9,8 +9,10 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { createHash, randomBytes } from 'crypto';
+import { MemberStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { JwtPayload } from '../common/types';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -32,6 +34,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly storageService: StorageService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   private hash(plain: string): string {
@@ -316,6 +319,11 @@ export class AuthService {
     ) {
       this.cleanupAvatarFile(user.avatarUrl);
     }
+    // 头像（含归一为默认）变更 → 通知所在群成员（SSE 数据事件），
+    // 让其它设备/成员的群成员列表无需重启即可刷新头像
+    if (data.avatarUrl !== undefined && user.avatarUrl !== data.avatarUrl) {
+      void this.pushProfileChangedEvent(userId);
+    }
     return this.sanitizeUser(updated);
   }
 
@@ -339,7 +347,37 @@ export class AuthService {
     });
     // 旧头像也是上传文件时清理（幂等，失败仅记日志）
     this.cleanupAvatarFile(user.avatarUrl);
+    // 头像变更 → SSE 通知所在群成员（含本账号其它设备），成员列表实时刷新
+    void this.pushProfileChangedEvent(userId);
     return { avatarUrl: stored.url };
+  }
+
+  /**
+   * 头像/资料变更信号：向用户所在全部群的活跃成员静默推一条 SSE 数据事件
+   * （含自己——多设备同账号场景下让其它设备也立即刷新），客户端收到后 bump
+   * 重新拉取群成员列表。推送失败不影响头像更新（仅记录日志）。
+   */
+  private async pushProfileChangedEvent(userId: string) {
+    try {
+      const mine = await this.prisma.groupMember.findMany({
+        where: { userId, status: MemberStatus.active },
+        select: { groupId: true },
+      });
+      if (mine.length === 0) return;
+      const groupIds = mine.map((m) => m.groupId);
+      const peers = await this.prisma.groupMember.findMany({
+        where: { groupId: { in: groupIds }, status: MemberStatus.active },
+        select: { userId: true },
+      });
+      for (const peerId of new Set(peers.map((p) => p.userId))) {
+        this.notificationsService.pushDataEvent(peerId, {
+          refType: 'profile',
+          refId: userId,
+        });
+      }
+    } catch (e) {
+      // 通知失败仅记录，不阻塞头像更新
+    }
   }
 
   /** 本机文件路径判定（旧版本把 pickImage 的本地路径当 avatarUrl 入库） */

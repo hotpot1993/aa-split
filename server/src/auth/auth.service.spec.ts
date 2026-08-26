@@ -5,6 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { AuthService } from './auth.service';
 
 describe('AuthService', () => {
@@ -34,6 +35,9 @@ describe('AuthService', () => {
       update: jest.fn(),
       findMany: jest.fn(),
     },
+    groupMember: {
+      findMany: jest.fn(),
+    },
   };
 
   const storageMock = {
@@ -41,8 +45,13 @@ describe('AuthService', () => {
     remove: jest.fn().mockResolvedValue(undefined),
   };
 
+  const notificationsMock = {
+    pushDataEvent: jest.fn(),
+  };
+
   beforeEach(async () => {
     jest.clearAllMocks();
+    prismaMock.groupMember.findMany.mockResolvedValue([]);
     const moduleRef = await Test.createTestingModule({
       providers: [
         AuthService,
@@ -50,6 +59,7 @@ describe('AuthService', () => {
         { provide: JwtService, useValue: jwtMock },
         { provide: ConfigService, useValue: configMock },
         { provide: StorageService, useValue: storageMock },
+        { provide: NotificationsService, useValue: notificationsMock },
       ],
     }).compile();
     service = moduleRef.get(AuthService);
@@ -280,6 +290,76 @@ describe('AuthService', () => {
     await expect(service.updateAvatar('u1', undefined)).rejects.toBeInstanceOf(
       BadRequestException,
     );
+  });
+
+  it('头像变更：向所在群全部活跃成员推 SSE 数据事件（去重）', async () => {
+    prismaMock.user.findUnique.mockResolvedValue({
+      id: 'u1',
+      accountName: 'tuanzi_t',
+      nickname: '团子酱',
+      avatarUrl: null,
+    });
+    storageMock.upload.mockResolvedValue({
+      objectKey: 'new.png',
+      url: '/uploads/new.png',
+    });
+    prismaMock.user.update.mockResolvedValue({
+      id: 'u1',
+      avatarUrl: '/uploads/new.png',
+    });
+    // 用户属于 2 个群；群1 有 u2（自身+两群共同成员去重），群2 有 u3
+    prismaMock.groupMember.findMany
+      .mockResolvedValueOnce([{ groupId: 'g1' }, { groupId: 'g2' }])
+      .mockResolvedValueOnce([
+        { userId: 'u2' },
+        { userId: 'u2' }, // 两群共同成员 → 去重
+        { userId: 'u3' },
+      ]);
+
+    await service.updateAvatar('u1', {
+      originalname: 'c.png',
+      mimetype: 'image/png',
+      buffer: Buffer.from('fake-image'),
+    } as Express.Multer.File);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(notificationsMock.pushDataEvent).toHaveBeenCalledTimes(2);
+    expect(notificationsMock.pushDataEvent).toHaveBeenCalledWith('u2', {
+      refType: 'profile',
+      refId: 'u1',
+    });
+    expect(notificationsMock.pushDataEvent).toHaveBeenCalledWith('u3', {
+      refType: 'profile',
+      refId: 'u1',
+    });
+  });
+
+  it('编辑资料：头像变更同样推送 SSE（含恢复默认）', async () => {
+    prismaMock.user.findUnique.mockResolvedValue({
+      id: 'u1',
+      accountName: 'tuanzi_t',
+      nickname: '团子酱',
+      avatarUrl: '/uploads/old.png',
+      bio: null,
+    });
+    prismaMock.user.update.mockResolvedValue({
+      id: 'u1',
+      avatarUrl: '🐼',
+      bio: null,
+    });
+    prismaMock.groupMember.findMany
+      .mockResolvedValueOnce([{ groupId: 'g1' }])
+      .mockResolvedValueOnce([{ userId: 'u2' }]);
+
+    await service.updateProfile('u1', { avatarUrl: '🐼' });
+    expect(prismaMock.user.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ avatarUrl: '🐼' }) }),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(notificationsMock.pushDataEvent).toHaveBeenCalledWith('u2', {
+      refType: 'profile',
+      refId: 'u1',
+    });
   });
 
   it('修改安全问题：当前密码正确则更新问题与答案哈希', async () => {

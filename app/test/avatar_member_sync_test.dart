@@ -9,8 +9,36 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:aa_split_app/core/utils/avatar_ref.dart';
 import 'package:aa_split_app/data/mock/mock_store.dart';
 import 'package:aa_split_app/data/repositories/group_repository.dart';
+import 'package:aa_split_app/models/group_member.dart';
+import 'package:aa_split_app/providers/auth_provider.dart';
+import 'package:aa_split_app/providers/data_providers.dart';
+import 'package:aa_split_app/providers/repositories.dart';
 import 'package:aa_split_app/screens/groups/members_screen.dart';
 import 'package:aa_split_app/widgets/avatar.dart';
+
+/// 成员仓库桩：始终返回「加群时的旧头像」——用于验证 Provider 层
+/// 会以当前会话资料覆写本人行（不依赖服务端回包）。
+class _StaleMembersRepo extends GroupRepository {
+  @override
+  Future<List<GroupMember>> members(String groupId) async => [
+        const GroupMember(
+          id: 'me_gm',
+          userId: 'me',
+          nickname: '团子酱',
+          accountName: 'tuanzi',
+          avatarUrl: '🐼',
+          isOwner: true,
+        ),
+        const GroupMember(
+          id: 'z_gm',
+          userId: 'u_zhangsan',
+          nickname: '张三',
+          accountName: 'zhangsan',
+          avatarUrl: '🐰',
+          isOwner: false,
+        ),
+      ];
+}
 
 Future<void> _pump(WidgetTester tester, Widget home) async {
   tester.view.physicalSize = const Size(1080, 1920);
@@ -64,6 +92,38 @@ void main() {
     expect(isLocalAvatarRef('https://cdn/x/a.png'), isFalse);
     expect(isLocalAvatarRef('🐼'), isFalse);
     expect(isLocalAvatarRef(''), isFalse);
+  });
+
+  test('群成员 Provider：换头像后「我」的行即时用最新头像（无需等服务端回包）', () async {
+    final container = ProviderContainer(overrides: [
+      // 仓库桩始终返回旧头像（模拟服务端数据滞后）
+      groupRepositoryProvider.overrideWithValue(_StaleMembersRepo()),
+    ]);
+    addTearDown(container.dispose);
+    final original = MockStore.instance.currentUser;
+    addTearDown(() => MockStore.instance.currentUser = original);
+
+    await container.read(groupMembersProvider.future);
+    expect(
+      container.read(groupMembersProvider).value!['g1']!
+          .firstWhere((m) => m.userId == 'me').avatarUrl,
+      '🐼',
+    );
+
+    // 模拟「我的」换头像成功（AuthController 同步本地会话态）
+    await container.read(authProvider.notifier).updateProfile(avatarUrl: '🦄');
+    await container.read(groupMembersProvider.future);
+
+    // 本人行被本地会话资料覆写 → 成员列表无需等服务端回包即显示新头像
+    final me = container.read(groupMembersProvider).value!['g1']!
+        .firstWhere((m) => m.userId == 'me');
+    expect(me.avatarUrl, '🦄');
+    // 其它成员仍用服务端返回
+    expect(
+      container.read(groupMembersProvider).value!['g1']!
+          .firstWhere((m) => m.userId == 'u_zhangsan').avatarUrl,
+      '🐰',
+    );
   });
 
   testWidgets('成员管理：每行以 SketchAvatar 渲染头像', (tester) async {

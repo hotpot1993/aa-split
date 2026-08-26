@@ -37,6 +37,26 @@ class GroupMember {
             : null,
         netBalanceCents: json['netBalanceCents'] as int? ?? 0,
       );
+
+  GroupMember copyWith({
+    String? nickname,
+    String? accountName,
+    String? avatarUrl,
+    bool? isOwner,
+    String? status,
+    int? netBalanceCents,
+  }) =>
+      GroupMember(
+        id: id,
+        userId: userId,
+        nickname: nickname ?? this.nickname,
+        accountName: accountName ?? this.accountName,
+        avatarUrl: avatarUrl ?? this.avatarUrl,
+        isOwner: isOwner ?? this.isOwner,
+        status: status ?? this.status,
+        joinedAt: joinedAt,
+        netBalanceCents: netBalanceCents ?? this.netBalanceCents,
+      );
 }
 
 /// 群成员统计（供成员管理/P24 使用）
