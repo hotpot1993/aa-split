@@ -96,13 +96,13 @@ services:
       JPUSH_ENABLED: ${JPUSH_ENABLED:-true}
       CORS_ORIGINS: ${CORS_ORIGINS:-*}
       SWAGGER_ENABLED: ${SWAGGER_ENABLED:-true}
-      # 检查更新：最新版信息（App 内「检查更新」读取；发版时更新 .env + 上传 apk 到 Gitee 发行版 / nginx /apk/）
-      # 发版 SOP：版本号同步升级 pubspec.yaml / config.dart / docs/ui-demo/index.html，
-      # 打 v* 标签推 GitHub Actions 构建签名包，随后把 APK 传到 Gitee 发行版附件并更新此处 + .env
-      APP_VERSION_LATEST: ${APP_VERSION_LATEST:-1.0.5}
-      APP_VERSION_BUILD: ${APP_VERSION_BUILD:-2006}
-      APP_VERSION_URL: "${APP_VERSION_URL:-https://gitee.com/hotpot1993/aa-split/releases/download/v1.0.5/app-release.apk}"
-      APP_VERSION_NOTES: "${APP_VERSION_NOTES:-9 项界面与功能修复：账单编辑可换垫付人/改分摊、弹窗布局优化、修改安全问题、换头像同步成员列表、收款码卡片生成图片、设置迁入「我的」等}"
+      # 检查更新：最新版信息（App 内「检查更新」读取）
+      # 更新流程：GitHub 发布新版本（打 v* 标签 → Actions 正式签名构建）→ 把安装包
+      # 上传至 VPS `/apk/`（nginx 静态托管）→ 更新此处 + .env 的 APP_VERSION_URL 指向 VPS
+      APP_VERSION_LATEST: ${APP_VERSION_LATEST:-1.0.6}
+      APP_VERSION_BUILD: ${APP_VERSION_BUILD:-2008}
+      APP_VERSION_URL: "${APP_VERSION_URL:-https://api.hotpot1993.top/apk/aa-split-v1.0.6.apk}"
+      APP_VERSION_NOTES: "${APP_VERSION_NOTES:-9 项需求修复：群解散组员端同步移除、群组详情返回修复、群组设置权限与免分摊人员、注册输入限制、记一笔右对齐与选择弹层、收款卡片去二维码、消息全部已读、启动页5秒自动跳转}"
     ports:
       - "3000:3000"
     volumes:

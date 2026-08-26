@@ -22,10 +22,10 @@ class AppVersionInfo {
       latestVersion: version,
       latestBuild:
           (json['latestBuild'] as num?)?.toInt() ?? int.parse(AppConfig.appBuildNumber),
-      // 下载源优先级：服务端返回的 downloadUrl > Gitee 发行版兜底（默认渠道）
+      // 下载源：服务端返回的 downloadUrl（VPS /apk/ 自托管）> API 同源 /apk/ 兜底
       downloadUrl: (json['downloadUrl'] as String? ?? '').isNotEmpty
           ? json['downloadUrl'] as String
-          : AppConfig.giteeUpdateUrl(version),
+          : AppConfig.updateFallbackUrl(version),
       notes: json['notes'] as String? ?? '',
     );
   }

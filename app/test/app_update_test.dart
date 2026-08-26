@@ -79,35 +79,26 @@ void main() {
     });
   });
 
-  group('更新下载源（默认 Gitee 发行版）', () {
-    test('服务端未返回 downloadUrl → 兜底 Gitee 发行版 URL', () {
+  group('更新下载源（VPS 自托管 /apk/）', () {
+    test('服务端未返回 downloadUrl → 兜底 API 同源 /apk/ URL', () {
       final info = AppVersionInfo.fromJson(<String, dynamic>{
-        'latestVersion': '1.0.5',
-        'latestBuild': 2006,
+        'latestVersion': '1.0.6',
+        'latestBuild': 2008,
         'downloadUrl': '',
         'notes': '',
       });
-      expect(
-        info.downloadUrl,
-        'https://gitee.com/hotpot1993/aa-split/releases/download/v1.0.5/app-release.apk',
-      );
+      expect(info.downloadUrl, AppConfig.updateFallbackUrl('1.0.6'));
+      expect(info.downloadUrl, endsWith('/apk/aa-split-v1.0.6.apk'));
     });
 
-    test('服务端返回 downloadUrl → 以服务端为准', () {
+    test('服务端返回 downloadUrl → 以服务端为准（VPS /apk/）', () {
       final info = AppVersionInfo.fromJson(<String, dynamic>{
-        'latestVersion': '1.0.5',
-        'latestBuild': 2006,
-        'downloadUrl': 'https://api.hotpot1993.top/apk/aa-split-v1.0.5.apk',
+        'latestVersion': '1.0.6',
+        'latestBuild': 2008,
+        'downloadUrl': 'https://api.hotpot1993.top/apk/aa-split-v1.0.6.apk',
         'notes': '',
       });
-      expect(info.downloadUrl, 'https://api.hotpot1993.top/apk/aa-split-v1.0.5.apk');
-    });
-
-    test('AppConfig.giteeUpdateUrl 生成规则', () {
-      expect(
-        AppConfig.giteeUpdateUrl('1.0.5'),
-        'https://gitee.com/hotpot1993/aa-split/releases/download/v1.0.5/app-release.apk',
-      );
+      expect(info.downloadUrl, 'https://api.hotpot1993.top/apk/aa-split-v1.0.6.apk');
     });
   });
 }

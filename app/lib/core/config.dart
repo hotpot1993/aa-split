@@ -60,13 +60,9 @@ abstract final class AppConfig {
 
   // ---------- 更新包下载源 ----------
 
-  /// 更新包默认下载基址：**Gitee 发行版**（镜像仓库，公开可匿名下载）。
-  /// 服务端 `/app/version` 返回的 downloadUrl 存在时以服务端为准（线上渠道切换走 VPS .env），
-  /// 未返回/为空时客户端按「Gitee 发行版 `vX.Y.Z/app-release.apk`」兜底。
-  static const String updateReleaseBase = 'https://gitee.com/hotpot1993/aa-split/releases/download';
-
-  /// 兜底拼接 Gitee 版更新包 URL（`https://gitee.com/hotpot1993/aa-split/releases/download/vX.Y.Z/app-release.apk`）。
-  /// 附件名与 GitHub Release / release2gitee 同步产物一致（app-release.apk）。
-  static String giteeUpdateUrl(String version) =>
-      '$updateReleaseBase/v$version/app-release.apk';
+  /// 更新包默认下载基址：**VPS 自托管**（更新流程：GitHub 发布新版本 → 安装包
+  /// 上传至 VPS `/apk/` → 服务端 `/app/version` 返回 VPS 下载 URL → 客户端从 VPS 拉取安装）。
+  /// 服务端未返回 downloadUrl 时按「API 同源 `/apk/`」兜底（文件名 = 版本号）。
+  static String updateFallbackUrl(String version) =>
+      '${baseUrl.replaceFirst(RegExp(r'/api/v1$'), '')}/apk/aa-split-v$version.apk';
 }
