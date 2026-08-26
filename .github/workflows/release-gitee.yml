@@ -1,0 +1,115 @@
+name: Release to Gitee
+
+# GitHub 发行版（Release）发布事件 → 自动同步到 Gitee 发行版：
+#   - 先同步 tag/分支到 Gitee 镜像（与 mirror-gitee.yml 同源凭据）
+#   - 在 Gitee 按同一 tag 创建/复用发行版，并上传 GitHub Release 的全部产物
+#     （app-release.apk 以 aa-split-v<tag>.apk 命名 —— 与 AppConfig.giteeUpdateUrl 完全一致；
+#      app-release.aab / app-arm64-v8a-release.apk 原名保留）
+#   - 同名附件先删后传（幂等：重复触发只替换，不产生重复附件）
+# 保障用户从 Gitee 下载的始终是最新版本（Gitee 发行版 URL 不变，内容更新）。
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: '手动指定要同步的标签（默认取 GitHub 最新 v* 发行版）'
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-gitee
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Sync release assets to Gitee
+    runs-on: ubuntu-latest
+    env:
+      GITEE_USER: ${{ secrets.GITEE_USERNAME }}
+      GITEE_TOKEN: ${{ secrets.GITEE_ACCESS_TOKEN }}
+      GITEE_API: https://gitee.com/api/v5/repos/hotpot1993/aa-split
+      GITEE_REPO_URL: https://gitee.com/hotpot1993/aa-split.git
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          ref: ${{ github.event.release.tag_name || github.event.inputs.tag || 'master' }}
+
+      - name: Resolve tag and download GitHub release assets
+        run: |
+          if [ -z "$GITEE_USER" ] || [ -z "$GITEE_TOKEN" ]; then
+            echo "::error::Secrets GITEE_USERNAME / GITEE_ACCESS_TOKEN 未配置"
+            exit 1
+          fi
+          TAG="${{ github.event.release.tag_name }}"
+          [ -z "$TAG" ] && TAG="${{ github.event.inputs.tag }}"
+          if [ -z "$TAG" ]; then
+            TAG=$(gh release list --repo "$GITHUB_REPOSITORY" --json tagName --jq '.[0].tagName' || true)
+          fi
+          [ -z "$TAG" ] && { echo "::error::找不到发行版标签"; exit 1; }
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
+          echo "syncing GitHub release $TAG -> Gitee"
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir /tmp/rel --clobber
+          ls -lh /tmp/rel
+
+      - name: Sync tag to Gitee mirror
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote add gitee "https://${GITEE_USER}:${GITEE_TOKEN}@${GITEE_REPO_URL#https://}"
+          for i in 1 2 3; do
+            git push --force gitee 'refs/heads/*:refs/heads/*' 'refs/tags/*:refs/tags/*' && break
+            echo "::warning::gitee tag sync failed (attempt $i/3)"; sleep 15
+          done
+
+      - name: Upload assets to Gitee release
+        run: |
+          set -euo pipefail
+          # 1) 找到/创建 Gitee 发行版（tag_name 命中优先）
+          RELEASE_ID=$(curl -s "${GITEE_API}/releases?access_token=${GITEE_TOKEN}&page=1&per_page=50" \
+            | jq -r --arg t "$TAG" '.[] | select(.tag_name == $t) | .id' | head -1)
+          if [ -z "$RELEASE_ID" ]; then
+            BODY=$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}" --jq '.body // ""' | cut -c1-4000)
+            NAME="AA-Split $TAG"
+            RESP=$(curl -s -X POST "${GITEE_API}/releases?access_token=${GITEE_TOKEN}" \
+              -d "tag_name=${TAG}" -d "target_commitish=master" -d "name=${NAME}" \
+              --data-urlencode "body=${BODY:-AA-Split $TAG 发行版}")
+            RELEASE_ID=$(echo "$RESP" | jq -r '.id // empty')
+            [ -n "$RELEASE_ID" ] || { echo "::error::Gitee 发行版创建失败: ${RESP}"; exit 1; }
+          fi
+          echo "gitee release id=$RELEASE_ID tag=$TAG"
+
+          # 2) 上传每个产物（命名规则：app-release.apk -> aa-split-v<tag>.apk；其余原名）
+          for f in /tmp/rel/*; do
+            [ -f "$f" ] || continue
+            BASE=$(basename "$f")
+            NAME="$BASE"
+            case "$BASE" in
+              app-release.apk) NAME="aa-split-v${TAG}.apk" ;;  # 与 AppConfig.giteeUpdateUrl 一致的正式包名
+            esac
+            # 同名附件先删后传（幂等）
+            curl -s "${GITEE_API}/releases/${RELEASE_ID}/attach_files?access_token=${GITEE_TOKEN}" > /tmp/attrs.json || true
+            EXIST_ID=$(jq -r --arg n "$NAME" '.[] | select(.name == $n) | .id' /tmp/attrs.json 2>/dev/null | head -1)
+            if [ -n "$EXIST_ID" ]; then
+              curl -s -X DELETE "${GITEE_API}/releases/${RELEASE_ID}/attach_files/${EXIST_ID}?access_token=${GITEE_TOKEN}" > /dev/null
+              echo "replaced existing attachment $NAME (old id=$EXIST_ID)"
+            fi
+            UP=$(curl -s -X POST "${GITEE_API}/releases/${RELEASE_ID}/attach_files?access_token=${GITEE_TOKEN}" \
+              -F "file=@${f};filename=${NAME}")
+            UP_ID=$(echo "$UP" | jq -r '.id // empty')
+            [ -n "$UP_ID" ] || { echo "::error::上传失败 ${NAME}: ${UP}"; exit 1; }
+            echo "uploaded $NAME -> attachment id=$UP_ID ($(du -h "$f" | cut -f1))"
+          done
+
+      - name: Verify Gitee download URL
+        run: |
+          URL="https://gitee.com/hotpot1993/aa-split/releases/download/${TAG}/aa-split-v${TAG}.apk"
+          CODE=$(curl -sIL -o /dev/null -w "%{http_code}" --max-time 60 "$URL" | tail -1)
+          echo "check $URL -> http=$CODE"
+          [ "$CODE" = "200" ] || [ "$CODE" = "302" ] || { echo "::error::Gitee 下载地址不可用"; exit 1; }
+          echo "::notice::Gitee 发行版已同步：$URL"
