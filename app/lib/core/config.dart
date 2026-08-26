@@ -41,15 +41,15 @@ abstract final class AppConfig {
   /// App 名称
   static const String appName = 'AA分账';
 
-  /// 版本号（与 pubspec.yaml `version: 1.0.7+4000` 的版本名部分完全一致；
+  /// 版本号（与 pubspec.yaml `version: 1.0.7+5000` 的版本名部分完全一致；
   /// 由 test/version_consistency_test.dart 强制校验，改 pubspec 需同步此处）
   static const String appVersion = '1.0.7';
 
-  /// 构建版本号（与 pubspec.yaml `version: 1.0.7+4000` 的 +build 部分完全一致；
-  /// 4000 = 版本冲突安全档：v1.0.6+3000 后手机端仍报 -25（HyperOS 4 对
-  /// 同版本名/同/低 versionCode 重装一律拒绝）→ 版本名与构建号双跳档，
-  /// 高于本仓库历史所有构建（≤3000），任意旧版均可覆盖升级）
-  static const String appBuildNumber = '4000';
+  /// 构建版本号（与 pubspec.yaml `version: 1.0.7+5000` 的 +build 部分完全一致；
+  /// 5000 = 版本冲突安全档：实测发现一台测试机装有仓库外的构建（1.0.5+4006），
+  /// 此前 2007/2008/3000/4000 均低于其 versionCode → 真机一直报 -25（降级）；
+  /// 5000 高于该值，覆盖安装必然判定为升级）
+  static const String appBuildNumber = '5000';
 
   /// 极光推送 AppKey（客户端公开值；测试包可 --dart-define=AA_JPUSH_APP_KEY= 覆盖）
   static const String jpushAppKey = String.fromEnvironment(
