@@ -207,7 +207,13 @@ class _InviteScreenState extends ConsumerState<InviteScreen> {
           DoodleButton(
             label: '完成，进入群组 →',
             big: true,
-            onPressed: () => context.go('/groups/${widget.groupId}'),
+            // 先 go 重置栈到「我的群组」壳层，再 push 群组详情：
+            // 进入详情后左上角返回 / 物理返回键都能回到我的群组
+            // （此前用 go 直达详情会丢掉壳层 → 返回无响应 / 物理返回键直接退出应用）
+            onPressed: () {
+              context.go('/groups');
+              context.push('/groups/${widget.groupId}');
+            },
           ),
           SizedBox(height: 16),
         ],

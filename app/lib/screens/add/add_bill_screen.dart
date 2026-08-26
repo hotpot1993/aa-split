@@ -17,6 +17,7 @@ import '../../providers/data_providers.dart';
 import '../../providers/repositories.dart';
 import '../../providers/refresh_provider.dart';
 import '../../widgets/common.dart';
+import '../../widgets/picker_sheet.dart';
 import '../../widgets/sheet.dart';
 import 'bill_draft.dart';
 import 'participants_panel.dart';
@@ -209,35 +210,18 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
                     ),
                     _FieldRow(
                       label: '货币',
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          value: _currency.code,
-                          isExpanded: true,
-                          alignment: Alignment.centerRight,
-                          icon: Text('▾',
-                              style: TextStyle(
-                                  fontSize: 16,
-                                  color: AAColors.inkSoft,
-                                  height: 1)),
-                          items: [
-                            for (final c in travelCurrencies)
-                              DropdownMenuItem(
-                                value: c.code,
-                                child: Text('${c.name} (${c.code})',
-                                    style: TextStyle(
-                                        fontFamily: AAFonts.title,
-                                        fontSize: 15,
-                                        color: AAColors.ink)),
-                              ),
+                      child: GestureDetector(
+                        onTap: _pickCurrency,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text('${_currency.name} (${_currency.code})',
+                                style: TextStyle(
+                                    fontFamily: AAFonts.title, fontSize: 15, color: AAColors.ink)),
+                            Text('▾',
+                                style: TextStyle(
+                                    fontSize: 16, color: AAColors.inkSoft, height: 1)),
                           ],
-                          onChanged: (v) => setState(() {
-                            if (v == null) return;
-                            _currency = travelCurrencies.firstWhere(
-                                (c) => c.code == v,
-                                orElse: () => travelCurrencies.first);
-                            // 分摊明细按金额换算，换币种后作废重算
-                            _split = null;
-                          }),
                         ),
                       ),
                     ),
@@ -258,25 +242,26 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
                     ),
                     _FieldRow(
                       label: '群组',
+                      // 群组选择弹层：value 必须命中 items（_loadInitial 异步完成前
+                      // _groupId 可能还是 ''，先渲染占位，避免选择器断言）
                       child: groups.isEmpty
                           ? Text('还没有群组',
                               style: TextStyle(
                                   fontFamily: AAFonts.title, fontSize: 15, color: AAColors.inkSoft))
-                          : DropdownButtonHideUnderline(
-                              child: DropdownButton<String>(
-                                value: _groupId,
-                                isExpanded: true,
-                                alignment: Alignment.centerRight,
-                                icon: Text('▾',
-                                    style: TextStyle(fontSize: 16, color: AAColors.inkSoft, height: 1)),
-                                items: groups
-                                    .map((g) =>
-                                        DropdownMenuItem(value: g.id, child: Text(g.name)))
-                                    .toList(),
-                                onChanged: (v) => setState(() {
-                                  _groupId = v ?? _groupId;
-                                  _resetForGroup();
-                                }),
+                          : GestureDetector(
+                              onTap: _pickGroup,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(_groupLabel.isEmpty ? '请选择' : _groupLabel,
+                                      style: TextStyle(
+                                          fontFamily: AAFonts.title,
+                                          fontSize: 15,
+                                          color: AAColors.ink)),
+                                  Text('▾',
+                                      style: TextStyle(
+                                          fontSize: 16, color: AAColors.inkSoft, height: 1)),
+                                ],
                               ),
                             ),
                     ),
@@ -297,7 +282,28 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
                     ),
                     _FieldRow(
                       label: '垫付人',
-                      child: _payerChooser(members),
+                      child: members.isEmpty
+                          ? Text('—',
+                              style: TextStyle(
+                                  fontFamily: AAFonts.title, fontSize: 15, color: AAColors.inkSoft))
+                          : GestureDetector(
+                              onTap: _pickPayer,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(_payerLabel,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                          fontFamily: AAFonts.title,
+                                          fontSize: 15,
+                                          color: AAColors.ink)),
+                                  Text('▾',
+                                      style: TextStyle(
+                                          fontSize: 16, color: AAColors.inkSoft, height: 1)),
+                                ],
+                              ),
+                            ),
                     ),
                     _FieldRow(
                       label: '参与者',
@@ -485,23 +491,78 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
   bool get _payerInParticipants =>
       _payerId.isEmpty || _selectedIds.isEmpty || _selectedIds.contains(_payerId);
 
-  Widget _payerChooser(List<GroupMember> members) {
-    if (members.isEmpty) return Text('—');
-    return DropdownButtonHideUnderline(
-      child: DropdownButton<String>(
-        value: _payerId.isEmpty ? null : _payerId,
-        isExpanded: true,
-        alignment: Alignment.centerRight,
-        icon: Text('▾', style: TextStyle(fontSize: 16, color: AAColors.inkSoft, height: 1)),
-        items: members.map((m) => DropdownMenuItem(value: m.userId, child: Text(m.nickname))).toList(),
-        onChanged: (v) => setState(() {
-          if (v != null) {
-            _payerId = v;
-            _selectedIds.add(v);
-          }
-        }),
-      ),
+  String get _groupLabel {
+    final g = _group;
+    return g?.name ?? '';
+  }
+
+  String get _payerLabel {
+    final list = (ref.read(groupMembersProvider).value ?? {})[_groupId] ?? const [];
+    for (final m in list) {
+      if (m.userId == _payerId) return m.nickname;
+    }
+    return '—';
+  }
+
+  /// 货币选择弹层（单选，列表受限高度）
+  Future<void> _pickCurrency() async {
+    final picked = await showAaPickerSheet<String>(
+      context,
+      title: '选个货币',
+      options: [
+        for (final c in travelCurrencies)
+          PickerOption(c.code, '${c.name} (${c.code})'),
+      ],
+      selected: _currency.code,
     );
+    if (picked == null || !mounted) return;
+    setState(() {
+      _currency = travelCurrencies.firstWhere(
+          (c) => c.code == picked,
+          orElse: () => travelCurrencies.first);
+      // 分摊明细按金额换算，换币种后作废重算
+      _split = null;
+    });
+  }
+
+  /// 群组选择弹层（单选 + 列表受限高度；群多时可搜索）
+  Future<void> _pickGroup() async {
+    final groups = ref.read(groupsProvider).value ?? const <Group>[];
+    final picked = await showAaPickerSheet<String>(
+      context,
+      title: '选个群组',
+      searchable: groups.length > 6,
+      searchHint: '搜索群组',
+      options: [
+        for (final g in groups)
+          PickerOption(g.id, g.name,
+              subtitle: g.intro.isEmpty ? null : g.intro),
+      ],
+      selected: _groupId,
+    );
+    if (picked == null || !mounted) return;
+    setState(() {
+      _groupId = picked;
+      _resetForGroup();
+    });
+  }
+
+  /// 垫付人选择弹层（单选 + 列表受限高度；成员多时可搜索）
+  Future<void> _pickPayer() async {
+    final members = (ref.read(groupMembersProvider).value ?? {})[_groupId] ?? [];
+    final picked = await showAaPickerSheet<String>(
+      context,
+      title: '选垫付人',
+      searchable: members.length > 6,
+      searchHint: '搜索成员',
+      options: [for (final m in members) PickerOption(m.userId, m.nickname)],
+      selected: _payerId,
+    );
+    if (picked == null || !mounted) return;
+    setState(() {
+      _payerId = picked;
+      _selectedIds.add(picked);
+    });
   }
 
   Future<void> _pickParticipants() async {

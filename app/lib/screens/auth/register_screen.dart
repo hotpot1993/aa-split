@@ -24,6 +24,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _confirm = TextEditingController();
   final _answer = TextEditingController();
   String? _accountErr;
+  String? _nicknameErr;
   String? _passwordErr;
   String? _confirmErr;
   String? _answerErr;
@@ -38,10 +39,47 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   bool get _accountTaken => _available == false;
 
+  /// 账户名最多 16 个字符
+  static const maxAccountLen = 16;
+
+  /// 密码最少 8 个字符
+  static const minPasswordLen = 8;
+
+  /// 昵称最多 30 个字符（1 个汉字按 2 个计，最多 16 个汉字）
+  static const maxNicknameUnits = 32;
+
+  static const maxNicknameChars = 30;
+
+  /// 昵称显示宽度：中文/全角按 2 计，其余按 1 计（与注册约束一致）
+  static int _nicknameUnits(String s) {
+    var units = 0;
+    for (final ch in s.runes) {
+      final wide = (ch >= 0x2e80 && ch <= 0x9fff) ||
+          (ch >= 0x3000 && ch <= 0x303f) ||
+          (ch >= 0x3040 && ch <= 0x30ff) ||
+          (ch >= 0xac00 && ch <= 0xd7af) ||
+          (ch >= 0xff00 && ch <= 0xff60) ||
+          (ch >= 0xffe0 && ch <= 0xffe6);
+      units += wide ? 2 : 1;
+    }
+    return units;
+  }
+
+  static bool _nicknameValid(String s) =>
+      s.length <= maxNicknameChars && _nicknameUnits(s) <= maxNicknameUnits;
+
+  bool get _accountLengthOk => _account.text.trim().length <= maxAccountLen;
+
+  bool get _nicknameLengthOk => _nicknameValid(_nickname.text.trim());
+
+  bool get _passwordLengthOk => _password.text.length >= minPasswordLen;
+
   bool get _canSubmit {
     return _account.text.trim().isNotEmpty &&
+        _accountLengthOk &&
         _nickname.text.trim().isNotEmpty &&
-        _password.text.length >= 6 &&
+        _nicknameLengthOk &&
+        _passwordLengthOk &&
         _confirm.text == _password.text &&
         _answer.text.trim().isNotEmpty &&
         _agree;
@@ -111,7 +149,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         keyboardType: TextInputType.text,
                         textAlign: TextAlign.end,
                         onChanged: (_) => setState(() {
-                          _accountErr = null;
+                          _accountErr = _accountLengthOk ? null : '账户名最多 $maxAccountLen个字符哦';
                           _checkAccount();
                         }),
                       ),
@@ -136,11 +174,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     controller: _nickname,
                     hint: '团子酱',
                     textAlign: TextAlign.end,
+                    onChanged: (_) => setState(() {
+                      _nicknameErr = _nicknameLengthOk
+                          ? null
+                          : '昵称最多 30 个字符（1 个汉字按 2 个计，最多 16 字）';
+                    }),
                   ),
                 ),
               ),
               _RegLine(
-                label: '密码（≥6位）',
+                label: '密码（≥$minPasswordLen位）',
                 child: SizedBox(
                   width: 160,
                   child: Row(
@@ -152,8 +195,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           textAlign: TextAlign.end,
                           obscure: _obscure,
                           onChanged: (_) => setState(() {
-                            _passwordErr = _password.text.length < 6
-                                ? '密码至少6位哦'
+                            _passwordErr = _password.text.length < minPasswordLen
+                                ? '密码至少 $minPasswordLen位哦'
                                 : (!_hasLetterAndDigit(_password.text) ? '要含字母和数字' : null);
                           }),
                         ),
@@ -235,6 +278,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         ),
         SizedBox(height: 12),
         FieldError(message: _accountErr),
+        FieldError(message: _nicknameErr),
         FieldError(message: _passwordErr),
         FieldError(message: _confirmErr),
         FieldError(message: _answerErr),

@@ -10,6 +10,7 @@ class Group {
     this.intro = '',
     required this.ownerId,
     this.defaultSplit = GroupDefaultSplit.even,
+    this.defaultExemptUserIds = const [],
     this.inviteCode = '',
     this.memberCount = 0,
     this.pendingBillCount = 0,
@@ -24,6 +25,10 @@ class Group {
   final String intro;
   final String ownerId;
   final GroupDefaultSplit defaultSplit;
+
+  /// 默认免分摊人员（userId 列表；仅群内 active 成员，服务端已校验）
+  final List<String> defaultExemptUserIds;
+
   final String inviteCode;
 
   /// 成员数（冗余，便于列表展示）
@@ -45,6 +50,11 @@ class Group {
         defaultSplit: GroupDefaultSplit.values
                 .firstWhere((e) => e.name == json['defaultSplit'],
                     orElse: () => GroupDefaultSplit.even),
+        defaultExemptUserIds: (json['defaultExemptUserIds'] is List)
+            ? (json['defaultExemptUserIds'] as List)
+                .map((e) => e.toString())
+                .toList()
+            : const [],
         inviteCode: json['inviteCode'] as String? ?? '',
         memberCount: json['memberCount'] as int? ?? 0,
         pendingBillCount: json['pendingBillCount'] as int? ?? 0,
@@ -59,6 +69,7 @@ class Group {
     String? name,
     String? avatar,
     String? intro,
+    List<String>? defaultExemptUserIds,
     int? memberCount,
     int? pendingBillCount,
     int? totalCents,
@@ -72,6 +83,7 @@ class Group {
         intro: intro ?? this.intro,
         ownerId: ownerId,
         defaultSplit: defaultSplit,
+        defaultExemptUserIds: defaultExemptUserIds ?? this.defaultExemptUserIds,
         inviteCode: inviteCode,
         memberCount: memberCount ?? this.memberCount,
         pendingBillCount: pendingBillCount ?? this.pendingBillCount,

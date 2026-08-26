@@ -75,6 +75,9 @@ Group parseGroup(dynamic data) {
     intro: _safeStr(j, 'intro'),
     ownerId: _safeStr(j, 'ownerId'),
     defaultSplit: _splitOf(_safeStr(j, 'defaultSplitType')),
+    defaultExemptUserIds: _asList(j['defaultExemptUserIds'])
+        .map((e) => e.toString())
+        .toList(),
     inviteCode: _safeStr(j, 'inviteCode'),
     memberCount: _safeInt(j, 'memberCount'),
     pendingBillCount: _safeInt(j, 'pendingBillCount'),

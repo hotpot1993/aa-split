@@ -41,12 +41,12 @@ abstract final class AppConfig {
   /// App 名称
   static const String appName = 'AA分账';
 
-  /// 版本号（与 pubspec.yaml `version: 1.0.5+2006` 的版本名部分完全一致；
+  /// 版本号（与 pubspec.yaml `version: 1.0.6+2007` 的版本名部分完全一致；
   /// 由 test/version_consistency_test.dart 强制校验，改 pubspec 需同步此处）
-  static const String appVersion = '1.0.5';
+  static const String appVersion = '1.0.6';
 
-  /// 构建版本号（与 pubspec.yaml `version: 1.0.5+2006` 的 +build 部分完全一致）
-  static const String appBuildNumber = '2006';
+  /// 构建版本号（与 pubspec.yaml `version: 1.0.6+2007` 的 +build 部分完全一致）
+  static const String appBuildNumber = '2007';
 
   /// 极光推送 AppKey（客户端公开值；测试包可 --dart-define=AA_JPUSH_APP_KEY= 覆盖）
   static const String jpushAppKey = String.fromEnvironment(

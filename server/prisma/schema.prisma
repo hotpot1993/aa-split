@@ -76,7 +76,7 @@ enum NotificationType {
 model User {
   id                  String    @id @default(uuid()) @db.Uuid
   accountName         String    @unique @map("account_name") @db.VarChar(32) // 登录账户名，唯一
-  nickname            String    @default("") @map("nickname") @db.VarChar(24) // 默认=账户名
+  nickname            String    @default("") @map("nickname") @db.VarChar(32) // 默认=账户名
   avatarUrl           String?   @map("avatar_url") @db.Text
   bio                 String?   @db.VarChar(50) // 个性签名
   passwordHash        String    @map("password_hash") @db.VarChar(100) // bcrypt(12)
@@ -129,9 +129,10 @@ model Group {
   name             String    @db.VarChar(50)
   avatarUrl        String?   @map("avatar_url") @db.Text
   intro            String?   @db.VarChar(100)
-  ownerId          String    @map("owner_id") @db.Uuid // 群主
-  defaultSplitType SplitType @default(even) @map("default_split_type")
-  inviteCode       String    @unique @map("invite_code") @db.VarChar(12) // 12 位大写字母数字
+  ownerId              String    @map("owner_id") @db.Uuid // 群主
+  defaultSplitType     SplitType @default(even) @map("default_split_type")
+  defaultExemptUserIds String[]  @default([]) @map("default_exempt_user_ids") // 默认免分摊人员（userId 列表，仅 active 成员）
+  inviteCode           String    @unique @map("invite_code") @db.VarChar(12) // 12 位大写字母数字
   createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt        DateTime? @map("deleted_at") @db.Timestamptz // 软删除

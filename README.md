@@ -7,8 +7,8 @@
 
 | 产物 | 状态 | 验收 |
 |---|---|---|
-| 服务端 `server/`（NestJS 10 + Prisma + PostgreSQL，全模块 + SSE + BullMQ + Swagger） | ✅ | `npm install` / `npx prisma generate` / `npm run build` / `npm test`（**41/41**，含修改安全问题 3 例）全通过 |
-| 客户端 `app/`（Flutter + Riverpod + go_router，31 页全量 + `aa_design` 手绘设计系统） | ✅ | `flutter analyze` 0 issues / `flutter test` **107/107**（8 张商店截图 golden 回归 + 21 屏视觉冒烟 + 12 个功能回归测试文件）/ 真机截屏逐页核对 |
+| 服务端 `server/`（NestJS 10 + Prisma + PostgreSQL，全模块 + SSE + BullMQ + Swagger） | ✅ | `npm install` / `npx prisma generate` / `npm run build` / `npm test`（**51/51**，含群解散通知成员同步 / 默认免分摊人员校验等 5 例新增）全通过 |
+| 客户端 `app/`（Flutter + Riverpod + go_router，31 页全量 + `aa_design` 手绘设计系统） | ✅ | `flutter analyze` 0 issues / `flutter test` **122/122**（8 张商店截图 golden 回归 + 21 屏视觉冒烟 + 功能回归测试；含本轮 9 项修复的 11 个新用例）/ 真机截屏逐页核对 |
 | **UI 视觉基线**（严格对齐 `docs/ui-demo/index.html`） | ✅ | 组件/圆角/阴影/间距/配色/字体五级/交互逐项照搬；字体包前缀命中修复（见 开发进度 v1.6） |
 | **图标素材系统**（`docs/pic` → `app/assets/icons`，40 枚全接入） | ✅ | `powershell -ExecutionPolicy Bypass -File scripts\process-icons.ps1`（透明度/水印/裁剪/启动图标一键重跑） |
 | 结算算法（`server/src/settlement/`，含"已付份额排除"修复） | ✅ | 13 个金标准单测全绿 |
@@ -100,7 +100,7 @@ flutter test                 # 组件/单元测试
 - 🎨 [UI 设计规范（含图标素材系统 §6.3）](docs/AA分账App-UI设计规范.md)
 - ⚙️ [技术方案（数据库/API/算法/排期）](docs/AA分账App-技术方案.md)
 - 🖥️ [手绘风高保真 Demo（浏览器打开）](docs/ui-demo/index.html)
-- 📈 [开发进度存档 v1.8](docs/开发进度.md)（UI 对齐 / 字体 / 图标系统 / 9 项需求修复轮 / 发版 SOP）
+- 📈 [开发进度存档](docs/开发进度.md)（UI 对齐 / 字体 / 图标系统 / 9 项需求修复轮 / 发版 SOP / v1.0.6 修复轮）
 - 🔄 **文档自动同步**：每次 `master` 推送后由 [docs-sync.yml](.github/workflows/docs-sync.yml) 自动完成——用真实测试数刷新 README 状态表计数、同步版本串（pubspec → ui-demo）、重新生成 [API 端点清单](docs/api-endpoints.generated.md)；本地可 `node scripts/sync-docs.mjs` 手动执行
 - 🖼️ [自定义图标素材库 docs/pic](docs/pic/)（**文件名 = 对应 emoji** → `app/assets/icons`，脚本：`powershell -ExecutionPolicy Bypass -File scripts\process-icons.ps1`）
 - 🏪 [商店上架准备（素材/文案/法务/手册）](docs/store/上架手册.md)

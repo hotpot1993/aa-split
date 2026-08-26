@@ -48,6 +48,8 @@ class GroupDetailScreen extends ConsumerWidget {
     final allBills = ref.watch(billsProvider).value ?? const <Bill>[];
     final bills = allBills.where((b) => b.groupId == groupId).toList();
     final members = (ref.watch(groupMembersProvider).value ?? {})[groupId] ?? [];
+    final me = ref.watch(currentUserProvider)?.id ?? 'me';
+    final isOwner = g.ownerId == me;
 
     final total = bills.fold<int>(0, (s, b) => s + b.amountCents);
     final perPerson = members.isEmpty ? 0 : total ~/ members.length;
@@ -57,8 +59,9 @@ class GroupDetailScreen extends ConsumerWidget {
       appBar: AaAppBar(
         title: '',
         backLabel: '‹ ${group.name}',
-        iconImage: 'assets/icons/settings.png',
-        onIconTap: () => context.push('/groups/$groupId/settings'),
+        // 群组设置仅群主可进入（普通成员不显示入口，服务端同样仅群主可改）
+        iconImage: isOwner ? 'assets/icons/settings.png' : null,
+        onIconTap: isOwner ? () => context.push('/groups/$groupId/settings') : null,
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),

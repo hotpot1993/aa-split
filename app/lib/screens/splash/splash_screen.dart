@@ -12,7 +12,7 @@ import '../../widgets/common.dart';
 
 /// P01 启动页 —— 对齐 docs/ui-demo/index.html：
 /// 150px 团团 + 48px AA分账 + mini「团团正在数钱…」+ · · · + 四枚涂鸦。
-/// 2s 后按登录态跳转（未登录 → /login，已登录 → /home）。
+/// 5s 后按登录态自动跳转（未登录 → /login，已登录 → /home；点击屏幕可跳过等待）。
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
   @override
@@ -27,11 +27,14 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   late final Animation<double> _fade =
       CurvedAnimation(parent: _c, curve: Curves.easeOut);
 
+  /// 停留时长：5 秒后自动进入登录页或首页（按登录状态决定）
+  static const autoJumpDelay = Duration(seconds: 5);
+
   @override
   void initState() {
     super.initState();
     _c.forward();
-    _timer = Timer(Duration(seconds: 2), _go);
+    _timer = Timer(autoJumpDelay, _go);
   }
 
   @override
@@ -104,7 +107,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                             color: AAColors.inkSoft,
                             letterSpacing: 6)),
                     SizedBox(height: 60),
-                    Text('（点击屏幕进入登录）',
+                    Text('5 秒后自动进入（点击屏幕可跳过）',
                         style: TextStyle(
                             fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft)),
                   ],

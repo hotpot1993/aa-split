@@ -4,6 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
+import { StorageService } from '../storage/storage.service';
 import { AuthService } from './auth.service';
 
 describe('AuthService', () => {
@@ -35,6 +36,11 @@ describe('AuthService', () => {
     },
   };
 
+  const storageMock = {
+    upload: jest.fn(),
+    remove: jest.fn().mockResolvedValue(undefined),
+  };
+
   beforeEach(async () => {
     jest.clearAllMocks();
     const moduleRef = await Test.createTestingModule({
@@ -43,6 +49,7 @@ describe('AuthService', () => {
         { provide: PrismaService, useValue: prismaMock },
         { provide: JwtService, useValue: jwtMock },
         { provide: ConfigService, useValue: configMock },
+        { provide: StorageService, useValue: storageMock },
       ],
     }).compile();
     service = moduleRef.get(AuthService);
@@ -181,6 +188,98 @@ describe('AuthService', () => {
     await expect(
       service.updateProfile('ghost', { nickname: 'x' }),
     ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it('编辑资料：本机路径头像归一为默认（脏数据不入库）', async () => {
+    prismaMock.user.findUnique.mockResolvedValue({
+      id: 'u1',
+      accountName: 'tuanzi_t',
+      nickname: '团子酱',
+      avatarUrl: '/uploads/old.png',
+      bio: null,
+    });
+    prismaMock.user.update.mockResolvedValue({
+      id: 'u1',
+      accountName: 'tuanzi_t',
+      nickname: '团子酱',
+      avatarUrl: null,
+      bio: null,
+    });
+    const res = await service.updateProfile('u1', {
+      avatarUrl: 'C:\\Users\\me\\Temp\\avatar.png',
+    });
+    expect(res.avatarUrl).toBeNull();
+    const data = prismaMock.user.update.mock.calls[0][0].data;
+    expect(data).toEqual({ avatarUrl: null });
+    // 旧上传文件被清理
+    expect(storageMock.remove).toHaveBeenCalledWith('old.png');
+  });
+
+  it('上传头像：图片文件入库并返回可访问 URL', async () => {
+    prismaMock.user.findUnique.mockResolvedValue({
+      id: 'u1',
+      accountName: 'tuanzi_t',
+      nickname: '团子酱',
+      avatarUrl: null,
+    });
+    storageMock.upload.mockResolvedValue({
+      objectKey: 'a1b2c3.jpg',
+      url: '/uploads/a1b2c3.jpg',
+    });
+    prismaMock.user.update.mockResolvedValue({
+      id: 'u1',
+      avatarUrl: '/uploads/a1b2c3.jpg',
+    });
+    const res = await service.updateAvatar('u1', {
+      originalname: 'a.png',
+      mimetype: 'image/png',
+      buffer: Buffer.from('fake-image'),
+    } as Express.Multer.File);
+    expect(res.avatarUrl).toBe('/uploads/a1b2c3.jpg');
+    const data = prismaMock.user.update.mock.calls[0][0].data;
+    expect(data).toEqual({ avatarUrl: '/uploads/a1b2c3.jpg' });
+    // 旧头像为空 → 无需清理
+    expect(storageMock.remove).not.toHaveBeenCalled();
+  });
+
+  it('上传头像：替换旧头像时清理旧上传文件', async () => {
+    prismaMock.user.findUnique.mockResolvedValue({
+      id: 'u1',
+      accountName: 'tuanzi_t',
+      nickname: '团子酱',
+      avatarUrl: '/uploads/old.png',
+    });
+    storageMock.upload.mockResolvedValue({
+      objectKey: 'new.jpg',
+      url: '/uploads/new.jpg',
+    });
+    prismaMock.user.update.mockResolvedValue({
+      id: 'u1',
+      avatarUrl: '/uploads/new.jpg',
+    });
+    await service.updateAvatar('u1', {
+      originalname: 'b.jpg',
+      mimetype: 'image/jpeg',
+      buffer: Buffer.from('fake-image'),
+    } as Express.Multer.File);
+    expect(storageMock.remove).toHaveBeenCalledWith('old.png');
+  });
+
+  it('上传头像：非图片文件抛 BadRequestException', async () => {
+    await expect(
+      service.updateAvatar('u1', {
+        originalname: 'note.pdf',
+        mimetype: 'application/pdf',
+        buffer: Buffer.from('fake'),
+      } as Express.Multer.File),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(storageMock.upload).not.toHaveBeenCalled();
+  });
+
+  it('上传头像：缺少文件抛 BadRequestException', async () => {
+    await expect(service.updateAvatar('u1', undefined)).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
   });
 
   it('修改安全问题：当前密码正确则更新问题与答案哈希', async () => {

@@ -4,7 +4,7 @@
 > 每次 master 推送后由 `.github/workflows/docs-sync.yml` 自动更新（人工改动会被覆盖）。
 > 完整契约见 [技术方案](./AA分账App-技术方案.md)；Swagger：`GET /api/docs`。
 
-共 40 个端点。表格：HTTP 方法 | 路径（`api/v1` 为全局前缀）| 鉴权 | 说明。
+共 41 个端点。表格：HTTP 方法 | 路径（`api/v1` 为全局前缀）| 鉴权 | 说明。
 
 | 方法 | 路径 | 鉴权 | 说明 |
 |---|---|---|---|
@@ -30,6 +30,7 @@
 | PATCH  | `api/v1/bills/:id` | 🔒 登录 |  |
 | PATCH  | `api/v1/groups/:id` | 🔒 登录 |  |
 | PATCH  | `api/v1/regular-bills/:id` | 🔒 登录 |  |
+| POST   | `api/v1/auth/avatar` | 🔒 登录 | P50：上传头像图片（multipart file）→ 返回服务端可访问 URL（/uploads/...）。 |
 | POST   | `api/v1/auth/change-password` | 🔒 登录 |  |
 | POST   | `api/v1/auth/change-security-question` | 🔒 登录 | P52：修改安全问题（需当前密码验证） |
 | POST   | `api/v1/auth/devices` | 🔒 登录 | 上报当前设备（幂等 upsert；打开「账号安全」页时调用，保证本机在列） |

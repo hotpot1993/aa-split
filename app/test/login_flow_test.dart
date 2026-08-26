@@ -54,11 +54,11 @@ Widget _app() => ProviderScope(
       child: const _RouterHost(),
     );
 
-/// 等待启动页 2s 定时器 → 未登录跳转登录页
+/// 等待启动页 5s 定时器 → 未登录跳转登录页
 Future<void> _toLogin(WidgetTester tester) async {
   await tester.pumpWidget(_app());
   await tester.pump(); // 首帧
-  await tester.pump(const Duration(seconds: 3)); // 启动页定时器
+  await tester.pump(const Duration(seconds: 6)); // 启动页定时器
   await tester.pump(const Duration(milliseconds: 350)); // 翻页过渡
   await tester.pump(const Duration(milliseconds: 100));
 }

@@ -5,27 +5,29 @@ import {
   Matches,
   MaxLength,
   MinLength,
+  Validate,
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { DeviceInfoDto } from './device-info.dto';
+import { IsValidNickname } from '../../common/nickname.validator';
 
 export class RegisterDto {
   @IsString()
-  @Length(3, 32)
+  @Length(3, 16)
   @Matches(/^[a-zA-Z0-9_]+$/, { message: '账户名只能包含字母、数字、下划线' })
   accountName!: string;
 
   @IsString()
-  @MinLength(6)
-  @Matches(/(?=.*[A-Za-z])(?=.*\d).{6,}/, {
-    message: '密码至少 6 位，且需同时包含字母和数字',
+  @MinLength(8)
+  @Matches(/(?=.*[A-Za-z])(?=.*\d).{8,}/, {
+    message: '密码至少 8 位，且需同时包含字母和数字',
   })
   password!: string;
 
   @IsOptional()
   @IsString()
-  @MaxLength(24)
+  @Validate(IsValidNickname)
   nickname?: string;
 
   @IsString()

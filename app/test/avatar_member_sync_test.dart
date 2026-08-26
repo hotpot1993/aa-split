@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:aa_split_app/core/utils/avatar_ref.dart';
 import 'package:aa_split_app/data/mock/mock_store.dart';
 import 'package:aa_split_app/data/repositories/group_repository.dart';
 import 'package:aa_split_app/screens/groups/members_screen.dart';
@@ -49,6 +50,20 @@ void main() {
     // 其他成员头像不受影响
     expect(members2.firstWhere((m) => m.userId == 'u_zhangsan').avatarUrl,
         '🐰');
+  });
+
+  test('isLocalAvatarRef：识别本机路径脏数据，放行合法头像引用', () {
+    // 本机路径（旧版本直接入库 → 跨设备/重启失效）应判定为脏数据
+    expect(isLocalAvatarRef('C:/fake/avatar.png'), isTrue);
+    expect(isLocalAvatarRef('C:\\Users\\me\\Temp\\avatar.png'), isTrue);
+    expect(isLocalAvatarRef('/data/user/0/pkg/cache/avatar.jpg'), isTrue);
+    expect(isLocalAvatarRef('file:///data/x.jpg'), isTrue);
+    // 合法头像引用放行
+    expect(isLocalAvatarRef('/uploads/ab12.jpg'), isFalse);
+    expect(isLocalAvatarRef('http://cdn/x/a.png'), isFalse);
+    expect(isLocalAvatarRef('https://cdn/x/a.png'), isFalse);
+    expect(isLocalAvatarRef('🐼'), isFalse);
+    expect(isLocalAvatarRef(''), isFalse);
   });
 
   testWidgets('成员管理：每行以 SketchAvatar 渲染头像', (tester) async {

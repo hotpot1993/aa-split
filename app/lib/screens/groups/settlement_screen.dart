@@ -9,7 +9,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 
 import 'package:aa_design/aa_design.dart';
 
@@ -142,7 +141,7 @@ class _SettlementScreenState extends ConsumerState<SettlementScreen> {
               SizedBox(width: 10),
               Expanded(
                 child: DoodleButton(
-                  label: '收款码卡片',
+                  label: '收款卡片',
                   leadingImage: 'assets/icons/phone.png',
                   type: DoodleButtonType.ghost,
                   mini: true,
@@ -204,7 +203,7 @@ class _SettlementScreenState extends ConsumerState<SettlementScreen> {
     showAaToast(context, '💬 转账文案已复制');
   }
 
-  /// 收款码卡片：把当前结算方案渲染成图片并保存到手机本地。
+  /// 收款卡片：把当前结算方案渲染成图片并保存到手机本地。
   /// 卡片先挂在 Overlay 屏幕外（保证完成布局与绘制），RepaintBoundary 截屏后保存 PNG。
   Future<void> _genCard(List<Transfer> transfers) async {
     if (transfers.isEmpty) {
@@ -242,10 +241,10 @@ class _SettlementScreenState extends ConsumerState<SettlementScreen> {
           '${dir.path}/aa-settlement-${DateTime.now().millisecondsSinceEpoch}.png';
       await File(path).writeAsBytes(bytes.buffer.asUint8List());
       if (!mounted) return;
-      showAaToast(context, '📱 收款码卡片已保存到本地');
+      showAaToast(context, '📱 收款卡片已保存到本地');
       unawaited(OpenFilex.open(path));
     } catch (e) {
-      if (mounted) showAaToast(context, '生成收款码卡片失败：$e');
+      if (mounted) showAaToast(context, '生成收款卡片失败：$e');
     } finally {
       entry.remove();
     }
@@ -375,8 +374,7 @@ class _ArrowSvgPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter old) => false;
 }
 
-/// 收款码卡片（截屏对象）：手绘纸卡样式，包含结算方案摘要 + 转账明细 + 二维码。
-/// 二维码内容为可扫描的结算清单摘要（资金仍走微信/支付宝自理）。
+/// 收款卡片（截屏对象）：手绘纸卡样式，包含结算方案摘要 + 转账明细（不含二维码）。
 class _PaymentCard extends StatelessWidget {
   const _PaymentCard({
     required this.transfers,
@@ -392,11 +390,6 @@ class _PaymentCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final total = transfers.fold<int>(0, (s, t) => s + t.amountCents);
     final now = Fmt.clock();
-    final qrData = 'AA分账·一键智能结算\n'
-        '群组:$groupName\n'
-        '$groupId\n'
-        '${transfers.length}笔 · ${Fmt.yuanNoSymbol(total)}元\n'
-        '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
     return Container(
       width: 300,
       padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
@@ -415,7 +408,7 @@ class _PaymentCard extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('收款码卡片',
+          Text('收款卡片',
               textAlign: TextAlign.center,
               style: TextStyle(
                   fontFamily: AAFonts.title, fontSize: 20, color: AAColors.ink)),
@@ -473,30 +466,7 @@ class _PaymentCard extends StatelessWidget {
                     fontSize: 11,
                     color: AAColors.inkSoft)),
           SizedBox(height: 10),
-          Center(
-            child: Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: AARadii.qr,
-                border: Border.all(color: AAColors.ink, width: 2),
-              ),
-              child: QrImageView(
-                data: qrData,
-                size: 116,
-                eyeStyle: QrEyeStyle(
-                  eyeShape: QrEyeShape.square,
-                  color: AAColors.ink,
-                ),
-                dataModuleStyle: QrDataModuleStyle(
-                  dataModuleShape: QrDataModuleShape.circle,
-                  color: AAColors.ink,
-                ),
-              ),
-            ),
-          ),
-          SizedBox(height: 6),
-          Text('扫码查看结算清单 · 资金请走微信/支付宝',
+          Text('截图/转发给朋友 · 资金请走微信/支付宝',
               textAlign: TextAlign.center,
               style: TextStyle(
                   fontFamily: AAFonts.title,

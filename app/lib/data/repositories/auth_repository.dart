@@ -6,6 +6,7 @@ import '../../core/api/api_client.dart';
 import '../../core/api/codec.dart';
 import '../../core/config.dart';
 import '../../core/device_info.dart';
+import '../../core/utils/avatar_ref.dart';
 import '../../models/user.dart';
 import '../../models/user_device.dart';
 import '../mock/mock_store.dart';
@@ -48,7 +49,19 @@ class AuthRepository {
       // 以服务端资料为准；失败（401 等）则清除本地态
       try {
         final res = await ApiClient.instance.get('/auth/me');
-        final user = parseUser(res.data);
+        var user = parseUser(res.data);
+        // 历史脏数据自愈：旧版本把本机图片路径当作 avatarUrl 入库
+        //（其它设备不存在 / App 重启后失效 → 成员列表只显示昵称首字）。
+        // 启动时重置为默认头像，避免长期渲染失效头像。
+        if (isLocalAvatarRef(user.avatarUrl)) {
+          try {
+            final healed = await ApiClient.instance
+                .patch('/auth/me', body: {'avatarUrl': '🐼'});
+            user = parseUser(healed.data);
+          } catch (_) {
+            // 自愈失败（弱网等）不阻塞登录
+          }
+        }
         await _saveSession(token, user);
         return user;
       } catch (e) {
@@ -225,6 +238,20 @@ class AuthRepository {
       'securityQuestion': securityQuestion,
       'securityAnswer': securityAnswer,
     });
+  }
+
+  /// 上传头像图片（真实模式）：返回服务端可访问 URL（`/uploads/<key>`）。
+  ///
+  /// 头像必须上传到服务端而不是存本机路径——本机路径在其它设备不存在、
+  /// App 重启后还可能被系统清理，导致群成员列表/账单参与人显示失效头像。
+  Future<String> uploadAvatar(String filePath) async {
+    final res = await ApiClient.instance.upload('/auth/avatar', filePath);
+    final data = res.data is Map
+        ? (res.data as Map).cast<String, dynamic>()
+        : const <String, dynamic>{};
+    final url = (data['avatarUrl'] ?? '').toString();
+    if (url.isEmpty) throw const AuthException('头像上传失败，请重试');
+    return url;
   }
 
   /// 更新个人资料（P50）：真实模式 PATCH /auth/me，成功后同步本地会话。

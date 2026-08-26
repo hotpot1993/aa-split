@@ -19,6 +19,7 @@ class MessagesScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final items = ref.watch(notificationsProvider).value ?? const <NotificationItem>[];
+    final unread = ref.watch(unreadCountProvider).value ?? 0;
     final today = items.where((n) => n.isToday).toList();
     final earlier = items.where((n) => !n.isToday).toList();
 
@@ -29,6 +30,21 @@ class MessagesScreen extends ConsumerWidget {
         headIcon: 'assets/icons/notify.png',
         iconImage: 'assets/icons/settings.png',
         onIconTap: () => context.push('/messages/settings'),
+        // 「全部已读」：有未读消息时显示，点击把当前所有未读消息标记为已读
+        actions: [
+          if (unread > 0)
+            InkWell(
+              onTap: () => _markAllRead(context, ref),
+              child: Padding(
+                padding: const EdgeInsets.only(left: 10, top: 8),
+                child: Text('全部已读',
+                    style: TextStyle(
+                        fontFamily: AAFonts.title,
+                        fontSize: 14,
+                        color: AAColors.sky)),
+              ),
+            ),
+        ],
       ),
       body: items.isEmpty
           ? ListView(
@@ -57,6 +73,13 @@ class MessagesScreen extends ConsumerWidget {
               ],
             ),
     );
+  }
+
+  /// 全部已读：当前所有未读消息标记为已读（Mock/真实模式都由仓库落库）
+  Future<void> _markAllRead(BuildContext context, WidgetRef ref) async {
+    await ref.read(notificationRepositoryProvider).markAllRead();
+    ref.read(refreshProvider.notifier).bump();
+    if (context.mounted) showAaToast(context, '📮 已全部标记为已读');
   }
 }
 

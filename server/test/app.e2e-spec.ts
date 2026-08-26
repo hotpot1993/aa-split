@@ -439,6 +439,73 @@ describe('核心链路 e2e（注册→建群→记账→结算→催款→已付
     expect(me.body.data.nickname).toBe('爱丽丝2');
   });
 
+  it('P50 上传头像：multipart → /uploads URL 落库 → 群成员列表同步', async () => {
+    const alice = (globalThis as any).__alice as { token: string; id: string };
+
+    // 未登录上传 → 401
+    await request(server())
+      .post('/api/v1/auth/avatar')
+      .attach('file', Buffer.from('fake-avatar'), {
+        filename: 'avatar.png',
+        contentType: 'image/png',
+      })
+      .expect(401);
+
+    // 上传头像成功 → 可访问 URL
+    const up = await request(server())
+      .post('/api/v1/auth/avatar')
+      .set('Authorization', `Bearer ${alice.token}`)
+      .attach('file', Buffer.from('fake-avatar-png'), {
+        filename: 'avatar.png',
+        contentType: 'image/png',
+      })
+      .expect(200);
+    expect(up.body.data.avatarUrl).toMatch(/^\/uploads\/.+\.png$/);
+
+    // /auth/me 立即生效
+    const me = await request(server())
+      .get('/api/v1/auth/me')
+      .set('Authorization', `Bearer ${alice.token}`)
+      .expect(200);
+    expect(me.body.data.avatarUrl).toBe(up.body.data.avatarUrl);
+
+    // 群成员列表（bob 视角）同步拿到同一头像地址（bob 密码在「找回密码链路」测试中被重置）
+    const bob = await request(server())
+      .post('/api/v1/auth/login')
+      .send({ accountName: 'bob', password: 'newPass123' })
+      .expect(200);
+    const group = (globalThis as any).__group as { id: string };
+    const detail = await request(server())
+      .get(`/api/v1/groups/${group.id}`)
+      .set('Authorization', `Bearer ${bob.body.data.accessToken}`)
+      .expect(200);
+    const aliceMember = (detail.body.data.members as any[]).find(
+      (m: any) => m.userId === alice.id,
+    );
+    expect(aliceMember.avatarUrl).toBe(up.body.data.avatarUrl);
+
+    // 替换头像：旧上传文件被清理（新 URL 不同）
+    const up2 = await request(server())
+      .post('/api/v1/auth/avatar')
+      .set('Authorization', `Bearer ${alice.token}`)
+      .attach('file', Buffer.from('fake-avatar-2'), {
+        filename: 'avatar2.jpg',
+        contentType: 'image/jpeg',
+      })
+      .expect(200);
+    expect(up2.body.data.avatarUrl).not.toBe(up.body.data.avatarUrl);
+
+    // 非图片文件 → 400
+    await request(server())
+      .post('/api/v1/auth/avatar')
+      .set('Authorization', `Bearer ${alice.token}`)
+      .attach('file', Buffer.from('not-an-image'), {
+        filename: 'note.pdf',
+        contentType: 'application/pdf',
+      })
+      .expect(400);
+  });
+
   it('注销账号链路（DELETE /auth/me → 旧 token 失效 + 登录拒绝）', async () => {
     // 新用户 charlie：注册 → 加入群 → 注销
     const reg = await request(server())

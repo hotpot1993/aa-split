@@ -12,7 +12,7 @@ import 'package:aa_split_app/providers/settings_provider.dart';
 
 Future<void> bootToHome(WidgetTester tester) async {
   await tester.pump(); // 首帧
-  await tester.pump(const Duration(seconds: 3)); // 启动页定时器
+  await tester.pump(const Duration(seconds: 6)); // 启动页定时器
   await tester.pump(); // 构建主页
   await tester.pump(const Duration(milliseconds: 350)); // 路由过渡
   await tester.pump(const Duration(milliseconds: 100));

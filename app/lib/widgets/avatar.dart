@@ -3,6 +3,7 @@ import 'dart:io' show File;
 import 'package:flutter/material.dart';
 
 import '../core/config.dart';
+import '../core/utils/avatar_ref.dart';
 import '../core/utils/format.dart';
 import '../models/bill.dart';
 import 'package:aa_design/aa_design.dart';
@@ -48,10 +49,9 @@ class SketchAvatar extends StatelessWidget {
 
   bool get _isLocalFile {
     if (emoji.isEmpty || _isNetwork) return false;
-    // 本地路径：Android /data/...、/storage/...、Windows C:\...
-    if (emoji.contains('\\')) return File(emoji).existsSync();
-    if (emoji.startsWith('/')) return File(emoji).existsSync();
-    return false;
+    // 本地路径：Android /data/...、/storage/...、Windows C:\...、file://...
+    if (!isLocalAvatarRef(emoji)) return false;
+    return File(emoji).existsSync();
   }
 
   @override
@@ -100,8 +100,8 @@ class SketchAvatar extends StatelessWidget {
   Widget _fallback() {
     // 失效的图片路径/URL 不回显原文，回退昵称首字或默认🐼
     final isImageRef = emoji.startsWith('http') ||
-        emoji.startsWith('/') ||
-        emoji.contains('\\');
+        emoji.startsWith('/uploads/') ||
+        isLocalAvatarRef(emoji);
     final text = !isImageRef && emoji.trim().isNotEmpty
         ? emoji
         : (name.isEmpty

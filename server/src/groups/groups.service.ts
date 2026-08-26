@@ -80,6 +80,7 @@ export class GroupsService {
         ownerId: m.group.ownerId,
         owner: m.group.owner,
         defaultSplitType: m.group.defaultSplitType,
+        defaultExemptUserIds: m.group.defaultExemptUserIds,
         memberCount: m.group._count.members,
         joinedAt: m.joinedAt,
       }));
@@ -129,6 +130,7 @@ export class GroupsService {
       intro: group.intro,
       ownerId: group.ownerId,
       defaultSplitType: group.defaultSplitType,
+      defaultExemptUserIds: group.defaultExemptUserIds,
       inviteCode: group.inviteCode,
       memberCount: members.length,
       members: members.map((m) => ({
@@ -142,24 +144,57 @@ export class GroupsService {
     };
   }
 
-  /** 修改群信息（仅 owner） */
+  /** 修改群信息（仅 owner）；默认免分摊人员仅保留群内 active 成员 */
   async updateGroup(userId: string, groupId: string, dto: UpdateGroupDto) {
     const group = await this.getGroupOrThrow(groupId);
     if (group.ownerId !== userId) throw new ForbiddenException('仅群主可修改群信息');
+    const data: Prisma.GroupUpdateInput = {};
+    if (dto.name !== undefined) data.name = dto.name;
+    if (dto.avatarUrl !== undefined) data.avatarUrl = dto.avatarUrl;
+    if (dto.intro !== undefined) data.intro = dto.intro;
+    if (dto.defaultSplitType !== undefined) data.defaultSplitType = dto.defaultSplitType;
+    if (dto.defaultExemptUserIds !== undefined) {
+      const members = await this.prisma.groupMember.findMany({
+        where: { groupId, status: MemberStatus.active },
+        select: { userId: true },
+      });
+      const memberIds = new Set(members.map((m) => m.userId));
+      data.defaultExemptUserIds = [...new Set(dto.defaultExemptUserIds)].filter(
+        (id) => memberIds.has(id),
+      );
+    }
     return this.prisma.group.update({
       where: { id: groupId },
-      data: dto,
+      data,
     });
   }
 
-  /** 解散群（软删除，仅 owner） */
+  /** 解散群（软删除，仅 owner）。解散后给其它 active 成员写通知并推 SSE，
+   *  客户端收到后 bump 刷新 —— 群组从组员端列表中同步移除。 */
   async deleteGroup(userId: string, groupId: string) {
     const group = await this.getGroupOrThrow(groupId);
     if (group.ownerId !== userId) throw new ForbiddenException('仅群主可解散群组');
-    return this.prisma.group.update({
+    await this.prisma.group.update({
       where: { id: groupId },
       data: { deletedAt: new Date() },
     });
+    const members = await this.prisma.groupMember.findMany({
+      where: { groupId, status: MemberStatus.active },
+      select: { userId: true },
+    });
+    const targets = members
+      .map((m) => m.userId)
+      .filter((uid) => uid !== userId);
+    if (targets.length > 0) {
+      await this.notificationsService.createMany(targets, {
+        type: 'member',
+        title: '群组已解散',
+        body: `「${group.name}」已被群主解散`,
+        refType: 'group',
+        refId: groupId,
+      });
+    }
+    return { success: true };
   }
 
   /** 新成员入群/被添加后，给群内其它 active 成员发「动态」通知。

@@ -103,19 +103,25 @@ class GroupRepository {
   }
 
   Future<void> update(String id,
-      {String? name, String? intro, String? avatar}) async {
+      {String? name, String? intro, String? avatar, List<String>? defaultExemptUserIds}) async {
     if (AppConfig.useMock) {
       final store = MockStore.instance;
       final idx = store.groups.indexWhere((g) => g.id == id);
       if (idx < 0) return;
       final g = store.groups[idx];
-      store.groups[idx] = g.copyWith(name: name, intro: intro, avatar: avatar);
+      store.groups[idx] = g.copyWith(
+        name: name,
+        intro: intro,
+        avatar: avatar,
+        defaultExemptUserIds: defaultExemptUserIds,
+      );
       return;
     }
     await ApiClient.instance.patch('/groups/$id', body: {
       'name': ?name,
       'intro': ?intro,
       'avatarUrl': ?avatar,
+      'defaultExemptUserIds': ?defaultExemptUserIds,
     });
   }
 

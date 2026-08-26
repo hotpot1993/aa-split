@@ -9,7 +9,7 @@ import 'package:aa_split_app/widgets/common.dart';
 
 Future<void> bootToHome(WidgetTester tester) async {
   await tester.pump();
-  await tester.pump(const Duration(seconds: 3));
+  await tester.pump(const Duration(seconds: 6));
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 350));
   await tester.pump(const Duration(milliseconds: 100));

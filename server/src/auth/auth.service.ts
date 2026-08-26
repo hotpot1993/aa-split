@@ -10,6 +10,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { createHash, randomBytes } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
+import { StorageService } from '../storage/storage.service';
 import { JwtPayload } from '../common/types';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -30,6 +31,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly storageService: StorageService,
   ) {}
 
   private hash(plain: string): string {
@@ -296,14 +298,65 @@ export class AuthService {
       data.bio = dto.bio.trim().length > 0 ? dto.bio.trim() : null;
     }
     if (dto.avatarUrl !== undefined) {
-      data.avatarUrl = dto.avatarUrl;
+      // 头像必须是服务端可访问地址（emoji / http(s) / /uploads/...）。
+      // 旧版本客户端把「本机图片路径」直接入库——跨设备/重启后必然失效，
+      // 这里归一为默认头像（null），避免脏数据在群成员列表等处以失效图渲染。
+      data.avatarUrl = this.isLocalPath(dto.avatarUrl) ? null : dto.avatarUrl;
     }
 
     const updated = await this.prisma.user.update({
       where: { id: userId },
       data,
     });
+    // 头像被替换为新的上传文件时清理旧文件（失败仅记日志，不阻塞更新）
+    if (
+      data.avatarUrl !== undefined &&
+      user.avatarUrl !== null &&
+      user.avatarUrl !== data.avatarUrl
+    ) {
+      this.cleanupAvatarFile(user.avatarUrl);
+    }
     return this.sanitizeUser(updated);
+  }
+
+  /**
+   * P50：上传头像图片（multipart file）→ 返回服务端可访问 URL。
+   * 头像必须走上传而不是存本机路径：本机路径在其它设备/App 重启后无法访问，
+   * 导致群成员列表、账单参与人等处的头像失效/不同步。
+   */
+  async updateAvatar(userId: string, file?: Express.Multer.File) {
+    if (!file) throw new BadRequestException('缺少头像文件');
+    if (!file.mimetype || !file.mimetype.startsWith('image/')) {
+      throw new BadRequestException('头像仅支持图片文件');
+    }
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new UnauthorizedException('用户不存在');
+
+    const stored = await this.storageService.upload(file);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { avatarUrl: stored.url },
+    });
+    // 旧头像也是上传文件时清理（幂等，失败仅记日志）
+    this.cleanupAvatarFile(user.avatarUrl);
+    return { avatarUrl: stored.url };
+  }
+
+  /** 本机文件路径判定（旧版本把 pickImage 的本地路径当 avatarUrl 入库） */
+  private isLocalPath(value: string): boolean {
+    if (!value) return false;
+    if (value.startsWith('http://') || value.startsWith('https://')) return false;
+    if (value.startsWith('/uploads/')) return false;
+    if (value.startsWith('file://')) return true;
+    if (value.includes('\\')) return true;
+    if (value.startsWith('/')) return true;
+    return /^[a-zA-Z]:[\\/]/.test(value);
+  }
+
+  /** 清理旧上传头像（仅 /uploads/ 前缀；本地模式 objectKey 即文件名） */
+  private cleanupAvatarFile(avatarUrl: string | null) {
+    if (!avatarUrl || !avatarUrl.startsWith('/uploads/')) return;
+    void this.storageService.remove(avatarUrl.substring('/uploads/'.length));
   }
 
   /**

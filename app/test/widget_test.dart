@@ -8,9 +8,9 @@ void main() {
   testWidgets('main app boots to home in demo mode', (WidgetTester tester) async {
     await tester.pumpWidget(const ProviderScope(child: AaSplitApp()));
 
-    // P01 启动页：等待 2s 定时器 + 翻页过渡（Demo 自动登录 → /home）
+    // P01 启动页：等待 5s 定时器 + 翻页过渡（Demo 自动登录 → /home）
     await tester.pump(); // 首帧
-    await tester.pump(const Duration(seconds: 3)); // 定时器触发跳转
+    await tester.pump(const Duration(seconds: 6)); // 定时器触发跳转
     await tester.pump(); // 构建主页
     await tester.pump(const Duration(milliseconds: 350)); // 路由过渡
     await tester.pump(const Duration(milliseconds: 100));
@@ -26,7 +26,7 @@ void main() {
   testWidgets('groups tab shows existing demo groups', (WidgetTester tester) async {
     await tester.pumpWidget(const ProviderScope(child: AaSplitApp()));
     await tester.pump();
-    await tester.pump(const Duration(seconds: 3));
+    await tester.pump(const Duration(seconds: 6));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 350));
 
@@ -55,7 +55,7 @@ void main() {
     Future<void> boot() async {
       await tester.pumpWidget(const ProviderScope(child: AaSplitApp()));
       await tester.pump();
-      await tester.pump(const Duration(seconds: 3));
+      await tester.pump(const Duration(seconds: 6));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 350));
     }

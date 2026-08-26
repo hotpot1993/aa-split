@@ -10,8 +10,11 @@ import {
   Patch,
   Post,
   Query,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiBearerAuth, ApiConsumes, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -132,6 +135,22 @@ export class AuthController {
   @Patch('me')
   updateProfile(@CurrentUser() user: JwtPayload, @Body() dto: UpdateProfileDto) {
     return this.authService.updateProfile(user.sub, dto);
+  }
+
+  /**
+   * P50：上传头像图片（multipart file）→ 返回服务端可访问 URL（/uploads/...）。
+   * 头像经对象存储后群成员列表/账单参与人等所有端都能取到同一张图。
+   */
+  @ApiBearerAuth()
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 5 * 1024 * 1024 } }))
+  @HttpCode(HttpStatus.OK)
+  @Post('avatar')
+  uploadAvatar(
+    @CurrentUser() user: JwtPayload,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.authService.updateAvatar(user.sub, file);
   }
 
   /**

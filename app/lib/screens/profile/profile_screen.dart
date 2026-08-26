@@ -7,12 +7,14 @@ import 'package:image_picker/image_picker.dart';
 
 import 'package:aa_design/aa_design.dart';
 
+import '../../core/config.dart';
 import '../../core/utils/format.dart';
 import '../../models/bill.dart';
 import '../../models/group.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/data_providers.dart';
 import '../../providers/refresh_provider.dart';
+import '../../providers/repositories.dart';
 import '../../providers/settings_provider.dart';
 import '../../widgets/avatar.dart';
 import '../../widgets/common.dart';
@@ -288,7 +290,12 @@ class ProfileScreen extends ConsumerWidget {
         imageQuality: 85,
       );
       if (file == null || !context.mounted) return;
-      await ref.read(authProvider.notifier).updateProfile(avatarUrl: file.path);
+      // 真实模式先把图片上传到服务端，取得所有设备/重启后都可访问的
+      // /uploads/... 地址再存资料；Demo 模式内存会话直接存本机路径即可。
+      final avatarUrl = AppConfig.useMock
+          ? file.path
+          : await ref.read(authRepositoryProvider).uploadAvatar(file.path);
+      await ref.read(authProvider.notifier).updateProfile(avatarUrl: avatarUrl);
       // 群组成员列表/账单参与人同步刷新头像
       ref.read(refreshProvider.notifier).bump();
       if (context.mounted) showAaToast(context, '头像已更新 ✨');

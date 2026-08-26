@@ -1,4 +1,11 @@
-import { IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
+import {
+  ArrayMaxSize,
+  IsArray,
+  IsEnum,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from 'class-validator';
 import { SplitType } from '@prisma/client';
 
 export class UpdateGroupDto {
@@ -20,4 +27,11 @@ export class UpdateGroupDto {
   @IsOptional()
   @IsEnum(SplitType)
   defaultSplitType?: SplitType;
+
+  /** 默认免分摊人员（userId 列表；服务端校验必须为群内 active 成员） */
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @ArrayMaxSize(50)
+  defaultExemptUserIds?: string[];
 }
