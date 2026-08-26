@@ -89,7 +89,7 @@ void main() {
       });
       expect(
         info.downloadUrl,
-        'https://gitee.com/hotpot1993/aa-split/releases/download/v1.0.5/aa-split-v1.0.5.apk',
+        'https://gitee.com/hotpot1993/aa-split/releases/download/v1.0.5/app-release.apk',
       );
     });
 
@@ -106,7 +106,7 @@ void main() {
     test('AppConfig.giteeUpdateUrl 生成规则', () {
       expect(
         AppConfig.giteeUpdateUrl('1.0.5'),
-        'https://gitee.com/hotpot1993/aa-split/releases/download/v1.0.5/aa-split-v1.0.5.apk',
+        'https://gitee.com/hotpot1993/aa-split/releases/download/v1.0.5/app-release.apk',
       );
     });
   });

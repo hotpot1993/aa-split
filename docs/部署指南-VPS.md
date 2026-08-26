@@ -40,13 +40,14 @@ docker compose up -d --build api           # 改源码后重建上线
 
 升级流程：pscp 上传 `server/` 变更 → `docker compose up -d --build api`（构建含 `npm ci`，本机网络约 10 分钟，请耐心）。
 
-**发版更新「检查更新」版本**（每轮发版照此执行，详见 [发版 SOP](./开发进度.md#十发版-sop每次发行照此执行)；更新包**默认由 App 从 Gitee 发行版拉取**，VPS 自建 `/apk/` 仅作备用源；**代码镜像无需手动** —— GitHub 推送后由 `.github/workflows/mirror-gitee.yml` 自动同步到 Gitee 仓库）：
+**发版更新「检查更新」版本**（每轮发版照此执行，详见 [发版 SOP](./开发进度.md#十发版-sop每次发行照此执行)；更新包**默认由 App 从 Gitee 发行版拉取**，VPS 自建 `/apk/` 仅作备用源；**代码镜像与 Gitee 发行版附件均已自动化** —— 代码由 `mirror-gitee.yml` 同步，发行版由 `release-gitee.yml`（[release2gitee](https://github.com/hepengju/release2gitee) v1.2.1）同步，规范附件名 `app-release.apk`）：
 
 ```bash
-# 1a. 首选源：上传 APK 到 Gitee 发行版附件（镜像仓库 hotpot1993/aa-split）
-curl -s -X POST -F "file=@app-release.apk;filename=aa-split-vX.Y.Z.apk" \
-  "https://gitee.com/api/v5/repos/hotpot1993/aa-split/releases/{id}/attach_files?access_token=<PAT>"
-#    即 https://gitee.com/hotpot1993/aa-split/releases/download/vX.Y.Z/aa-split-vX.Y.Z.apk
+# 1a. 首选源（自动化）：GitHub Release 发布 → release2gitee 自动同步至 Gitee 发行版
+#     https://gitee.com/hotpot1993/aa-split/releases/download/vX.Y.Z/app-release.apk
+#     手动兜底（可重复执行，幂等）：
+#     curl -s -X POST -F "file=@app-release.apk;filename=app-release.apk" \
+#       "https://gitee.com/api/v5/repos/hotpot1993/aa-split/releases/{id}/attach_files?access_token=<PAT>"
 
 # 1b. 备用源：APK 放到 nginx 站点根（Cloudflare 后经 /apk/ 直出）
 curl -fL -o /www/wwwroot/api.hotpot1993.top/apk/aa-split-vX.Y.Z.apk \
@@ -56,7 +57,7 @@ curl -fL -o /www/wwwroot/api.hotpot1993.top/apk/aa-split-vX.Y.Z.apk \
 sed -i 's|^APP_VERSION_LATEST=.*|APP_VERSION_LATEST=X.Y.Z|' /opt/aa-split/.env
 sed -i 's|^APP_VERSION_BUILD=.*|APP_VERSION_BUILD=BBBB|' /opt/aa-split/.env
 # URL 优先指向 Gitee 发行版（客户端未收到 URL 时也默认走 Gitee，见 AppConfig.giteeUpdateUrl）
-sed -i 's|^APP_VERSION_URL=.*|APP_VERSION_URL=https://gitee.com/hotpot1993/aa-split/releases/download/vX.Y.Z/aa-split-vX.Y.Z.apk|' /opt/aa-split/.env
+sed -i 's|^APP_VERSION_URL=.*|APP_VERSION_URL=https://gitee.com/hotpot1993/aa-split/releases/download/vX.Y.Z/app-release.apk|' /opt/aa-split/.env
 sed -i 's|^APP_VERSION_NOTES=.*|APP_VERSION_NOTES=更新说明|' /opt/aa-split/.env
 
 # 3. 重建容器让 .env 生效（restart 不会重新注入 env）
@@ -64,7 +65,7 @@ cd /opt/aa-split && docker compose up -d api
 
 # 4. 验证
 curl -s https://api.hotpot1993.top/api/v1/app/version       # latestVersion=X.Y.Z
-curl -sIL https://gitee.com/hotpot1993/aa-split/releases/download/vX.Y.Z/aa-split-vX.Y.Z.apk  # HTTP/2 200
+curl -sIL https://gitee.com/hotpot1993/aa-split/releases/download/vX.Y.Z/app-release.apk  # HTTP/2 200
 ```
 
 > ⚠️ Gitee 仓库需**公开**才能匿名下载更新包（私有仓库附件返回 403）；账号安全评级低时需先在 Gitee 完成 2FA 或绑定第三方账号。
