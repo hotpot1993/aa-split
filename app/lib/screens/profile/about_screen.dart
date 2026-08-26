@@ -111,6 +111,19 @@ class _AboutScreenState extends State<AboutScreen> {
               ),
             ),
           ),
+          SizedBox(height: 4),
+          // versionCode：构建号即 Android versionCode（与 pubspec `+N` 一致），
+          // 置于页底便于真机排查安装/更新版本问题（如 HyperOS -25 降级）
+          Center(
+            child: Text(
+              'versionCode ${AppConfig.appBuildNumber}',
+              style: TextStyle(
+                fontFamily: AAFonts.accent,
+                fontSize: 12,
+                color: AAColors.inkSoft,
+              ),
+            ),
+          ),
           SizedBox(height: 16),
         ],
       ),
