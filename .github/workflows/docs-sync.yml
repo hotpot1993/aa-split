@@ -1,11 +1,13 @@
 name: Docs Sync
 
 # 文档自动同步：每次 master 推送后，
-#   1) 用真实测试结果刷新 README 状态表计数（服务端 / 客户端实测值）
+#   1) 用服务端实测测试数刷新 README 状态表（npm test 计数，平台无关）
 #   2) 同步版本串（pubspec → docs/ui-demo/index.html）
 #   3) 重新生成 API 端点清单 docs/api-endpoints.generated.md
 # 有变更则以 [docs-sync] 提交推回（GITHUB_TOKEN 推送不会再次触发工作流，无递归）。
 # 脚本：scripts/sync-docs.mjs（可在本地手动运行）
+# 注意：客户端 flutter 测试数刻意不由 Linux CI 自动刷新——golden 截图校验仅 Windows 运行，
+#       Linux 通过数（102）与 Windows 实测（107）不一致；README 客户端计数保持 Windows 实测值。
 on:
   push:
     branches: [master]
@@ -32,29 +34,12 @@ jobs:
         run: |
           npm ci --no-audit --no-fund || npm install --no-audit --no-fund
           npm test 2>&1 | tee /tmp/server-test.log
-          echo "SERVER_TESTS=$(grep -oE 'Tests:[[:space:]]+[0-9]+ passed' /tmp/server-test.log | head -1 | grep -oE '[0-9]+')" >> "$GITHUB_ENV"
-
-      - uses: subosito/flutter-action@v2
-        with:
-          flutter-version: 3.44.x
-          channel: stable
-          cache: true
-
-      - name: Flutter test count (flutter test)
-        working-directory: app
-        run: |
-          flutter pub get
-          flutter test 2>&1 | tee /tmp/flutter-test.log
-          # 末行形如 "00:11 +107 ~2: All tests passed!" 或 "... -1: Some tests failed."
-          SUMMARY=$(tail -n 1 /tmp/flutter-test.log)
-          echo "summary: $SUMMARY"
-          echo "$SUMMARY" | grep -q "All tests passed" || { echo "::error::flutter test 未全部通过，跳过更新计数"; exit 1; }
-          COUNT=$(echo "$SUMMARY" | grep -oE '\+[0-9]+' | tail -1 | tr -d '+')
-          echo "FLUTTER_TESTS=$COUNT" >> "$GITHUB_ENV"
+          COUNT=$(grep -oE 'Tests:[[:space:]]+[0-9]+ passed' /tmp/server-test.log | head -1 | grep -oE '[0-9]+')
+          echo "SERVER_TESTS=$COUNT" >> "$GITHUB_ENV"
 
       - name: Regenerate docs (version / API endpoints / counts)
         run: |
-          node scripts/sync-docs.mjs --server-tests="$SERVER_TESTS" --flutter-tests="$FLUTTER_TESTS"
+          node scripts/sync-docs.mjs --server-tests="$SERVER_TESTS"
 
       - name: Commit back if changed
         run: |
@@ -65,6 +50,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          git commit -m "docs(sync): [docs-sync] 代码变更后自动同步文档（版本串/API 端点清单/测试计数）"
+          git commit -m "docs(sync): [docs-sync] 代码变更后自动同步文档（版本串/API 端点清单/服务端测试计数）"
           git push origin master
           echo "::notice::docs-sync 更新已推回仓库"

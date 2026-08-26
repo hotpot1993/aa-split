@@ -6,6 +6,8 @@
 // 用法：node scripts/sync-docs.mjs [--server-tests=N] [--flutter-tests=N]
 // 由 .github/workflows/docs-sync.yml 在每次 master 推送后自动执行；
 // 结果有变更时工作流会以 [docs-sync] 提交并推回仓库。
+// 注意：--flutter-tests 仅在 Windows 上有意义（golden 截图校验仅 Windows 运行，
+// Linux 通过数不同），CI 不传该参数，客户端计数保持 Windows 实测值。
 // ============================================================
 
 import { readFileSync, writeFileSync, readdirSync, statSync, existsSync } from 'node:fs';
