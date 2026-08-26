@@ -1,14 +1,15 @@
 name: Release to Gitee
 
 # GitHub 发行版（Release）发布事件 → 自动同步到 Gitee 发行版。
-# 使用社区 Action「release2gitee」（hepengju/release2gitee v1.2.1，Rust CLI）：
-#   - 幂等：已存在的 Gitee 发行版跳过；可重复执行
-#   - 同步最近 N 个 GitHub Release 的附件（原文件名：app-release.aab / app-release.apk / app-arm64-v8a-release.apk）
-#   - 仅最新 M 个 Gitee 发行版保留附件（省空间），其余保留元数据 + 2 个源码附件
-#   - body 中 github.com 下载地址自动替换为 gitee.com
-# 约定：App 更新包的规范文件名 = app-release.apk
-#       （AppConfig.giteeUpdateUrl 与 APP_VERSION_URL 均指向
-#        https://gitee.com/hotpot1993/aa-split/releases/download/vX.Y.Z/app-release.apk）
+# 采用「release2gitee」（hepengju/release2gitee v1.2.1）在 **VPS（中国侧）中转执行**：
+#   - GitHub Actions 负责：触发 + 把 release2gitee CLI 部署到 VPS
+#   - VPS 上运行 release2gitee：GitHub↔VPS 下载快（92MB 约 4s），VPS↔Gitee 上传快；
+#     规避 GitHub 美国 runner 直连 Gitee 上传被 CLI 硬编码 60s 超时（跨国链路不可达）
+#   - 特性：幂等（已存在发行版跳过）、同步最近 5 个发行版、最近 3 个保留附件、
+#     body 中 GitHub 下载地址自动替换为 Gitee、进度条
+# 规范：更新包文件名 = app-release.apk（AppConfig.giteeUpdateUrl / APP_VERSION_URL 均指向
+#       https://gitee.com/hotpot1993/aa-split/releases/download/vX.Y.Z/app-release.apk）
+# 凭据：GITEE_ACCESS_TOKEN（Gitee PAT）/ VPS_SSH_KEY + VPS_HOST + VPS_USER（root 免密）
 on:
   release:
     types: [published]
@@ -23,30 +24,37 @@ concurrency:
 
 jobs:
   sync:
-    name: Sync releases to Gitee (release2gitee)
+    name: Sync releases to Gitee (release2gitee @ VPS relay)
     runs-on: ubuntu-latest
     env:
-      # release2gitee 配置（注意：v1.2.1 的 clap 参数从大写环境变量读取，见 --help）
-      GITHUB_OWNER: hotpot1993
-      GITHUB_REPO: aa-split
-      GITEE_OWNER: hotpot1993
-      GITEE_REPO: aa-split
       GITEE_TOKEN: ${{ secrets.GITEE_ACCESS_TOKEN }}
-      GITHUB_TOKEN: ${{ github.token }}   # 提升 GitHub API 速率 50/h → 3000/h
-      release2gitee__github_latest_release_count: '5'
-      release2gitee__gitee_retain_release_attach_files_count: '3'
+      GITHUB_TOKEN: ${{ github.token }}
+      VPS_HOST: ${{ secrets.VPS_HOST }}
+      VPS_USER: ${{ secrets.VPS_USER }}
     steps:
-      - name: Install release2gitee CLI
+      - name: Install SSH key to VPS relay
         run: |
-          VER=v1.2.1
+          mkdir -p "$HOME/.ssh" && chmod 700 "$HOME/.ssh"
+          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > "$HOME/.ssh/id_vps"
+          chmod 600 "$HOME/.ssh/id_vps"
+          ssh-keyscan -H "${VPS_HOST}" >> "$HOME/.ssh/known_hosts" 2>/dev/null || true
+
+      - name: Deploy release2gitee CLI to VPS
+        env:
+          VER: v1.2.1
+        run: |
           curl -fsSL -o /tmp/release2gitee.tgz \
             "https://github.com/hepengju/release2gitee/releases/download/${VER}/release2gitee-x86_64-unknown-linux-gnu.tar.gz"
           tar -xzf /tmp/release2gitee.tgz -C /tmp
-          install -m 0755 /tmp/release2gitee /usr/local/bin/release2gitee
-          release2gitee --help | head -20
+          scp -i "$HOME/.ssh/id_vps" -o IdentitiesOnly=yes /tmp/release2gitee \
+            "${VPS_USER}@${VPS_HOST}:/usr/local/bin/release2gitee"
+          ssh -i "$HOME/.ssh/id_vps" -o IdentitiesOnly=yes "${VPS_USER}@${VPS_HOST}" \
+            "chmod 755 /usr/local/bin/release2gitee && /usr/local/bin/release2gitee --help | head -3"
 
-      - name: Sync latest GitHub releases to Gitee
-        run: release2gitee
+      - name: Sync latest GitHub releases to Gitee (via VPS relay)
+        run: |
+          ssh -i "$HOME/.ssh/id_vps" -o IdentitiesOnly=yes "${VPS_USER}@${VPS_HOST}" \
+            "GITHUB_OWNER=hotpot1993 GITHUB_REPO=aa-split GITEE_OWNER=hotpot1993 GITEE_REPO=aa-split GITEE_TOKEN='${GITEE_TOKEN}' GITHUB_TOKEN='${GITHUB_TOKEN}' release2gitee"
 
       - name: Verify latest Gitee download URL
         env:
