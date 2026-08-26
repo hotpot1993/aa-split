@@ -15,7 +15,7 @@
 | 基础设施（docker-compose / Makefile / CI / 字体 asset） | ✅ | — |
 | **真实联调**（线上 API smoke + SSE） | ✅ | `node scripts/smoke-api.mjs` **22/22** · `node scripts/sse-check.mjs` SSE 实时事件 ✅（v1.0.5 部署后 2026-08-26 复跑通过） |
 | **发行**（v1.0.5，GitHub Actions 正式签名） | ✅ | [GitHub Release](https://github.com/hotpot1993/aa-split/releases/tag/v1.0.5)：AAB + 通用 APK + arm64 APK；线上「检查更新」已切到 1.0.5（见 [发版 SOP](docs/开发进度.md#十发版-sop每次发行照此执行)） |
-| **Gitee 镜像 + 更新源** | ✅ | 镜像仓库 [gitee.com/hotpot1993/aa-split](https://gitee.com/hotpot1993/aa-split)（全量分支/标签）；App 更新**默认从 [Gitee 发行版](https://gitee.com/hotpot1993/aa-split/releases) 拉取更新包**（`giteeUpdateUrl` 兜底 + 服务端 URL 可切换） |
+| **Gitee 镜像 + 更新源** | ✅ | 镜像仓库 [gitee.com/hotpot1993/aa-split](https://gitee.com/hotpot1993/aa-split)（**GitHub 推送自动同步**：`.github/workflows/mirror-gitee.yml` 每次 push 全量同步 heads+tags）；App 更新**默认从 [Gitee 发行版](https://gitee.com/hotpot1993/aa-split/releases) 拉取更新包**（`giteeUpdateUrl` 兜底 + 服务端 URL 可切换） |
 
 **说明**：客户端默认 **Demo 模式**（`--dart-define=AA_USE_MOCK=false` 切真实后端，见
 [app/README.md](app/README.md) 联调清单）；服务端运行需要一个 PostgreSQL 实例
