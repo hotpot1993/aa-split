@@ -26,13 +26,13 @@ jobs:
     name: Sync releases to Gitee (release2gitee)
     runs-on: ubuntu-latest
     env:
-      # release2gitee 配置（见 https://github.com/hepengju/release2gitee）
-      github_owner: hotpot1993
-      github_repo: aa-split
-      gitee_owner: hotpot1993
-      gitee_repo: aa-split
-      gitee_token: ${{ secrets.GITEE_ACCESS_TOKEN }}
-      github_token: ${{ github.token }}   # 提升 GitHub API 速率 50/h → 3000/h
+      # release2gitee 配置（注意：v1.2.1 的 clap 参数从大写环境变量读取，见 --help）
+      GITHUB_OWNER: hotpot1993
+      GITHUB_REPO: aa-split
+      GITEE_OWNER: hotpot1993
+      GITEE_REPO: aa-split
+      GITEE_TOKEN: ${{ secrets.GITEE_ACCESS_TOKEN }}
+      GITHUB_TOKEN: ${{ github.token }}   # 提升 GitHub API 速率 50/h → 3000/h
       release2gitee__github_latest_release_count: '5'
       release2gitee__gitee_retain_release_attach_files_count: '3'
     steps:
