@@ -5,12 +5,13 @@
 // Server must be running at http://127.0.0.1:3000 (AA_API_BASE to override).
 // The smoke users (smoke_alice / smoke_bob) are created fresh each run:
 // pre-clean with psql or use unique names via SMOKE_SUFFIX env.
+// 注意：注册限制账户名 ≤16 字符（smoke_alice_xxx 已是 18 字符 → 精简前缀）
 // ============================================================
 
 const base = process.env.AA_API_BASE || 'http://127.0.0.1:3000/api/v1';
 const suffix = process.env.SMOKE_SUFFIX || Date.now().toString(36).slice(-6);
-const aliceName = `smoke_alice_${suffix}`;
-const bobName = `smoke_bob_${suffix}`;
+const aliceName = `sa_${suffix}`;
+const bobName = `sb_${suffix}`;
 
 const QUESTION_ALICE = '你最好的朋友？';
 const QUESTION_BOB = '你的小学？';

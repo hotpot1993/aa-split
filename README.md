@@ -14,7 +14,7 @@
 | 结算算法（`server/src/settlement/`，含"已付份额排除"修复） | ✅ | 13 个金标准单测全绿 |
 | 基础设施（docker-compose / Makefile / CI / 字体 asset） | ✅ | — |
 | **真实联调**（线上 API smoke + SSE） | ✅ | `node scripts/smoke-api.mjs` **22/22** · `node scripts/sse-check.mjs` SSE 实时事件 ✅（v1.0.5 部署后 2026-08-26 复跑通过） |
-| **发行**（v1.0.5，GitHub Actions 正式签名） | ✅ | [GitHub Release](https://github.com/hotpot1993/aa-split/releases/tag/v1.0.5)：AAB + 通用 APK + arm64 APK；线上「检查更新」已切到 1.0.5（见 [发版 SOP](docs/开发进度.md#十发版-sop每次发行照此执行)） |
+| **发行**（v1.0.6，GitHub Actions 正式签名） | ✅ | [GitHub Release](https://github.com/hotpot1993/aa-split/releases/tag/v1.0.6)：AAB + 通用 APK + arm64 APK；Gitee 发行版已同步（更新包默认从 Gitee 拉取，`release-gitee.yml` 需手动 dispatch 触发，见 [发版 SOP](docs/开发进度.md#十发版-sop每次发行照此执行)）；VPS 已部署：迁移 `20260901000000` 已应用、`/app/version` 返回 1.0.6+2007、线上 smoke **22/22** |
 | **Gitee 镜像 + 更新源** | ✅ | 镜像仓库 [gitee.com/hotpot1993/aa-split](https://gitee.com/hotpot1993/aa-split)：代码由 [mirror-gitee.yml](.github/workflows/mirror-gitee.yml) 自动同步；**发行版由 [release-gitee.yml](.github/workflows/release-gitee.yml)（release2gitee Action）自动同步**（Release 发布事件 → 幂等同步最近 5 个发行版与附件，规范文件名 `app-release.apk`）；App 更新**默认从 [Gitee 发行版](https://gitee.com/hotpot1993/aa-split/releases) 拉取更新包**（`giteeUpdateUrl` 兜底 + 服务端 URL 可切换） |
 
 **说明**：客户端默认 **Demo 模式**（`--dart-define=AA_USE_MOCK=false` 切真实后端，见
