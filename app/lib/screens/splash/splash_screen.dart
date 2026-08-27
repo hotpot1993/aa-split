@@ -12,7 +12,7 @@ import '../../widgets/common.dart';
 
 /// P01 启动页 —— 对齐 docs/ui-demo/index.html：
 /// 150px 团团 + 48px AA分账 + mini「团团正在数钱…」+ · · · + 四枚涂鸦。
-/// 5s 后按登录态自动跳转（未登录 → /login，已登录 → /home；点击屏幕可跳过等待）。
+/// 2s 后按登录态自动跳转（未登录 → /login，已登录 → /home；点击屏幕任意处可跳过）。
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
   @override
@@ -22,13 +22,14 @@ class SplashScreen extends ConsumerStatefulWidget {
 class _SplashScreenState extends ConsumerState<SplashScreen>
     with SingleTickerProviderStateMixin {
   Timer? _timer;
+  bool _jumping = false; // 防重入：连点/定时器竞态只跳一次
   late final AnimationController _c =
       AnimationController(vsync: this, duration: Duration(milliseconds: 900));
   late final Animation<double> _fade =
       CurvedAnimation(parent: _c, curve: Curves.easeOut);
 
-  /// 停留时长：5 秒后自动进入登录页或首页（按登录状态决定）
-  static const autoJumpDelay = Duration(seconds: 5);
+  /// 停留时长：2 秒后自动进入登录页或首页（按登录状态决定）
+  static const autoJumpDelay = Duration(seconds: 2);
 
   @override
   void initState() {
@@ -45,7 +46,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   }
 
   Future<void> _go() async {
-    if (!mounted) return;
+    if (!mounted || _jumping) return;
+    _jumping = true;
     // 真实模式：先恢复本地会话（token + /auth/me 校验），避免每次都掉回登录页
     if (!AppConfig.useMock && !ref.read(authProvider).isLoggedIn) {
       await ref.read(authProvider.notifier).restore();
@@ -59,27 +61,29 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AAColors.paper,
-      body: Stack(
-        children: [
-          const Positioned.fill(child: CustomPaint(painter: _SplashPainter())),
-          // 散落涂鸦（Demo .doodle）—— 替换为匹配素材
-          Positioned(top: 130, left: 36, child: AaIconImage('assets/icons/star.png', size: 18)),
-          Positioned(top: 230, right: 40, child: AaIconImage('assets/icons/heart.png', size: 18)),
-          Positioned(
-            top: 400,
-            left: 56,
-            child: Opacity(opacity: 0.55, child: AaIconImage('assets/icons/coin.png', size: 22)),
-          ),
-          Positioned(
-            top: 470,
-            right: 56,
-            child: Opacity(opacity: 0.55, child: AaIconImage('assets/icons/edit.png', size: 22)),
-          ),
-          Center(
-            child: FadeTransition(
-              opacity: _fade,
-              child: GestureDetector(
-                onTap: _go,
+      // 点击屏幕任意处跳过：整屏 GestureDetector（opaque），不再只包中间 Logo 块
+      body: GestureDetector(
+        onTap: _go,
+        behavior: HitTestBehavior.opaque,
+        child: Stack(
+          children: [
+            const Positioned.fill(child: CustomPaint(painter: _SplashPainter())),
+            // 散落涂鸦（Demo .doodle）—— 替换为匹配素材
+            Positioned(top: 130, left: 36, child: AaIconImage('assets/icons/star.png', size: 18)),
+            Positioned(top: 230, right: 40, child: AaIconImage('assets/icons/heart.png', size: 18)),
+            Positioned(
+              top: 400,
+              left: 56,
+              child: Opacity(opacity: 0.55, child: AaIconImage('assets/icons/coin.png', size: 22)),
+            ),
+            Positioned(
+              top: 470,
+              right: 56,
+              child: Opacity(opacity: 0.55, child: AaIconImage('assets/icons/edit.png', size: 22)),
+            ),
+            Center(
+              child: FadeTransition(
+                opacity: _fade,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -107,15 +111,15 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                             color: AAColors.inkSoft,
                             letterSpacing: 6)),
                     SizedBox(height: 60),
-                    Text('5 秒后自动进入（点击屏幕可跳过）',
+                    Text('2 秒后自动进入（点击屏幕可跳过）',
                         style: TextStyle(
                             fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft)),
                   ],
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
