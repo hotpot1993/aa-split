@@ -117,4 +117,22 @@ export class NotificationsService {
       data: { isRead: true },
     });
   }
+
+  /** 删除单条通知（仅本人；不存在或他人的通知 → 404） */
+  async remove(userId: string, id: string) {
+    const n = await this.prisma.notification.findFirst({
+      where: { id, userId },
+    });
+    if (!n) throw new NotFoundException('通知不存在');
+    await this.prisma.notification.delete({ where: { id } });
+    return { success: true };
+  }
+
+  /** 清空本人全部通知，返回删除条数 */
+  async removeAll(userId: string) {
+    const { count } = await this.prisma.notification.deleteMany({
+      where: { userId },
+    });
+    return { deleted: count };
+  }
 }

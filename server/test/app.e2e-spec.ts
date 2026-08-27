@@ -317,6 +317,56 @@ describe('核心链路 e2e（注册→建群→记账→结算→催款→已付
     expect(settle.body.data.transfers).toEqual([]);
   });
 
+  it('消息删除：单条 DELETE（归属校验 404）+ 清空全部 DELETE', async () => {
+    const alice = (globalThis as any).__alice as { token: string };
+    const bobToken = (globalThis as any).__bobToken as string;
+
+    // bob 此时有 1 条催款通知
+    const list1 = await request(server())
+      .get('/api/v1/notifications')
+      .set('Authorization', `Bearer ${bobToken}`)
+      .expect(200);
+    const remindNotif = list1.body.data.list[0];
+    expect(remindNotif).toBeDefined();
+
+    // 他人（alice）不能删 bob 的通知 → 404
+    await request(server())
+      .delete(`/api/v1/notifications/${remindNotif.id}`)
+      .set('Authorization', `Bearer ${alice.token}`)
+      .expect(404);
+
+    // bob 删除自己的通知 → success:true
+    const del = await request(server())
+      .delete(`/api/v1/notifications/${remindNotif.id}`)
+      .set('Authorization', `Bearer ${bobToken}`)
+      .expect(200);
+    expect(del.body.data.success).toBe(true);
+
+    // 重复删除同一条 → 404
+    await request(server())
+      .delete(`/api/v1/notifications/${remindNotif.id}`)
+      .set('Authorization', `Bearer ${bobToken}`)
+      .expect(404);
+
+    // 清空全部：alice 有成员动态通知 → 返回删除条数，且列表变空
+    const aliceList = await request(server())
+      .get('/api/v1/notifications')
+      .set('Authorization', `Bearer ${alice.token}`)
+      .expect(200);
+    const aliceCount = (aliceList.body.data.list as any[]).length;
+    expect(aliceCount).toBeGreaterThan(0);
+    const clear = await request(server())
+      .delete('/api/v1/notifications')
+      .set('Authorization', `Bearer ${alice.token}`)
+      .expect(200);
+    expect(clear.body.data.deleted).toBe(aliceCount);
+    const emptyList = await request(server())
+      .get('/api/v1/notifications')
+      .set('Authorization', `Bearer ${alice.token}`)
+      .expect(200);
+    expect(emptyList.body.data.list).toHaveLength(0);
+  });
+
   it('一键结清：群内全部账单统一标记为已付', async () => {
     const alice = (globalThis as any).__alice as { token: string; id: string };
     const group = (globalThis as any).__group as { id: string };

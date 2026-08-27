@@ -4,7 +4,7 @@
 > 每次 master 推送后由 `.github/workflows/docs-sync.yml` 自动更新（人工改动会被覆盖）。
 > 完整契约见 [技术方案](./AA分账App-技术方案.md)；Swagger：`GET /api/docs`。
 
-共 43 个端点。表格：HTTP 方法 | 路径（`api/v1` 为全局前缀）| 鉴权 | 说明。
+共 44 个端点。表格：HTTP 方法 | 路径（`api/v1` 为全局前缀）| 鉴权 | 说明。
 
 | 方法 | 路径 | 鉴权 | 说明 |
 |---|---|---|---|
@@ -13,6 +13,7 @@
 | DELETE | `api/v1/bills/:id` | 🔒 登录 |  |
 | DELETE | `api/v1/groups/:id/members/:userId` | 🔒 登录 |  |
 | DELETE | `api/v1/groups/:id` | 🔒 登录 |  |
+| DELETE | `api/v1/notifications/:id` | 🔒 登录 | 删除单条消息（消息中心左滑 / 长按删除） |
 | DELETE | `api/v1/regular-bills/:id` | 🔒 登录 |  |
 | GET    | `api/v1/auth/devices` | 🔒 登录 | 登录设备列表（最近登录在前） |
 | GET    | `api/v1/auth/me` | 🔒 登录 |  |

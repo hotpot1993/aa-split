@@ -30,7 +30,8 @@ class MessagesScreen extends ConsumerWidget {
         headIcon: 'assets/icons/notify.png',
         iconImage: 'assets/icons/settings.png',
         onIconTap: () => context.push('/messages/settings'),
-        // 「全部已读」：有未读消息时显示，点击把当前所有未读消息标记为已读
+        // 「全部已读」：有未读消息时显示，点击把当前所有未读消息标记为已读；
+        // 「清空」：有任何消息时显示，二次确认后删除全部消息
         actions: [
           if (unread > 0)
             InkWell(
@@ -42,6 +43,18 @@ class MessagesScreen extends ConsumerWidget {
                         fontFamily: AAFonts.title,
                         fontSize: 14,
                         color: AAColors.sky)),
+              ),
+            ),
+          if (items.isNotEmpty)
+            InkWell(
+              onTap: () => _clearAll(context, ref),
+              child: Padding(
+                padding: const EdgeInsets.only(left: 10, top: 8),
+                child: Text('清空',
+                    style: TextStyle(
+                        fontFamily: AAFonts.title,
+                        fontSize: 14,
+                        color: AAColors.berry)),
               ),
             ),
         ],
@@ -81,6 +94,20 @@ class MessagesScreen extends ConsumerWidget {
     ref.read(refreshProvider.notifier).bump();
     if (context.mounted) showAaToast(context, '📮 已全部标记为已读');
   }
+
+  /// 清空全部消息：二次确认后删除当前所有消息（Mock/真实模式都由仓库落库）
+  Future<void> _clearAll(BuildContext context, WidgetRef ref) async {
+    final ok = await showAaConfirm(
+      context,
+      title: '清空全部消息？',
+      subtitle: '所有消息将被删除，不可恢复',
+      confirmLabel: '清空',
+    );
+    if (ok != true) return;
+    await ref.read(notificationRepositoryProvider).clearAll();
+    ref.read(refreshProvider.notifier).bump();
+    if (context.mounted) showAaToast(context, '🗑️ 已清空全部消息');
+  }
 }
 
 class _MsgCard extends ConsumerWidget {
@@ -89,6 +116,14 @@ class _MsgCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // 左滑删除 + 长按删除（共用同一条二次确认链路）
+    return _SwipeToDelete(
+      notification: n,
+      child: _buildCard(context, ref),
+    );
+  }
+
+  Widget _buildCard(BuildContext context, WidgetRef ref) {
     final isRemind = n.type == NotifyType.remind;
     final isInvite = n.type == NotifyType.invite;
     final emoji = _emojiOf(n.type);
@@ -109,6 +144,7 @@ class _MsgCard extends ConsumerWidget {
         margin: const EdgeInsets.only(bottom: 16),
         color: AASemantic.msgPinkBg,
         borderColor: AAColors.berry,
+        onLongPress: () => _confirmDelete(context, ref),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -147,6 +183,7 @@ class _MsgCard extends ConsumerWidget {
     if (isInvite) {
       return PaperCard(
         onTap: open,
+        onLongPress: () => _confirmDelete(context, ref),
         margin: const EdgeInsets.only(bottom: 16),
         padding: const EdgeInsets.all(12),
         child: Column(
@@ -199,6 +236,7 @@ class _MsgCard extends ConsumerWidget {
     // 普通消息卡（emoji + 标题 + mini dim 详情 + chip）
     return PaperCard(
       onTap: open,
+      onLongPress: () => _confirmDelete(context, ref),
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(12),
       child: Row(
@@ -247,4 +285,73 @@ class _MsgCard extends ConsumerWidget {
         NotifyType.settled => 'assets/icons/party.png',
         NotifyType.member => 'assets/icons/group.png',
       };
+
+  /// 长按删除：二次确认后删除当前消息（Mock/真实模式都由仓库落库）
+  Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
+    final ok = await showAaConfirm(
+      context,
+      title: '删除这条消息？',
+      subtitle: '删除后不可恢复',
+      confirmLabel: '删除',
+    );
+    if (ok != true) return;
+    await ref.read(notificationRepositoryProvider).remove(n.id);
+    ref.read(refreshProvider.notifier).bump();
+    if (context.mounted) showAaToast(context, '🗑️ 已删除');
+  }
+}
+
+/// 左滑删除单条消息：露出删除背景，松手弹二次确认。
+/// 确认后走仓库删除 + refreshProvider 刷新移除；confirmDismiss 始终返回 false，
+/// 避免「Dismissible 已确认移除但 widget 仍在树中」断言（移除交给列表刷新）。
+class _SwipeToDelete extends ConsumerWidget {
+  const _SwipeToDelete({required this.notification, required this.child});
+
+  final NotificationItem notification;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Dismissible(
+      key: ValueKey('msg-${notification.id}'),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        alignment: Alignment.centerRight,
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.only(right: 18),
+        decoration: BoxDecoration(
+          color: AAColors.berry,
+          borderRadius: AARadii.card,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AaIconImage('assets/icons/cross.png', size: 18),
+            SizedBox(width: 6),
+            Text('删除',
+                style: TextStyle(
+                    fontFamily: AAFonts.title,
+                    fontSize: 14,
+                    color: AAColors.paper)),
+          ],
+        ),
+      ),
+      confirmDismiss: (direction) => _confirmDelete(context, ref),
+      child: child,
+    );
+  }
+
+  Future<bool> _confirmDelete(BuildContext context, WidgetRef ref) async {
+    final ok = await showAaConfirm(
+      context,
+      title: '删除这条消息？',
+      subtitle: '删除后不可恢复',
+      confirmLabel: '删除',
+    );
+    if (ok != true) return false;
+    await ref.read(notificationRepositoryProvider).remove(notification.id);
+    ref.read(refreshProvider.notifier).bump();
+    if (context.mounted) showAaToast(context, '🗑️ 已删除');
+    return false;
+  }
 }

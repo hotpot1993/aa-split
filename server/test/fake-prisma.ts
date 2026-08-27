@@ -290,6 +290,16 @@ class Model {
     return { count };
   }
 
+  async delete({ where }: { where: Row }) {
+    const idx = this.rows.findIndex((r) => matches(r, where));
+    if (idx < 0) {
+      throw new Error(
+        `[FakePrisma] ${this.modelName}.delete 未找到：${JSON.stringify(where)}`,
+      );
+    }
+    return this.rows.splice(idx, 1)[0];
+  }
+
   async deleteMany({ where }: { where: Row }) {
     const before = this.rows.length;
     for (let i = this.rows.length - 1; i >= 0; i--) {

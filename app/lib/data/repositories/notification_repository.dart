@@ -60,6 +60,25 @@ class NotificationRepository {
     await ApiClient.instance.post('/notifications/read-all');
   }
 
+  /// 删除单条消息（消息中心左滑 / 长按删除）。
+  /// 删除不产生 SSE 事件，多端以下次拉取列表为准。
+  Future<void> remove(String id) async {
+    if (AppConfig.useMock) {
+      MockStore.instance.notifications.removeWhere((n) => n.id == id);
+      return;
+    }
+    await ApiClient.instance.delete('/notifications/$id');
+  }
+
+  /// 清空全部消息（消息中心「清空」入口）。
+  Future<void> clearAll() async {
+    if (AppConfig.useMock) {
+      MockStore.instance.notifications.clear();
+      return;
+    }
+    await ApiClient.instance.delete('/notifications');
+  }
+
   /// 发送催款提醒（P26 → P40 对方收到）。
   /// 真实模式：服务端由 POST /bills/:id/remind 写通知并推 SSE，此处仅演示用不落库。
   Future<void> sendRemind({

@@ -1,5 +1,6 @@
 import {
   Controller,
+  Delete,
   Get,
   Param,
   Post,
@@ -67,6 +68,18 @@ export class NotificationsController {
   @Post(':id/read')
   readOne(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
     return this.notificationsService.readOne(user.sub, id);
+  }
+
+  /** 清空本人全部消息（消息中心「清空」入口） */
+  @Delete()
+  removeAll(@CurrentUser() user: JwtPayload) {
+    return this.notificationsService.removeAll(user.sub);
+  }
+
+  /** 删除单条消息（消息中心左滑 / 长按删除） */
+  @Delete(':id')
+  removeOne(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
+    return this.notificationsService.remove(user.sub, id);
   }
 
   /** SSE 实时通知流（支持 ?access_token= 与 Authorization header） */
