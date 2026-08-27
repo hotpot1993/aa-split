@@ -3,6 +3,8 @@
 import sys
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.extract import extract_amount, _parse_amount, OcrLine
@@ -303,12 +305,25 @@ def test_parse_amount_decimal_comma_and_thousands():
     assert _parse_amount("1,211.00") == (121100, True)
 
 
-def test_parse_amount_plain_and_malformed():
+def test_parse_amount_plain_and_rejects_malformed():
     assert _parse_amount("23344.00") == (2334400, True)
     assert _parse_amount("1450.00") == (145000, True)
     assert _parse_amount("88") == (8800, False)
     assert _parse_amount("12.34") == (1234, True)
-    assert _parse_amount("1.234.50") == (123450, True)   # 畸形多点不抛异常、尽力解析
+
+
+def test_parse_amount_rejects_garbage_shapes():
+    # 畸形数字串（OCR 粘连相邻数值框，如「822.60」+「1.00」→ 822.601.00）
+    # 必须整条拒绝（抛 ValueError → 候选被跳过），不得「尽力拼接」成巨款
+    for bad in ("822.601.00", "1.234.50", "1,2", "12.,34", "..", "1..2"):
+        with pytest.raises(ValueError):
+            _parse_amount(bad)
+
+
+def test_over_cap_token_skipped():
+    # 即使形态侥幸合法（点千分位「822.601」），超过小票级合理上限也整条剔除
+    r = extract_amount(lines(("822.601", 0.95, 900)), img_height=H)
+    assert r["amount_cents"] is None
 
 
 # ---------- 日期/长数字串不得当金额 ----------

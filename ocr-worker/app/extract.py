@@ -93,6 +93,9 @@ NEG_PREFIX_RE = re.compile(r"[-−–]\s*$")
 # 结果置信度归一化：score_raw / SCORE_NORM，上限 1.0
 SCORE_NORM = 4.0
 
+# 单张小票金额合理上限（¥9,999,999.99）：超过即基本可断定是数值框粘连误拼，整条剔除
+MAX_PLAUSIBLE_CENTS = 999_999_999
+
 
 @dataclass
 class OcrLine:
@@ -195,48 +198,57 @@ def _has_penalty(text: str) -> bool:
     return False
 
 
-def _parse_amount(raw: str) -> tuple[int, bool]:
-    """解析金额字符串 → (分, 是否恰好两位小数)。
+# 金额形态白名单：先验证「数字串长得像钱」，再解析。
+# 拒绝畸形串（OCR 粘连相邻数值框产生的 822.601.00、日期/编号碎片等），
+# 避免「尽力拼接」把它当点千分位拼成天文数字（822601.00 元 事故）。
+_MONEY_PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = (
+    # 普通点小数 / 纯整数：822.60 / 88 / 1450.00 / 23344.00
+    (re.compile(r"^\d+(?:\.\d{1,2})?$"), "dot_decimal"),
+    # 逗号千分位（可带点小数）：1,234 / 20,900 / 1,234.50 / 1,211.00
+    (re.compile(r"^\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?$"), "comma_thousands"),
+    # 点千分位（OCR 把逗号误读成点，日式整数金额）：1.000 / 10.000 / 1.234.567
+    (re.compile(r"^\d{1,3}(?:\.\d{3})+$"), "dot_thousands"),
+    # 欧式小数逗号：30,90
+    (re.compile(r"^\d+,\d{2}$"), "comma_decimal"),
+    # 点千分位 + 逗号小数：1.234,56
+    (re.compile(r"^\d{1,3}(?:\.\d{3})+,\d{2}$"), "eu_mixed"),
+)
 
-    兼容多种分隔符形态（对畸形多点多逗号结果做尽力解析，绝不抛异常）：
-      - 逗号千分位（1,234 / 20,900）；逗号+点（1,234.50：逗号千分位、点小数）
-      - 点千分位（1.000 / 10.000，OCR 把逗号误读成点；恰 3 位小数）
-      - 欧式小数逗号（30,90：逗号后恰 2 位 = 小数）
-      - 普通点小数（12.34）与纯整数
+
+def _parse_dot_frac(s: str) -> tuple[int, bool]:
+    """解析已归一化的「整数部分(.两位内小数)?」→ (分, 是否恰好两位小数)。"""
+    if "." in s:
+        whole, frac = s.split(".")
+        if len(frac) == 2:
+            return int(whole) * 100 + int(frac), True
+        frac = (frac + "0")[:2]
+        return int(whole) * 100 + int(frac), False
+    return int(s) * 100, False
+
+
+def _parse_amount(raw: str) -> tuple[int, bool]:
+    """解析金额字符串 → (分, 是否恰好两位小数)；不符合任何金额形态时抛 ValueError。
+
+    合法形态：
+      - 普通点小数/纯整数（12.34 / 23344.00）
+      - 逗号千分位（1,234 / 20,900），可带点小数（1,234.50）
+      - 点千分位（1.000 / 10.000 —— OCR 把逗号误读成点的日式整数金额）
+      - 欧式小数逗号（30,90），含点千分位变体（1.234,56）
     """
     s = raw.strip()
-    if "," in s and "." in s:
-        # 逗号=千分位；最后一个小数点是小数分隔，其余点当千分位
-        whole, _, frac = s.replace(",", "").rpartition(".")
-        whole = whole.replace(".", "")
-    elif "," in s:
-        parts = s.split(",")
-        if len(parts) == 2 and len(parts[1]) == 2:
-            # 欧式小数逗号：30,90
-            return int(parts[0]) * 100 + int(parts[1]), True
-        # 千分位逗号：1,234 / 20,900
-        return int(s.replace(",", "")) * 100, False
-    elif "." in s:
-        parts = s.split(".")
-        if len(parts) > 2:
-            # 多点（日期/畸形）：最后一个小数点是小数分隔，其余当千分位
-            whole = "".join(parts[:-1])
-            frac = parts[-1]
-        else:
-            whole, frac = parts
-        # 点千分位：恰 3 位小数
-        if len(frac) == 3:
-            return int("".join(parts).replace(".", "")) * 100, False
-    else:
-        return int(s) * 100, False
-
-    # 统一处理「点小数」尾段
-    if not frac.isdigit():
-        return int(whole or "0") * 100, False
-    if len(frac) == 2:
+    kind = next((k for pat, k in _MONEY_PATTERNS if pat.fullmatch(s)), None)
+    if kind is None:
+        raise ValueError(f"non-money numeric shape: {raw!r}")
+    if kind == "comma_thousands":
+        return _parse_dot_frac(s.replace(",", ""))
+    if kind == "dot_thousands":
+        return int(s.replace(".", "")) * 100, False
+    if kind == "comma_decimal":
+        whole, _, frac = s.partition(",")
         return int(whole) * 100 + int(frac), True
-    frac = (frac + "0")[:2]
-    return int(whole) * 100 + int(frac), False
+    if kind == "eu_mixed":
+        return _parse_dot_frac(s.replace(".", "").replace(",", "."))
+    return _parse_dot_frac(s)
 
 
 def _is_valid_candidate(cand: _Candidate, keyword_hit: bool) -> bool:
@@ -289,8 +301,14 @@ def _extract_candidates(
             continue
 
         raw = m.group(2)
-        # 过滤明显非金额：两位小数缺失时必须有符号或关键词行（由调用方复核）
-        value_cents, has_cents = _parse_amount(raw)
+        # 金额形态白名单：不符合任何金额形态（粘连/日期/编号碎片）整条剔除
+        try:
+            value_cents, has_cents = _parse_amount(raw)
+        except ValueError:
+            continue
+        # 超出小票级合理上限：数值框粘连误拼（如 822.601 → ¥822,601），剔除
+        if value_cents > MAX_PLAUSIBLE_CENTS:
+            continue
 
         extras = 0.0
         if has_cents:
