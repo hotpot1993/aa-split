@@ -94,6 +94,19 @@ export class StorageService {
     return `/uploads/${objectKey}`;
   }
 
+  /** 读取对象字节（供 OCR worker 转发；本地模式读文件，MinIO 模式 getObject） */
+  async read(objectKey: string): Promise<Buffer> {
+    if (this.mode === 'minio' && this.minioClient && this.minioBucket) {
+      const stream = await this.minioClient.getObject(this.minioBucket, objectKey);
+      const chunks: Buffer[] = [];
+      for await (const chunk of stream) {
+        chunks.push(chunk as Buffer);
+      }
+      return Buffer.concat(chunks);
+    }
+    return fs.promises.readFile(path.join(this.uploadDir, objectKey));
+  }
+
   /** 删除对象（替换凭证时清理旧图；文件不存在视为成功，不抛错） */
   async remove(objectKey: string): Promise<void> {
     if (!objectKey || objectKey.startsWith('http')) return;

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io' show File;
 
 import 'package:flutter/material.dart';
@@ -7,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 
 import 'package:aa_design/aa_design.dart';
 
+import '../../core/config.dart';
 import '../../core/currency.dart';
 import '../../core/utils/format.dart';
 import '../../models/bill.dart';
@@ -14,6 +16,7 @@ import '../../models/bill_participant.dart';
 import '../../models/group.dart';
 import '../../models/group_member.dart';
 import '../../providers/data_providers.dart';
+import '../../providers/notification_stream_provider.dart';
 import '../../providers/repositories.dart';
 import '../../providers/refresh_provider.dart';
 import '../../widgets/common.dart';
@@ -51,10 +54,14 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
   /// 防重复提交：保存进行中置位，重复点击直接忽略（单次操作仅生成一张账单）
   bool _saving = false;
 
+  StreamSubscription<Map<String, dynamic>>? _ocrSub;
+
   @override
   void initState() {
     super.initState();
     _loadInitial();
+    // 订阅小票 OCR 识别结果（D4：草稿预上传 → SSE → 预填金额）
+    _ocrSub = ref.read(receiptOcrEventsProvider).listen(_onOcrEvent);
   }
 
   Future<void> _loadInitial() async {
@@ -84,6 +91,7 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
 
   @override
   void dispose() {
+    _ocrSub?.cancel();
     _amountCtrl.dispose();
     _titleCtrl.dispose();
     super.dispose();
@@ -369,6 +377,15 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
                         ],
                       ),
                     ),
+                    if (_receipts.any((r) => r.uploadId != null))
+                      Padding(
+                        padding: const EdgeInsets.only(left: 2, top: 2),
+                        child: Text(_receiptOcrHint(),
+                            style: TextStyle(
+                                fontFamily: AAFonts.title,
+                                fontSize: 12,
+                                color: AAColors.inkSoft)),
+                      ),
                     // 定期账单（Demo：`.cbx` + `.mini` 文案）
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 11),
@@ -598,6 +615,62 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
     if (result != null) setState(() => _split = result);
   }
 
+  /// 收到 preupload 识别完成事件：匹配草稿凭证 → 按置信度分档弹确认 → 填金额（D4/D7）
+  Future<void> _onOcrEvent(Map<String, dynamic> e) async {
+    if (e['kind'] != 'preupload') return;
+    final uploadId = e['uploadId'] as String?;
+    if (uploadId == null) return;
+    final idx = _receipts.indexWhere((r) => r.uploadId == uploadId);
+    if (idx < 0 || !mounted) return;
+    final amount = e['amountCents'] as int?;
+    if (amount == null) return; // 识别不到金额：静默（D10）
+    final conf = (e['confidence'] as num?)?.toDouble() ?? 0;
+    if (conf < 0.6) return; // 低置信度：静默（D7）
+    final currency = (e['currency'] as String?) ?? 'CNY';
+    await _showOcrConfirm(amountCents: amount, confidence: conf, currency: currency);
+  }
+
+  /// 三档确认框（复用记账页手绘风 showAaConfirm）；确认后填入金额输入框，用户可改
+  Future<void> _showOcrConfirm({
+    required int amountCents,
+    required double confidence,
+    required String currency,
+  }) async {
+    if (!mounted) return;
+    final yuan = Fmt.yuan(amountCents);
+    final unsure = confidence < 0.9;
+    final ok = await showAaConfirm(
+      context,
+      title: unsure ? '识别到疑似金额 $yuan' : '识别到 $yuan',
+      subtitle: currency != 'CNY'
+          ? '币种为 $currency，可能非人民币，请核对'
+          : (unsure ? '置信度较低，请核对后修改' : '用小票金额填入账单？'),
+      confirmLabel: unsure ? '仍要填入' : '填入账单 ✓',
+    );
+    if (ok != true || !mounted) return;
+    _fillAmount(amountCents);
+  }
+
+  void _fillAmount(int amountCents) {
+    _amountCtrl.text = Fmt.yuanNoSymbol(amountCents);
+    _amountCents = amountCents;
+    setState(() {});
+  }
+
+  /// 草稿凭证的 OCR 状态摘要（真实模式预上传后展示）
+  String _receiptOcrHint() {
+    final parts = <String>[];
+    for (final r in _receipts) {
+      if (r.uploadId == null) continue;
+      if (r.amountCents != null) {
+        parts.add('识别 ¥${Fmt.yuanNoSymbol(r.amountCents!)}');
+      } else {
+        parts.add('识别中…');
+      }
+    }
+    return parts.join(' · ');
+  }
+
   /// 拍照/相册 → 直接调起系统相机/相册（P30 与 P33 真机链路一致），
   /// 选中的图片加入草稿凭证列表（本地文件路径，随账单保存）。
   Future<void> _addReceipt() async {
@@ -636,9 +709,41 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
         imageQuality: 85,
       );
       if (file == null || !mounted) return;
-      setState(() {
-        _receipts = [..._receipts, Receipt(id: 'r${_receipts.length}', billId: '', url: file.path)];
-      });
+      final receipt = Receipt(id: 'r${_receipts.length}', billId: '', url: file.path);
+      setState(() => _receipts = [..._receipts, receipt]);
+      if (!mounted) return;
+      if (AppConfig.useMock) {
+        // Demo：1s 后模拟识别结果（与真实 SSE 走同一确认框）
+        Future<void>.delayed(const Duration(seconds: 1), () {
+          if (mounted) {
+            _showOcrConfirm(amountCents: 12345, confidence: 0.95, currency: 'CNY');
+          }
+        });
+        return;
+      }
+      try {
+        // D4：拍/选后立即预上传 → 服务端排队识别 → SSE 推回
+        final info =
+            await ref.read(billRepositoryProvider).preUploadReceipt(file.path);
+        if (!mounted) return;
+        setState(() {
+          _receipts = [
+            for (final r in _receipts)
+              if (r.id == receipt.id)
+                Receipt(
+                  id: r.id,
+                  billId: r.billId,
+                  url: r.url,
+                  uploadId: info.uploadId,
+                )
+              else
+                r,
+          ];
+        });
+      } catch (e) {
+        // 预上传失败不阻塞记账（凭证仅本地展示，不识别）
+        debugPrint('P30 pre-upload failed: $e');
+      }
     } catch (e) {
       if (mounted) showAaToast(context, '拍/选失败：$e');
     }
@@ -706,6 +811,10 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
         participants: participants,
         splitType: _split?.type ?? SplitType.even,
         receipts: _receipts,
+        receiptUploadIds: [
+          for (final r in _receipts)
+            if (r.uploadId != null && r.uploadId!.isNotEmpty) r.uploadId!,
+        ],
         isRegular: _isRegular,
       );
       ref.read(refreshProvider.notifier).bump();

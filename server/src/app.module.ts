@@ -22,6 +22,7 @@ import { ExportModule } from './export/export.module';
 import { StatisticsModule } from './statistics/statistics.module';
 import { HealthModule } from './health/health.module';
 import { AppVersionModule } from './app-version/app-version.module';
+import { OcrModule } from './ocr/ocr.module';
 
 @Module({
   imports: [
@@ -63,6 +64,7 @@ import { AppVersionModule } from './app-version/app-version.module';
     StatisticsModule,
     HealthModule,
     AppVersionModule,
+    OcrModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

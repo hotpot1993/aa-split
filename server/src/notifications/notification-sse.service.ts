@@ -8,6 +8,8 @@ export interface SsePayload {
   refType: string | null;
   refId: string | null;
   createdAt?: string;
+  /** 扩展数据（如 receipt-ocr 的识别结果字段），旧客户端忽略 */
+  data?: Record<string, unknown>;
 }
 
 /**

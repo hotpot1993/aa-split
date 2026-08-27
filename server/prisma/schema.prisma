@@ -72,6 +72,21 @@ enum NotificationType {
   member // 新成员加入（SSE 触发客户端刷新成员列表）
 }
 
+// 凭证 OCR 状态（小票识别）
+enum OcrStatus {
+  pending // 待识别
+  processing // 识别中
+  success // 识别完成（含识别不到金额）
+  failed // 识别失败（页面可重试）
+}
+
+// 草稿预上传暂存状态
+enum ReceiptUploadStatus {
+  pending // 待绑定到账单
+  bound // 已绑定
+  expired // 超时回收
+}
+
 // -------- 用户 --------
 model User {
   id                  String    @id @default(uuid()) @db.Uuid
@@ -98,6 +113,7 @@ model User {
   settlementsFrom  Settlement[]     @relation("SettlementFrom")
   settlementsTo    Settlement[]     @relation("SettlementTo")
   devices          UserDevice[]
+  receiptUploads   ReceiptUpload[]
 
   @@map("users")
 }
@@ -219,16 +235,43 @@ model BillParticipant {
 
 // -------- 凭证（小票图片） --------
 model Receipt {
-  id        String   @id @default(uuid()) @db.Uuid
-  billId    String   @map("bill_id") @db.Uuid
-  objectKey String   @map("object_key") @db.Text // MinIO key 或本地相对路径
-  sort      Int      @default(0)
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  id          String    @id @default(uuid()) @db.Uuid
+  billId      String    @map("bill_id") @db.Uuid
+  objectKey   String    @map("object_key") @db.Text // MinIO key 或本地相对路径
+  sort        Int       @default(0)
+  amountCents Int?      @map("amount_cents") // OCR 识别金额（分）
+  confidence  Float? // OCR 置信度 0~1
+  currency    String? // OCR 识别币种（CNY/USD/...，非 CNY 前端提示）
+  ocrStatus   OcrStatus @default(pending) @map("ocr_status")
+  ocrError    String?   @map("ocr_error")
+  ocrAttempts Int       @default(0) @map("ocr_attempts")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
 
   bill Bill @relation(fields: [billId], references: [id])
 
   @@index([billId])
   @@map("receipts")
+}
+
+// -------- 草稿预上传暂存（记账页拍选后先传，账单创建时绑定） --------
+model ReceiptUpload {
+  id          String              @id @default(uuid()) @db.Uuid
+  userId      String              @map("user_id") @db.Uuid
+  objectKey   String              @map("object_key") @db.Text
+  status      ReceiptUploadStatus @default(pending)
+  amountCents Int?                @map("amount_cents")
+  confidence  Float?
+  currency    String?
+  ocrStatus   OcrStatus           @default(pending) @map("ocr_status")
+  ocrError    String?             @map("ocr_error")
+  expiresAt   DateTime            @map("expires_at") @db.Timestamptz // createdAt + 24h
+  createdAt   DateTime            @default(now()) @map("created_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, status])
+  @@index([expiresAt])
+  @@map("receipt_uploads")
 }
 
 // -------- 通知 --------

@@ -161,6 +161,10 @@ Receipt parseReceipt(dynamic data) {
     id: _safeStr(j, 'id'),
     billId: _safeStr(j, 'billId'),
     url: _safeStr(j, 'url'),
+    amountCents: j['amountCents'] == null ? null : _safeInt(j, 'amountCents'),
+    confidence: j['confidence'] == null ? null : (j['confidence'] as num).toDouble(),
+    currency: j['currency']?.toString(),
+    ocrStatus: _safeStr(j, 'ocrStatus', 'pending'),
   );
 }
 

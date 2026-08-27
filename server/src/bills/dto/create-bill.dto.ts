@@ -65,4 +65,10 @@ export class CreateBillDto {
 
   @IsUUID()
   payerId!: string;
+
+  /** 草稿预上传的暂存凭证 id（拍/选后经 POST /receipts/pre-upload 获取；创建时绑定转正） */
+  @IsOptional()
+  @IsArray()
+  @IsUUID(undefined, { each: true })
+  receiptUploadIds?: string[];
 }

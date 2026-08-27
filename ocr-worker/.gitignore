@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+models/
+*.log
+
+# 生成/抓取的小票语料（脚本可随时重新生成，不入库）
+samples/eval-corpus/
+samples/public-corpus/
+samples/public-corpus-nolabel/
+samples/cn-corpus/
+samples/live/
+samples/out.json
+samples/sample_zh.png
+samples/truth.json

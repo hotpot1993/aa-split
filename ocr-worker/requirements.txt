@@ -1,0 +1,9 @@
+# ocr-worker 运行时依赖
+# 注：rapidocr 新版不内置 onnxruntime，需显式安装 CPU 版
+fastapi>=0.110,<1
+uvicorn[standard]>=0.29,<1
+python-multipart>=0.0.9
+pydantic>=2.6,<3
+rapidocr>=3.9,<4
+onnxruntime>=1.18,<2
+omegaconf>=2.3

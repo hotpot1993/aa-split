@@ -95,6 +95,7 @@ class BillRepository {
     List<BillParticipant> participants = const [],
     SplitType splitType = SplitType.even,
     List<Receipt> receipts = const [],
+    List<String> receiptUploadIds = const [],
     bool isRegular = false,
   }) async {
     if (AppConfig.useMock) {
@@ -144,6 +145,7 @@ class BillRepository {
             'exempt': p.exempt,
           },
       ],
+      if (receiptUploadIds.isNotEmpty) 'receiptUploadIds': receiptUploadIds,
     });
     final data = (res.data is Map) ? res.data : null;
     final billData =
@@ -426,6 +428,26 @@ class BillRepository {
       field: 'file',
     );
     return parseReceipt(res.data);
+  }
+
+  /// 草稿预上传：记账页拍/选后立刻上传暂存（服务端排队识别），返回 uploadId 用于提交绑定
+  Future<ReceiptUploadInfo> preUploadReceipt(String filePath) async {
+    if (AppConfig.useMock) {
+      // Demo：不真传，返回本地占位（识别在 Demo 模式由页面模拟）
+      return ReceiptUploadInfo(uploadId: 'demo-${DateTime.now().millisecondsSinceEpoch}', url: filePath);
+    }
+    final res = await ApiClient.instance.upload('/receipts/pre-upload', filePath, field: 'file');
+    final d = (res.data is Map) ? (res.data as Map).cast<String, dynamic>() : const <String, dynamic>{};
+    return ReceiptUploadInfo(
+      uploadId: d['uploadId'] as String? ?? '',
+      url: d['url'] as String? ?? filePath,
+    );
+  }
+
+  /// 重试识别（P33 凭证页「重试识别」按钮）
+  Future<void> retryOcr(String billId, String receiptId) async {
+    if (AppConfig.useMock) return;
+    await ApiClient.instance.post('/bills/$billId/receipts/$receiptId/ocr/retry');
   }
 
   Future<void> remind(String billId, List<String> userIds, String message) async {

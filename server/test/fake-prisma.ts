@@ -82,6 +82,7 @@ export class FakePrisma {
     bill: [],
     billParticipant: [],
     receipt: [],
+    receiptUpload: [],
     notification: [],
     regularBill: [],
     settlement: [],
@@ -94,6 +95,7 @@ export class FakePrisma {
   bill = new Model('bill', this);
   billParticipant = new Model('billParticipant', this);
   receipt = new Model('receipt', this);
+  receiptUpload = new Model('receiptUpload', this);
   notification = new Model('notification', this);
   regularBill = new Model('regularBill', this);
   settlement = new Model('settlement', this);
@@ -131,7 +133,8 @@ class Model {
       notification: { createdAt: new Date(), isRead: false },
       regularBill: { createdAt: new Date(), updatedAt: new Date(), active: true },
       settlement: { createdAt: new Date(), status: 'pending', billIds: [] },
-      receipt: { createdAt: new Date(), sort: 0 },
+      receipt: { createdAt: new Date(), sort: 0, ocrStatus: 'pending' },
+      receiptUpload: { createdAt: new Date(), status: 'pending', ocrStatus: 'pending' },
       userDevice: { lastLoginAt: new Date(), createdAt: new Date() },
     };
     for (const [k, v] of Object.entries(defaults[this.modelName] ?? {})) {
@@ -205,6 +208,21 @@ class Model {
           .filter((r) => r.billId === row.id)
           .slice()
           .sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0));
+      }
+    }
+    if (this.modelName === 'receipt') {
+      if (include.bill) {
+        const b = this.db.rowsOf('bill').find((x) => x.id === row.billId);
+        if (b) {
+          const bo: Row = { ...b };
+          if (include.bill?.include?.group?.select?.ownerId) {
+            const g = this.db.rowsOf('group').find((gg) => gg.id === b.groupId);
+            bo.group = g ? { ownerId: g.ownerId } : null;
+          }
+          out.bill = bo;
+        } else {
+          out.bill = null;
+        }
       }
     }
     return out;

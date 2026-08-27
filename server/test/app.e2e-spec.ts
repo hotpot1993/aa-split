@@ -10,6 +10,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { Test } from '@nestjs/testing';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { getQueueToken } from '@nestjs/bullmq';
 import request from 'supertest';
 import * as os from 'os';
 import * as path from 'path';
@@ -27,6 +28,7 @@ import { AppVersionModule } from '../src/app-version/app-version.module';
 import { AllExceptionsFilter } from '../src/common/filters/all-exceptions.filter';
 import { JwtAuthGuard } from '../src/common/guards/jwt-auth.guard';
 import { TransformInterceptor } from '../src/common/interceptors/transform.interceptor';
+import { OcrProcessor } from '../src/ocr/ocr.processor';
 import { FakePrisma } from './fake-prisma';
 
 describe('核心链路 e2e（注册→建群→记账→结算→催款→已付）(e2e)', () => {
@@ -70,6 +72,14 @@ describe('核心链路 e2e（注册→建群→记账→结算→催款→已付
     })
       .overrideProvider(PrismaService)
       .useValue(fake)
+      // BillsModule → OcrModule：队列与 Worker 会连接 Redis（e2e 无 Redis），替换为空壳
+      .overrideProvider(getQueueToken('receipt-ocr'))
+      .useValue({ add: jest.fn().mockResolvedValue({ id: 'job-1' }) })
+      .overrideProvider(OcrProcessor)
+      .useValue({
+        onModuleInit: () => Promise.resolve(),
+        process: async () => undefined,
+      })
       .compile();
 
     app = moduleRef.createNestApplication();

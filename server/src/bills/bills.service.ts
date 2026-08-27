@@ -8,6 +8,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { StorageService } from '../storage/storage.service';
+import { OcrService } from '../ocr/ocr.service';
 import { resolveShares, computeSettleStatus, ResolvedShare } from './bills.util';
 import { parseDateDay, formatDateDay } from '../common/date.util';
 import { CreateBillDto } from './dto/create-bill.dto';
@@ -31,6 +32,7 @@ export class BillsService {
     private readonly prisma: PrismaService,
     private readonly notificationsService: NotificationsService,
     private readonly storageService: StorageService,
+    private readonly ocrService: OcrService,
   ) {}
 
   private async assertGroupMember(groupId: string, userId: string) {
@@ -82,6 +84,9 @@ export class BillsService {
         id: r.id,
         billId: r.billId,
         url: this.storageService.publicUrl(r.objectKey),
+        amountCents: r.amountCents,
+        confidence: r.confidence,
+        ocrStatus: r.ocrStatus,
       })),
       createdAt: bill.createdAt,
     };
@@ -140,7 +145,48 @@ export class BillsService {
         },
         include: billInclude,
       });
-      return created;
+      // 草稿预上传暂存绑定（D4）：转正为凭证，识别结果随行带回（未完成则重排队识别）
+      if (dto.receiptUploadIds?.length) {
+        const uploads = await tx.receiptUpload.findMany({
+          where: {
+            id: { in: dto.receiptUploadIds },
+            userId,
+            status: 'pending',
+            expiresAt: { gt: new Date() },
+          },
+        });
+        for (const u of uploads) {
+          const createdReceipt = await tx.receipt.create({
+            data: {
+              billId: created.id,
+              objectKey: u.objectKey,
+              amountCents: u.amountCents,
+              confidence: u.confidence,
+              ocrStatus: u.ocrStatus === 'success' ? 'success' : 'pending',
+              ocrAttempts: 0,
+            },
+          });
+          await tx.receiptUpload.update({
+            where: { id: u.id },
+            data: { status: 'bound' },
+          });
+          if (u.ocrStatus !== 'success') {
+            // 识别尚未完成/失败：绑定后按 P33 流程重新识别，结果落回凭证
+            void this.ocrService.enqueueReceipt(
+              createdReceipt.id,
+              created.id,
+              userId,
+              u.objectKey,
+            );
+          }
+        }
+      }
+      // 绑定在 bill.create 之后发生，重新读取以携带 receipts（否则响应中 receipts 为空）
+      const refreshed = await tx.bill.findUnique({
+        where: { id: created.id },
+        include: billInclude,
+      });
+      return refreshed ?? created;
     });
 
     // 产品调整：已取消「新账单通知」类型（不写通知库/不推送）；
@@ -286,7 +332,17 @@ export class BillsService {
     const receipt = await this.prisma.receipt.create({
       data: { billId, objectKey: stored.objectKey },
     });
-    return { id: receipt.id, billId, objectKey: receipt.objectKey, url: stored.url };
+    // 上传成功后即排队识别（D5；识别失败静默，凭证照常展示）
+    void this.ocrService.enqueueReceipt(receipt.id, billId, userId, stored.objectKey);
+    return {
+      id: receipt.id,
+      billId,
+      objectKey: receipt.objectKey,
+      url: stored.url,
+      amountCents: null,
+      confidence: null,
+      ocrStatus: receipt.ocrStatus,
+    };
   }
 
   /** 替换凭证：上传新图 → 更新凭证记录 → 清理旧对象（幂等，权限同上传） */
@@ -311,13 +367,23 @@ export class BillsService {
     const stored = await this.storageService.upload(file);
     const updated = await this.prisma.receipt.update({
       where: { id: receipt.id },
-      data: { objectKey: stored.objectKey },
+      data: { objectKey: stored.objectKey, ocrStatus: 'pending', amountCents: null },
     });
     // 旧图清理失败不阻塞（仅记日志）
     if (receipt.objectKey && receipt.objectKey !== stored.objectKey) {
       void this.storageService.remove(receipt.objectKey);
     }
-    return { id: updated.id, billId, objectKey: updated.objectKey, url: stored.url };
+    // 替换即重新识别
+    void this.ocrService.enqueueReceipt(updated.id, billId, userId, stored.objectKey);
+    return {
+      id: updated.id,
+      billId,
+      objectKey: updated.objectKey,
+      url: stored.url,
+      amountCents: null,
+      confidence: null,
+      ocrStatus: updated.ocrStatus,
+    };
   }
 
   /** 标记某参与人已付/未付；事务更新 + 重算 settle_status + 写通知 */

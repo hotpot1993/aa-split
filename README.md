@@ -12,6 +12,7 @@
 | **UI 视觉基线**（严格对齐 `docs/ui-demo/index.html`） | ✅ | 组件/圆角/阴影/间距/配色/字体五级/交互逐项照搬；字体包前缀命中修复（见 开发进度 v1.6） |
 | **图标素材系统**（`docs/pic` → `app/assets/icons`，40 枚全接入） | ✅ | `powershell -ExecutionPolicy Bypass -File scripts\process-icons.ps1`（透明度/水印/裁剪/启动图标一键重跑） |
 | 结算算法（`server/src/settlement/`，含"已付份额排除"修复） | ✅ | 13 个金标准单测全绿 |
+| **小票 OCR 识别金额回填**（拍照/相册 → 服务端识别 → 确认回填；草稿预填 + P33 二次确认） | ✅ 代码完成 | `ocr-worker` pytest **27/27** · server 单测 **63/63** + e2e **18/18** · App 测试 **126/126** · 合成语料真实 OCR 验收 **10/10 PASS** · 迁移 `20260902000000_receipt_ocr` 已在真实 PostgreSQL 应用（见 [docs/AA分账App-小票OCR识别.md](docs/AA分账App-小票OCR识别.md)）；⚠️ M4 待真实小票样本验收（≥90%） |
 | 基础设施（docker-compose / Makefile / CI / 字体 asset） | ✅ | — |
 | **真实联调**（线上 API smoke + SSE） | ✅ | `node scripts/smoke-api.mjs` **22/22** · `node scripts/sse-check.mjs` SSE 实时事件 ✅（v1.0.5 部署后 2026-08-26 复跑通过） |
 | **发行**（v1.0.7+5000，GitHub Actions 正式签名；v1.0.7 标签重打为 +5000，versionCode 高于实测已装 4006，彻底规避 -25 降级） | ✅ | [GitHub Release](https://github.com/hotpot1993/aa-split/releases/tag/v1.0.7)：AAB + 通用 APK + arm64 APK + **aa-version.txt**；**VPS 自动同步已启用**（`scripts/vps-sync-update.sh`，cron 每 15 分钟）：首次运行已把 VPS 从 +4000 对齐到 +5000，`/app/version` 返回 VPS 下载 URL（1.0.7+5000）；VPS 已部署：迁移 `20260901000000` 已应用、线上 smoke **22/22** |
@@ -37,8 +38,10 @@ aa-dsh/
 │       ├── settlement/       # 最少转账笔数结算算法 + 单测
 │       ├── notifications/    # 消息中心 + SSE
 │       ├── regular-bills/    # 定期账单（BullMQ 调度）
+│       ├── ocr/              # 小票 OCR：预上传/识别队列/SSE（见 docs/AA分账App-小票OCR识别.md）
 │       ├── export/           # 数据导出（xlsx/csv）
 │       └── statistics/       # 统计聚合
+├── ocr-worker/               # 小票识别微服务（FastAPI + RapidOCR PP-OCRv5 mobile；Apache-2.0）
 └── app/                      # Flutter 客户端
     ├── lib/                  # 主工程（Riverpod + go_router）
     ├── assets/icons/         # 图标素材产物（透明底 512px，由脚本生成）

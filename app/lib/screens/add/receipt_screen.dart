@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io' show File;
 
 import 'package:flutter/material.dart';
@@ -8,9 +9,11 @@ import 'package:image_picker/image_picker.dart';
 import 'package:aa_design/aa_design.dart';
 
 import '../../core/config.dart';
+import '../../core/utils/format.dart';
 import '../../models/bill.dart';
 import '../../models/bill_participant.dart';
 import '../../providers/data_providers.dart';
+import '../../providers/notification_stream_provider.dart';
 import '../../providers/repositories.dart';
 import '../../providers/refresh_provider.dart';
 import '../../widgets/common.dart';
@@ -32,7 +35,7 @@ class _ReceiptScreenState extends ConsumerState<ReceiptScreen> {
 
   /// 本次会话内新拍的凭证（真实模式追加服务端返回的 URL，Demo 模式追加 🧾 占位）。
   /// 与账单列表数据去重合并展示，保证「已拍 N 张」与预览框即时反映实际操作。
-  final List<Receipt> _taken = [];
+  List<Receipt> _taken = [];
 
   List<Receipt> get _allReceipts => [
         ..._taken,
@@ -41,6 +44,133 @@ class _ReceiptScreenState extends ConsumerState<ReceiptScreen> {
       ];
 
   List<Receipt> _serverReceipts = const [];
+
+  /// 小票 OCR 结果订阅（SSE分流）与二次确认去重
+  StreamSubscription<Map<String, dynamic>>? _ocrSub;
+  final Set<String> _prompted = {};
+
+  @override
+  void initState() {
+    super.initState();
+    // D5：P33 上传即识别 → SSE 推回 → 二次确认更新账单金额
+    _ocrSub = ref.read(receiptOcrEventsProvider).listen(_onOcrEvent);
+  }
+
+  @override
+  void dispose() {
+    _ocrSub?.cancel();
+    super.dispose();
+  }
+
+  /// p33 识别完成：更新凭证展示 → 按 D5 弹「更新账单金额？」二次确认
+  Future<void> _onOcrEvent(Map<String, dynamic> e) async {
+    if (e['kind'] != 'p33') return;
+    final receiptId = e['receiptId'] as String?;
+    if (receiptId == null || !mounted) return;
+    final amount = e['amountCents'] as int?;
+    final conf = (e['confidence'] as num?)?.toDouble() ?? 0;
+    final currency = (e['currency'] as String?) ?? 'CNY';
+    final okStatus = 'success';
+
+    var touched = false;
+    setState(() {
+      _taken = [
+        for (final r in _taken)
+          if (r.id == receiptId)
+            (touched = true,
+             Receipt(
+               id: r.id, billId: r.billId, url: r.url,
+               amountCents: amount, confidence: conf, currency: currency,
+               ocrStatus: okStatus,
+             ))
+              .$2
+          else
+            r,
+      ];
+      _serverReceipts = [
+        for (final r in _serverReceipts)
+          if (r.id == receiptId)
+            (touched = true,
+             Receipt(
+               id: r.id, billId: r.billId, url: r.url,
+               amountCents: amount, confidence: conf, currency: currency,
+               ocrStatus: okStatus,
+             ))
+              .$2
+          else
+            r,
+      ];
+    });
+    if (!touched) return;
+    if (amount == null || conf < 0.6) return; // 识别不到/低置信：静默（D7/D10）
+    if (!_prompted.add(receiptId)) return; // 每张只提示一次
+    final ok = await showAaConfirm(
+      context,
+      title: '识别到 ${Fmt.yuan(amount)}',
+      subtitle: currency != 'CNY'
+          ? '币种为 $currency，可能非人民币，请核对'
+          : '要更新账单金额吗？',
+      confirmLabel: '更新账单 ✓',
+    );
+    if (ok != true || !mounted) return;
+    try {
+      await ref.read(billRepositoryProvider).update(widget.billId, amountCents: amount);
+      ref.read(refreshProvider.notifier).bump();
+      if (mounted) showAaToast(context, '已更新账单金额 ✓');
+    } catch (err) {
+      if (mounted) showAaToast(context, '更新金额失败：$err');
+    }
+  }
+
+  /// 凭证识别状态行（徽标替代：金额/置信度/币种警告/重试）
+  Widget _ocrStatusLine(Receipt r) {
+    final style = TextStyle(
+        fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft);
+    if (r.amountCents != null) {
+      final confTxt =
+          r.confidence != null ? ' · 置信度 ${(r.confidence! * 100).round()}%' : '';
+      final warn =
+          r.currency != null && r.currency != 'CNY' ? ' · 币种 ${r.currency}?' : '';
+      return Text('识别 ${Fmt.yuan(r.amountCents!)}$confTxt$warn', style: style);
+    }
+    if (r.ocrStatus == 'failed') {
+      return Row(children: [
+        Text('识别失败', style: style),
+        SizedBox(width: 6),
+        DoodleButton(
+          label: '重试',
+          mini: true,
+          type: DoodleButtonType.secondary,
+          onPressed: () => _retryOcr(r),
+        ),
+      ]);
+    }
+    return Text('识别中…', style: style);
+  }
+
+  Future<void> _retryOcr(Receipt r) async {
+    if (AppConfig.useMock) {
+      // Demo：1s 后模拟重试成功
+      Future<void>.delayed(const Duration(seconds: 1), () {
+        if (mounted) {
+          _onOcrEvent({
+            'kind': 'p33',
+            'receiptId': r.id,
+            'amountCents': 12345,
+            'confidence': 0.95,
+            'currency': 'CNY',
+          });
+        }
+      });
+      return;
+    }
+    try {
+      await ref.read(billRepositoryProvider).retryOcr(widget.billId, r.id);
+      if (mounted) showAaToast(context, '已重新识别');
+    } catch (e) {
+      if (mounted) showAaToast(context, '重试失败：$e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -73,6 +203,10 @@ class _ReceiptScreenState extends ConsumerState<ReceiptScreen> {
             preview: receipts.isEmpty ? null : _ReceiptThumb(url: receipts.last.url),
             previewCount: receipts.length,
           ),
+          SizedBox(height: 4),
+          Text('识别金额仅用于填写账单',
+              style: TextStyle(
+                  fontFamily: AAFonts.title, fontSize: 11, color: AAColors.inkSoft)),
           SizedBox(height: 12),
           Text('已拍 ${receipts.length} 张：',
               style: TextStyle(
@@ -81,7 +215,7 @@ class _ReceiptScreenState extends ConsumerState<ReceiptScreen> {
           if (receipts.isEmpty)
             Text('还没有凭证，拍一张吧',
                 style: TextStyle(fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft))
-          else
+          else ...[
             Row(
               children: [
                 for (var i = 0; i < receipts.take(2).length; i++)
@@ -91,6 +225,13 @@ class _ReceiptScreenState extends ConsumerState<ReceiptScreen> {
                   ),
               ],
             ),
+            SizedBox(height: 6),
+            for (final r in receipts)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 2),
+                child: _ocrStatusLine(r),
+              ),
+          ],
           SizedBox(height: 16),
           DoodleButton(
             label: '完成，回记账页 ✓',
@@ -123,6 +264,18 @@ class _ReceiptScreenState extends ConsumerState<ReceiptScreen> {
       if (!mounted) return;
       setState(() {});
       showAaToast(context, '已拍下一张凭证（演示）');
+      // Demo：1s 后模拟识别（与真实 SSE 同一处理路径）
+      Future<void>.delayed(const Duration(seconds: 1), () {
+        if (mounted) {
+          _onOcrEvent({
+            'kind': 'p33',
+            'receiptId': r.id,
+            'amountCents': 12345,
+            'confidence': 0.95,
+            'currency': 'CNY',
+          });
+        }
+      });
       return;
     }
 

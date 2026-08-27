@@ -20,6 +20,10 @@ final notificationStreamProvider =
 class NotificationStreamController extends Notifier<bool> {
   StreamSubscription<Map<String, dynamic>>? _sub;
 
+  /// 小票 OCR 识别完成事件（type == 'receipt-ocr'）的广播通道
+  final _ocrEvents = StreamController<Map<String, dynamic>>.broadcast();
+  Stream<Map<String, dynamic>> get ocrEvents => _ocrEvents.stream;
+
   @override
   bool build() {
     ref.listen(authProvider, (_, next) => _sync(next.isLoggedIn));
@@ -27,6 +31,7 @@ class NotificationStreamController extends Notifier<bool> {
     ref.onDispose(() {
       _sub?.cancel();
       _sub = null;
+      _ocrEvents.close();
     });
     return _sub != null;
   }
@@ -40,9 +45,20 @@ class NotificationStreamController extends Notifier<bool> {
     }
     if (_sub != null) return;
     _sub = ref.read(notificationRepositoryProvider).sseEvents().listen(
-          (_) => ref.read(refreshProvider.notifier).bump(),
+          (e) {
+            if (e['type'] == 'receipt-ocr') {
+              _ocrEvents.add(e);
+            }
+            ref.read(refreshProvider.notifier).bump();
+          },
           onError: (_) {},
         );
     state = true;
   }
 }
+
+/// 小票 OCR 识别结果流（由 notificationStreamProvider 内部分流，不额外占连接）
+final receiptOcrEventsProvider = Provider<Stream<Map<String, dynamic>>>((ref) {
+  ref.watch(notificationStreamProvider);
+  return ref.read(notificationStreamProvider.notifier).ocrEvents;
+});

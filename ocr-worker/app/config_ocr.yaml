@@ -1,0 +1,25 @@
+# RapidOCR 配置：锁定 PP-OCRv5 mobile + ch（中英混合）
+# 用途：
+#   1) 运行时由 app/engine.py 的 `_build_params()` 传入（键名一致）
+#   2) Docker 构建期预下载模型：`rapidocr download_models --config app/config_ocr.yaml`
+# 注意：rapidocr>=3.9 默认 PP-OCRv6，必须显式 ocr_version: PP-OCRv5。
+Global:
+  text_score: 0.5
+  use_det: true
+  use_cls: true
+  use_rec: true
+Det:
+  engine_type: onnxruntime
+  lang_type: ch
+  model_type: mobile
+  ocr_version: PP-OCRv5
+Cls:
+  engine_type: onnxruntime
+  lang_type: ch
+  model_type: mobile
+  ocr_version: PP-OCRv5
+Rec:
+  engine_type: onnxruntime
+  lang_type: ch
+  model_type: mobile
+  ocr_version: PP-OCRv5
