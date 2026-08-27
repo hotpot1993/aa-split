@@ -70,7 +70,8 @@ class _ReceiptScreenState extends ConsumerState<ReceiptScreen> {
     final amount = e['amountCents'] as int?;
     final conf = (e['confidence'] as num?)?.toDouble() ?? 0;
     final currency = (e['currency'] as String?) ?? 'CNY';
-    final okStatus = 'success';
+    // 识别成功 / 失败（重试耗尽）共用同一处理路径，状态取自 SSE 事件
+    final okStatus = (e['ocrStatus'] as String?) ?? 'success';
 
     var touched = false;
     setState(() {
@@ -133,9 +134,10 @@ class _ReceiptScreenState extends ConsumerState<ReceiptScreen> {
           r.currency != null && r.currency != 'CNY' ? ' · 币种 ${r.currency}?' : '';
       return Text('识别 ${Fmt.yuan(r.amountCents!)}$confTxt$warn', style: style);
     }
-    if (r.ocrStatus == 'failed') {
+    if (r.ocrStatus == 'failed' || r.ocrStatus == 'success') {
+      // 识别完成但未读到金额：与失败一样提供重试（避免一直卡在「识别中」）
       return Row(children: [
-        Text('识别失败', style: style),
+        Text(r.ocrStatus == 'failed' ? '识别失败' : '未识别到金额', style: style),
         SizedBox(width: 6),
         DoodleButton(
           label: '重试',

@@ -46,7 +46,7 @@ export class OcrProcessor extends WorkerHost implements OnModuleInit {
     return this.ocrService.runOcr(job.data as OcrJobData);
   }
 
-  /** 重试耗尽：标记识别失败（静默；凭证本身不受影响，页面提供「重试识别」） */
+  /** 重试耗尽：标记识别失败 + 推送失败事件（页面结束「识别中」展示「识别失败/重试」；凭证本身不受影响） */
   @OnWorkerEvent('failed')
   async onFailed(job: Job<OcrJobData | { kind: 'cleanup' }>, err: Error) {
     const data = job.data;
@@ -58,6 +58,8 @@ export class OcrProcessor extends WorkerHost implements OnModuleInit {
       } else {
         await this.ocrService.markReceiptFailed(data.receiptId!, err.message);
       }
+      // 推送失败事件：页面结束「识别中」并展示「识别失败/重试」（与成功事件同一条 SSE 通道）
+      this.ocrService.notifyFailed(data, err.message);
     } catch (e: any) {
       this.logger.warn(`标记 OCR 失败状态出错（忽略）：${e?.message}`);
     }

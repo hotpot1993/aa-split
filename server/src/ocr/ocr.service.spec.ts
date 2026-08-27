@@ -313,4 +313,49 @@ describe('OcrService', () => {
       );
     });
   });
+
+  describe('notifyFailed（失败 SSE 推送，页面结束「识别中」）', () => {
+    it('p33 失败：推送 receipt-ocr + ocrStatus=failed（error 截断 200）', () => {
+      service.notifyFailed(
+        { kind: 'p33', userId: 'user-1', billId: 'b1', receiptId: 'r1', objectKey: 'a.jpg' },
+        'x'.repeat(500),
+      );
+      expect(sseMock.push).toHaveBeenCalledWith(
+        'user-1',
+        expect.objectContaining({
+          type: 'receipt-ocr',
+          refType: 'bill',
+          refId: 'b1',
+          data: expect.objectContaining({
+            kind: 'p33',
+            receiptId: 'r1',
+            amountCents: null,
+            currency: null,
+            confidence: null,
+            ocrStatus: 'failed',
+            error: 'x'.repeat(200),
+          }),
+        }),
+      );
+    });
+
+    it('preupload 失败：携带 uploadId，refType/refId 为 null', () => {
+      service.notifyFailed(
+        { kind: 'preupload', userId: 'user-1', uploadId: 'u1', objectKey: 'a.jpg' },
+        'boom',
+      );
+      expect(sseMock.push).toHaveBeenCalledWith(
+        'user-1',
+        expect.objectContaining({
+          refType: null,
+          refId: null,
+          data: expect.objectContaining({
+            kind: 'preupload',
+            uploadId: 'u1',
+            ocrStatus: 'failed',
+          }),
+        }),
+      );
+    });
+  });
 });

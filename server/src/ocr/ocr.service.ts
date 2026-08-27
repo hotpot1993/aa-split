@@ -241,6 +241,28 @@ export class OcrService {
     });
   }
 
+  /** 识别失败（重试耗尽）：SSE 推送失败标记，页面据此结束「识别中」并展示「识别失败/重试」 */
+  notifyFailed(data: OcrJobData, error: string) {
+    this.sse.push(data.userId, {
+      type: 'receipt-ocr',
+      title: '',
+      body: '',
+      refType: data.billId ? 'bill' : null,
+      refId: data.billId ?? null,
+      data: {
+        kind: data.kind,
+        ...(data.kind === 'preupload'
+          ? { uploadId: data.uploadId }
+          : { receiptId: data.receiptId, billId: data.billId }),
+        amountCents: null,
+        currency: null,
+        confidence: null,
+        ocrStatus: 'failed',
+        error: error.slice(0, 200),
+      },
+    });
+  }
+
   // ---------------- 清理（每日 03:00） ----------------
 
   /** 回收超时未绑定的暂存凭证（object 删除 + status=expired） */

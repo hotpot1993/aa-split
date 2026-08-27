@@ -615,7 +615,7 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
     if (result != null) setState(() => _split = result);
   }
 
-  /// 收到 preupload 识别完成事件：匹配草稿凭证 → 按置信度分档弹确认 → 填金额（D4/D7）
+  /// 收到 preupload 识别完成事件：匹配草稿凭证 → 落识别状态 → 按置信度分档弹确认 → 填金额（D4/D7）
   Future<void> _onOcrEvent(Map<String, dynamic> e) async {
     if (e['kind'] != 'preupload') return;
     final uploadId = e['uploadId'] as String?;
@@ -623,10 +623,30 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
     final idx = _receipts.indexWhere((r) => r.uploadId == uploadId);
     if (idx < 0 || !mounted) return;
     final amount = e['amountCents'] as int?;
-    if (amount == null) return; // 识别不到金额：静默（D10）
     final conf = (e['confidence'] as num?)?.toDouble() ?? 0;
-    if (conf < 0.6) return; // 低置信度：静默（D7）
     final currency = (e['currency'] as String?) ?? 'CNY';
+    final status = (e['ocrStatus'] as String?) ?? 'success';
+    // 先落本地识别状态：成功/失败都结束「识别中…」（失败静默，提示行展示结果）
+    setState(() {
+      _receipts = [
+        for (final r in _receipts)
+          if (r.uploadId == uploadId)
+            Receipt(
+              id: r.id,
+              billId: r.billId,
+              url: r.url,
+              uploadId: r.uploadId,
+              amountCents: amount,
+              confidence: conf,
+              currency: currency,
+              ocrStatus: status,
+            )
+          else
+            r,
+      ];
+    });
+    if (amount == null || status == 'failed') return; // 识别不到/失败：静默（D10）
+    if (conf < 0.6) return; // 低置信度：静默（D7）
     await _showOcrConfirm(amountCents: amount, confidence: conf, currency: currency);
   }
 
@@ -664,6 +684,10 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
       if (r.uploadId == null) continue;
       if (r.amountCents != null) {
         parts.add('识别 ¥${Fmt.yuanNoSymbol(r.amountCents!)}');
+      } else if (r.ocrStatus == 'failed') {
+        parts.add('识别失败');
+      } else if (r.ocrStatus == 'success') {
+        parts.add('未识别到金额');
       } else {
         parts.add('识别中…');
       }

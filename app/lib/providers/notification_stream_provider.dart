@@ -47,7 +47,9 @@ class NotificationStreamController extends Notifier<bool> {
     _sub = ref.read(notificationRepositoryProvider).sseEvents().listen(
           (e) {
             if (e['type'] == 'receipt-ocr') {
-              _ocrEvents.add(e);
+              // 服务端按 SsePayload 信封推送（结果在 data 内），摊平后页面可直接读
+              // kind/receiptId/uploadId/amountCents 等（与设计文档扁平载荷一致）
+              _ocrEvents.add(flattenOcrEvent(e));
             }
             ref.read(refreshProvider.notifier).bump();
           },
@@ -55,6 +57,16 @@ class NotificationStreamController extends Notifier<bool> {
         );
     state = true;
   }
+}
+
+/// 将 SSE `receipt-ocr` 事件（结果嵌套在 `data` 里的 SsePayload 信封）摊平到顶层，
+/// 便于各页面 `_onOcrEvent` 直接读取 `kind/uploadId/receiptId/amountCents/confidence/currency/ocrStatus`。
+Map<String, dynamic> flattenOcrEvent(Map<String, dynamic> e) {
+  final data = e['data'];
+  if (data is Map) {
+    return {...e, ...Map<String, dynamic>.from(data)};
+  }
+  return e;
 }
 
 /// 小票 OCR 识别结果流（由 notificationStreamProvider 内部分流，不额外占连接）
