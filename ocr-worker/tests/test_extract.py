@@ -5,7 +5,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from app.extract import extract_amount, OcrLine
+from app.extract import extract_amount, _parse_amount, OcrLine
 
 
 def line(text, conf=0.95, y=900, x=0, h=1000):
@@ -263,3 +263,104 @@ def test_dict_input_supported():
     ]
     r = extract_amount(data, img_height=H)
     assert r["amount_cents"] == 8800
+
+
+# ---------- 应收(应收) vs 实收/实付：实际支付额优先（回归 live/超市.jpg） ----------
+
+def test_actual_paid_over_receivable():
+    # 小票同时打印「应收：1141.80  实收：822.60」：实收才是实际支付额，
+    # 不能因应收金额更大被 largest-wins 决胜误选（1141.80→822.60）
+    r = extract_amount(
+        lines(("应收 1141.80", 0.95, 880), ("实收 822.60", 0.95, 900)),
+        img_height=H,
+    )
+    assert r["amount_cents"] == 82260
+    assert r["matched_text"] == "实收 822.60"
+
+
+def test_discount_subtotal_cross_line_not_total():
+    # 「商品优惠合计」（含「优惠」降权词）跨行关联到金额行时也要降权，
+    # 不能只拿关键词加分，否则 319.20 会误当总额（回归 live/超市.jpg）
+    r = extract_amount(
+        lines(("商品优惠合计:", 0.9, 855), ("319.20", 0.9, 860), ("实收 822.60", 0.95, 905)),
+        img_height=H,
+    )
+    assert r["amount_cents"] == 82260
+
+
+# ---------- 千分位/小数分隔符互转（欧式小票 & OCR 把逗号误读成点） ----------
+
+def test_parse_amount_dot_thousands():
+    # OCR 把逗号读成点：1.000 / 10.000 应是千分位（1000 / 10000），不是 1.00 / 10.00
+    assert _parse_amount("1.000") == (100000, False)
+    assert _parse_amount("10.000") == (1000000, False)
+
+
+def test_parse_amount_decimal_comma_and_thousands():
+    assert _parse_amount("30,90") == (3090, True)        # 欧式小数逗号
+    assert _parse_amount("1,234.50") == (123450, True)   # 逗号千分位 + 点小数
+    assert _parse_amount("20,900") == (2090000, False)   # 逗号千分位（日式无小数）
+    assert _parse_amount("1,211.00") == (121100, True)
+
+
+def test_parse_amount_plain_and_malformed():
+    assert _parse_amount("23344.00") == (2334400, True)
+    assert _parse_amount("1450.00") == (145000, True)
+    assert _parse_amount("88") == (8800, False)
+    assert _parse_amount("12.34") == (1234, True)
+    assert _parse_amount("1.234.50") == (123450, True)   # 畸形多点不抛异常、尽力解析
+
+
+# ---------- 日期/长数字串不得当金额 ----------
+
+def test_date_not_treated_as_amount():
+    # 德国 REWE：SUMME EUR 30,90 是总额，日期 25.05.2024 不能当金额（回归 live/英语账单3）
+    r = extract_amount(
+        lines(("SUMME EUR 30,90", 0.99, 1030), ("Datum 25.05.2024", 0.98, 1190)),
+        img_height=H,
+    )
+    assert r["amount_cents"] == 3090
+
+
+def test_long_id_not_amount_but_total_is():
+    # 交易号 0100024720231028365401 不能当金额；应取 合計 20,900（回归 live/日语小票3）
+    r = extract_amount(
+        lines(("取引ID：0100024720231028365401", 0.96, 1156), ("合計", 0.93, 700), ("20,900", 0.95, 705)),
+        img_height=H,
+    )
+    assert r["amount_cents"] == 2090000
+
+
+# ---------- 日式小票：合計 关键词 + 点千分位 + JPY 币种 ----------
+
+def test_japanese_total_with_dot_thousands_and_jpy():
+    # 业务超市：合計 ¥1,000（OCR 读成 ￥1.000），币种应为 JPY（含假名）
+    r = extract_amount(
+        lines(("合計", 0.9, 900), ("￥1.000", 0.95, 895),
+              ("お預り ￥10.000", 0.92, 1100), ("お釣り ￥9.000", 0.87, 1200)),
+        img_height=H,
+    )
+    assert r["amount_cents"] == 100000
+    assert r["currency"] == "JPY"
+
+
+# ---------- 底部裸整数总额（无小数无符号，如 451）----------
+
+def test_bare_bottom_integer_total():
+    # 无小数/无符号/无关键词的底部裸整数，也视为金额（回归 cn_0034「451」）
+    r = extract_amount(lines(("欢迎光临", 0.9, 300), ("451", 0.95, 885)), img_height=H)
+    assert r["amount_cents"] == 45100
+
+
+# ---------- 现金收付标签跨行降权（お預り/お釣り 非总额） ----------
+
+def test_cash_tendered_penalty_without_keyword():
+    # OCR 未检出「合計」时：現金お預り/お釣り 行的金额(¥5,977/¥1,954)是付出/找零，
+    # 应被跨行降权，真正总额 ￥4,023 胜出（回归 live/日语小票2）
+    r = extract_amount(
+        lines(("5点", 0.99, 354), ("￥4,023", 0.86, 354),
+              ("現金お預り", 0.94, 408), ("￥5,977", 0.90, 412),
+              ("お釣り", 0.94, 422), ("￥1,954", 0.90, 426)),
+        img_height=H,
+    )
+    assert r["amount_cents"] == 402300

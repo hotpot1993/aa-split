@@ -26,8 +26,10 @@ from typing import Any
 # ---------------------------------------------------------------- 常量
 
 # 中文关键词（substring 匹配；越靠前越具体）
+# 含日式繁体写法：合計/総計/税込 等（PDF 小票常用，简体「合计/总计」匹配不到日文「合計/総計」）
 KEYWORDS_ZH = (
-    "价税合计", "小写金额", "小写合计", "付款金额", "应付金额",
+    "价税合计", "小写金额", "小写合计", "付款金额", "应付金额", "合計金額", "合計", "総計", "総額",
+    "税込金額", "税込",
     "实付金额", "应收金额", "折后合计", "合计", "总计", "应付", "实付",
     "应收", "总额", "折后", "实收", "金额",
 )
@@ -39,7 +41,12 @@ KEYWORDS_EN = (
 # 弱关键词：小计类（有更强 TOTAL 时应让位）
 WEAK_KEYWORDS_EN = ("subtotal",)
 # 折扣/退款/收款行降权关键词
-PENALTY_ZH = ("优惠", "折扣", "打折", "退款", "返还", "返现", "找零", "退", "券")
+PENALTY_ZH = ("优惠", "折扣", "打折", "退款", "返还", "返现", "找零", "退", "券",
+              "お預り", "お釣り", "預り", "釣り")  # 日式「收款(お預り)/找零(お釣り)」非总额
+
+# 现金收付（tendered/change）标签词：标签行与其金额常分框，需跨行降权。
+# 注意：不含「現金/现金」——它常作为「现付总额」出现（如 現金等 20,900），不能一律降权。
+CASH_HANDLING = ("お預り", "お釣り", "預り", "釣り", "おつり", "找零")
 PENALTY_EN = (
     "discount", "refund", "change", "off", "coupon", "cash back",
     "cash", "cashier", "paid", "payment", "return", "promo", "trade",
@@ -51,14 +58,35 @@ SYMBOL_CURRENCY = {
     "$": "USD", "€": "EUR", "£": "GBP",
 }
 
-# 金额候选：前置可选货币符号；优先匹配「带千分位」形式（1,234.56），
-# 否则任意位数数字（中文小票无千分位：1450.00 / 23344.00 必须整段匹配，
-# 不能先取 \d{1,3} 截断）+ 可选 1~2 位小数。
+# 金额候选：前置可选货币符号。三种形态（括号优先级从高到低）：
+#   千分位（逗号或点，3 位一组）：1,234 / 1.000 / 1,234.50 —— 点千分位是 OCR 把逗号误读成点
+#   欧式小数逗号：30,90（逗号后 2 位 = 小数）
+#   普通点小数/整数：12.34 / 23344 / 1450.00
 AMOUNT_RE = re.compile(
-    r"([¥￥$€£])?\s*((?:\d{1,3}(?:,\d{3})+)(?:\.\d{1,2})?|\d+(?:\.\d{1,2})?)"
+    r"([¥￥$€£])?\s*((?:\d{1,3}(?:[.,]\d{3})+)(?:\.\d{1,2})?|\d+,\d{2}|\d+(?:\.\d{1,2})?)"
 )
 # 电话号码/单号形态（4008-567-728 / 020-23558888）：其内数字不是金额
 PHONE_RE = re.compile(r"\d{3,4}-\d{3,4}(?:-\d{3,4})?")
+# 日期形态（25.05.2024 / 2024年7月21日 / 11/19/2024）：其内数字不是金额
+DATE_RE = re.compile(r"\d{2,4}\s*[./\-年]\s*\d{1,2}\s*[./\-月]\s*\d{1,4}")
+# 超长纯数字串（交易号/订单号/会员卡号，如 0100024720231028365401）：不是金额
+LONG_NUMBER_RE = re.compile(r"\d{8,}")
+# 日文假名（ひらがな/カタカナ）：用于 ¥/￥ 符号的币种判别（JPY vs CNY）
+KANA_RE = re.compile(r"[\u3040-\u30ff\u31f0-\u31ff]")
+
+# 币种文本标记（按优先级）：金额框无符号时从整票文本推断币种（欧式/美式小票常见）
+CURRENCY_TOKENS = (("€", "EUR"), ("EUR", "EUR"), ("£", "GBP"), ("GBP", "GBP"), ("$", "USD"), ("USD", "USD"))
+
+
+def _infer_currency(ocr_lines: list[OcrLine]) -> str:
+    """从整票文本推断币种（金额框无货币符号时的兜底；欧式/美式小票常见）。"""
+    text = " ".join(ln.text for ln in ocr_lines if ln.text.strip())
+    for token, cur in CURRENCY_TOKENS:
+        if token in text:
+            return cur
+    if any(KANA_RE.search(ln.text) for ln in ocr_lines):
+        return "JPY"
+    return "CNY"
 # 行内负号前缀（退款/扣减），跳过该候选
 NEG_PREFIX_RE = re.compile(r"[-−–]\s*$")
 
@@ -168,15 +196,47 @@ def _has_penalty(text: str) -> bool:
 
 
 def _parse_amount(raw: str) -> tuple[int, bool]:
-    """解析金额字符串 → (分, 是否恰好两位小数)。"""
-    normalized = raw.replace(",", "")
-    if "." in normalized:
-        whole, frac = normalized.split(".", 1)
-        if len(frac) == 2:
-            return int(whole) * 100 + int(frac), True
-        frac = (frac + "0")[:2]
-        return int(whole) * 100 + int(frac), False
-    return int(normalized) * 100, False
+    """解析金额字符串 → (分, 是否恰好两位小数)。
+
+    兼容多种分隔符形态（对畸形多点多逗号结果做尽力解析，绝不抛异常）：
+      - 逗号千分位（1,234 / 20,900）；逗号+点（1,234.50：逗号千分位、点小数）
+      - 点千分位（1.000 / 10.000，OCR 把逗号误读成点；恰 3 位小数）
+      - 欧式小数逗号（30,90：逗号后恰 2 位 = 小数）
+      - 普通点小数（12.34）与纯整数
+    """
+    s = raw.strip()
+    if "," in s and "." in s:
+        # 逗号=千分位；最后一个小数点是小数分隔，其余点当千分位
+        whole, _, frac = s.replace(",", "").rpartition(".")
+        whole = whole.replace(".", "")
+    elif "," in s:
+        parts = s.split(",")
+        if len(parts) == 2 and len(parts[1]) == 2:
+            # 欧式小数逗号：30,90
+            return int(parts[0]) * 100 + int(parts[1]), True
+        # 千分位逗号：1,234 / 20,900
+        return int(s.replace(",", "")) * 100, False
+    elif "." in s:
+        parts = s.split(".")
+        if len(parts) > 2:
+            # 多点（日期/畸形）：最后一个小数点是小数分隔，其余当千分位
+            whole = "".join(parts[:-1])
+            frac = parts[-1]
+        else:
+            whole, frac = parts
+        # 点千分位：恰 3 位小数
+        if len(frac) == 3:
+            return int("".join(parts).replace(".", "")) * 100, False
+    else:
+        return int(s) * 100, False
+
+    # 统一处理「点小数」尾段
+    if not frac.isdigit():
+        return int(whole or "0") * 100, False
+    if len(frac) == 2:
+        return int(whole) * 100 + int(frac), True
+    frac = (frac + "0")[:2]
+    return int(whole) * 100 + int(frac), False
 
 
 def _is_valid_candidate(cand: _Candidate, keyword_hit: bool) -> bool:
@@ -185,9 +245,13 @@ def _is_valid_candidate(cand: _Candidate, keyword_hit: bool) -> bool:
 
 
 def _cents_hint_ok(cand: _Candidate) -> bool:
-    # value_cents % 100 可判定，但两位小数信息在 parse 时丢失；
-    # 通过文本回查：其实这里用 extras 里的小数位标记更准，见 _extract_candidates。
-    return cand.extras >= 0.5  # 两位小数加分已写入 extras
+    # 两位小数是强证据；底部区域的「较短裸整数」（¥10~¥9,999，如 451/800）也是金额形。
+    # 更长者多为单号/数量，且 ≥8 位的交易号已在提取阶段被 LONG_NUMBER 剔除；
+    # 人民币小票总额几乎都带两位小数，能走到裸整数的都是整数金额票（日式/K 简单小票）。
+    if cand.has_cents:
+        return True
+    yuan = cand.value_cents // 100
+    return cand.y_norm > 0.5 and 10 <= yuan <= 9_999
 
 
 def _extract_candidates(
@@ -199,6 +263,7 @@ def _extract_candidates(
     out: list[_Candidate] = []
     text = line.text
     phone_spans = [(m.start(), m.end()) for m in PHONE_RE.finditer(text)]
+    date_spans = [(m.start(), m.end()) for m in DATE_RE.finditer(text)]
     for m in AMOUNT_RE.finditer(text):
         # 跳过：空匹配 / 纯日期片段（长度不足且无符号）
         if not m.group(2):
@@ -206,6 +271,13 @@ def _extract_candidates(
         # 电话号码/单号内的数字不是金额（4008-567-728）
         s, e = m.start(2), m.end(2)
         if any(ps <= s and e <= pe for ps, pe in phone_spans):
+            continue
+        # 日期形态内的数字不是金额（25.05.2024 → 25.05 会被误当金额）
+        if any(ds <= s and e <= de for ds, de in date_spans):
+            continue
+        # 超长纯数字串（交易号/单号/会员卡号，如 0100024720231028365401）：不是金额
+        if not m.group(1) and "," not in m.group(2) and "." not in m.group(2) \
+                and len(m.group(2)) >= 8 and LONG_NUMBER_RE.fullmatch(m.group(2)):
             continue
         # 百分号后缀跳过（税率/折扣率行：GST 6%、-5%）
         after = text[m.end(2):]
@@ -312,13 +384,60 @@ def _link_keyword_across_lines(
                 best_idx = idx
         if best_idx >= 0:
             bonus = _keyword_bonus(kw_line.text)
+            # 关键词行自身带折扣/退款等降权词（如「商品优惠合计」含「优惠」）时，
+            # 跨行关联也必须同样降权，否则该「小计类折扣行」会误拿关键词加分混入总额池。
+            if _has_penalty(kw_line.text):
+                bonus -= 2.0
             for c in line_candidates[best_idx][1]:
                 if c.keyword_hit:
                     continue  # 已关联过一次的关键词行不再叠加（防双词行堆分）
-                if not c.has_cents and c.symbol is None:
-                    continue  # 裸整数候选不给关键词加分（数量/日期干扰）
+                # 裸整数候选：小值（数量/日期/单价等，<¥1000）跳过；「金额级」保留以便被合计关键词关联
+                if not c.has_cents and c.symbol is None and c.value_cents < 100000:
+                    continue
                 c.extras += bonus
                 c.keyword_hit = True
+
+
+def _link_cash_penalty_across_lines(
+    ocr_lines: list[OcrLine],
+    line_candidates: list[tuple[OcrLine, list[_Candidate]]],
+) -> None:
+    """现金收付标签跨行降权。
+
+    检测器常把「現金お預り」「お釣り」（现金收付/找零）与金额拆成两个框：
+    这类金额是「顾客付的钱/找零」，不是账单总额。对含收付标签但本行无金额的标签行，
+    找到其同行/紧邻的金额行，把该行的候选降权，避免它们被当成合计（如 現金お預り ¥5,977）。
+    注意：不含「現金」，因为「現金等 20,900」这类「现付总额」恰是计总额，不能降权。
+    """
+    if not line_candidates:
+        return
+    has_cands = {id(line) for line, _ in line_candidates}
+    for label_line in ocr_lines:
+        t = label_line.text
+        if not any(k in t for k in CASH_HANDLING):
+            continue
+        # 标签行自身有金额候选：同行走 _extract_candidates 已按里边的收付词降权，交由它处理
+        if id(label_line) in has_cands:
+            continue
+        ky, kh = _line_metric(label_line)
+        best_idx = -1
+        best_key: tuple[float, float] | None = None
+        for idx, (line, _cands) in enumerate(line_candidates):
+            ly, _lh = _line_metric(line)
+            dy = ly - ky
+            # 仅同行或正下方就近（收付行通常紧贴其金额，不必像关键词那样容忍 6 倍行高）
+            if dy < -0.5 * kh or dy > 3 * kh:
+                continue
+            dist = abs(dy) if dy <= 0.5 * kh else 3 * kh + (dy - 0.5 * kh)
+            key = (dist, abs(dy))
+            if best_key is None or key < best_key:
+                best_key = key
+                best_idx = idx
+        if best_idx >= 0:
+            for c in line_candidates[best_idx][1]:
+                if c.keyword_hit:
+                    continue  # 已被「合计」等强关键词判为总额，不因收付标签降权
+                c.extras -= 2.0
 
 
 def _pick_best(pool: list[_Candidate]) -> _Candidate:
@@ -361,14 +480,32 @@ def extract_amount(
         pen = _has_penalty(line.text)
         yn = _y_norm(line, img_height)
         cands = _extract_candidates(line, kw, pen, yn)
-        valid = [c for c in cands if _is_valid_candidate(c, kw)]
-        if valid:
-            line_candidates.append((line, valid))
+        # 先不在本行过滤有效性：让「金额框 + 关键词框分离」的裸整数总额
+        # 有机会被跨行关键词关联救回（日式小票「合計」与金额常分两个框且无小数位）。
+        if cands:
+            line_candidates.append((line, cands))
 
-    # 跨行关键词关联：关键词框与金额框被检测器拆开时补偿
+    # 跨行关键词关联：关键词框与金额框被检测器拆开时补偿（会写入 keyword_hit）
     _link_keyword_across_lines(ocr_lines, line_candidates)
+    # 现金收付标签跨行降权：「お預り/お釣り」等收付行金额不是总额（如 現金お預り ¥5,977）
+    _link_cash_penalty_across_lines(ocr_lines, line_candidates)
+
+    # 关联后再按有效性过滤：有符号 / 被关键词命中 / 恰好两位小数
+    line_candidates = [
+        (line, [c for c in cands if _is_valid_candidate(c, c.keyword_hit)])
+        for line, cands in line_candidates
+    ]
+    line_candidates = [(line, cs) for line, cs in line_candidates if cs]
 
     candidates = [c for _, cands in line_candidates for c in cands]
+
+    # 「应收」≠ 实付：小票常同时打印「应收：A」「实收/实付：B」，实际支付额为 B。
+    # 一旦全票出现实收/实付，应收（发票应收/未折前金额）行必须让位，
+    # 否则「应收往往更大」会让 largest-wins 决胜选成 A（如 1141.80 误判为 822.60）。
+    if any("实收" in ln.text or "实付" in ln.text for ln in ocr_lines):
+        for c in candidates:
+            if "应收" in c.text and "实收" not in c.text and "实付" not in c.text:
+                c.extras -= 2.0
 
     if not candidates:
         return {
@@ -407,7 +544,14 @@ def extract_amount(
 
     confidence = round(min(1.0, best.score_raw / SCORE_NORM), 2)
     symbol = best.symbol or ""
-    currency = SYMBOL_CURRENCY.get(symbol, None) or "CNY"
+    if symbol in ("¥", "￥"):
+        # ￥/¥ 符号在中/日通用：日式小票带假名视为日元，否则视为人民币
+        currency = "JPY" if any(KANA_RE.search(ln.text) for ln in ocr_lines) else "CNY"
+    elif symbol:
+        currency = SYMBOL_CURRENCY.get(symbol, None) or "CNY"
+    else:
+        # 金额框无货币符号（如德国 REWE「30,90」与 EUR 分行）：从文本推断币种
+        currency = _infer_currency(ocr_lines)
     warning = "symbol_non_cny" if currency != "CNY" else None
 
     return {
