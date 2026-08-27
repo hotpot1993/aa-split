@@ -4,7 +4,7 @@
 > 每次 master 推送后由 `.github/workflows/docs-sync.yml` 自动更新（人工改动会被覆盖）。
 > 完整契约见 [技术方案](./AA分账App-技术方案.md)；Swagger：`GET /api/docs`。
 
-共 41 个端点。表格：HTTP 方法 | 路径（`api/v1` 为全局前缀）| 鉴权 | 说明。
+共 43 个端点。表格：HTTP 方法 | 路径（`api/v1` 为全局前缀）| 鉴权 | 说明。
 
 | 方法 | 路径 | 鉴权 | 说明 |
 |---|---|---|---|
@@ -39,6 +39,7 @@
 | POST   | `api/v1/auth/login` | 公开 |  |
 | POST   | `api/v1/auth/register` | 公开 |  |
 | POST   | `api/v1/bills/:id/mark-paid` | 🔒 登录 |  |
+| POST   | `api/v1/bills/:id/receipts/:receiptId/ocr/retry` | 🔒 登录 | 重试识别（P33 凭证；权限：创建者/垫付人/群主） |
 | POST   | `api/v1/bills/:id/receipts/:receiptId/replace` | 🔒 登录 |  |
 | POST   | `api/v1/bills/:id/receipts` | 🔒 登录 |  |
 | POST   | `api/v1/bills/:id/remind` | 🔒 登录 |  |
@@ -48,4 +49,5 @@
 | POST   | `api/v1/groups/join` | 🔒 登录 |  |
 | POST   | `api/v1/notifications/:id/read` | 🔒 登录 |  |
 | POST   | `api/v1/notifications/read-all` | 🔒 登录 |  |
+| POST   | `api/v1/receipts/pre-upload` | 🔒 登录 | 草稿预上传：记账页拍/选后立刻上传暂存并识别（返回 uploadId，账单创建时绑定，24h 未绑定回收） |
 | POST   | `api/v1/settlements/:id/paid` | 🔒 登录 | 标记某笔结算记录已收款 |
