@@ -14,6 +14,10 @@ import 'router/app_router.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // 锁定竖屏（portraitUp；Android/iOS 声明层之外再兜底，开发期桌面端也生效）
+  await SystemChrome.setPreferredOrientations(
+    <DeviceOrientation>[DeviceOrientation.portraitUp],
+  );
   // 恢复字体风格偏好（设置页「字体风格」），在首帧前生效避免风格跳变
   await FontStyleStore.init();
   // 纸米浅色底 → 状态栏/导航栏使用深色图标（避免系统深色模式下白图标看不清）
