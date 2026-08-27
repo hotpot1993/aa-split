@@ -100,10 +100,10 @@ services:
       # 更新流程：GitHub 发布新版本（打 v* 标签 → Actions 正式签名构建并发布 Release）→
       # VPS 定时任务（scripts/vps-sync-update.sh，cron 每 15 分钟）自动从 GitHub 拉取安装包
       # 到 VPS /apk/（nginx 静态托管）并同步更新本项 + .env 的 APP_VERSION_URL 指向 VPS
-      APP_VERSION_LATEST: ${APP_VERSION_LATEST:-1.0.6}
-      APP_VERSION_BUILD: ${APP_VERSION_BUILD:-2008}
-      APP_VERSION_URL: "${APP_VERSION_URL:-https://api.hotpot1993.top/apk/aa-split-v1.0.6.apk}"
-      APP_VERSION_NOTES: "${APP_VERSION_NOTES:-9 项需求修复：群解散组员端同步移除、群组详情返回修复、群组设置权限与免分摊人员、注册输入限制、记一笔右对齐与选择弹层、收款卡片去二维码、消息全部已读、启动页5秒自动跳转}"
+      APP_VERSION_LATEST: ${APP_VERSION_LATEST:-1.0.11}
+      APP_VERSION_BUILD: ${APP_VERSION_BUILD:-5005}
+      APP_VERSION_URL: "${APP_VERSION_URL:-https://api.hotpot1993.top/apk/aa-split-v1.0.11.apk}"
+      APP_VERSION_NOTES: "${APP_VERSION_NOTES:-消息中心支持删除消息（左滑/长按删除单条 + 清空全部）+ 锁定竖屏 + 启动页 2 秒自动跳转 + 小票 OCR 金额解析修复}"
       # 小票 OCR：识别服务地址（ocr-worker）
       OCR_WORKER_URL: ${OCR_WORKER_URL:-http://ocr-worker:8000}
     ports:
