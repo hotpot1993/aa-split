@@ -24,7 +24,17 @@
 | <http://103.11.77.228:3000/api/v1/health> | 健康检查 ✅ |
 | <http://103.11.77.228:3000/api/docs> | Swagger（SWAGGER_ENABLED=true） |
 | `GET /api/v1/notifications/stream?access_token=<JWT>` | SSE 推送（25s 心跳）✅ 已实测 |
+| `POST /api/v1/receipts/pre-upload` | 小票 OCR 预上传 ✅（2026-08-27 v1.0.8 实测 uploadId→98500/CNY 全链路） |
 | <http://103.11.77.228:9001> | MinIO 控制台（未放行 ufw，仅容器网络可用） |
+
+> v1.0.8 部署记录（2026-08-27）：server 源码 + `ocr-worker/` + compose 更新 → `.env` 追加
+> `OCR_WORKER_URL=http://ocr-worker:8000` → `docker compose up -d --build api`（容器启动自动
+> `prisma migrate deploy` 应用 `20260902000000_receipt_ocr`）→ `docker compose up -d --build ocr-worker`；
+> 迁移状态与 receipts.receipt_uploads 列已核对；真实小票冒烟 `pending|success|8800|CNY`；
+> prod smoke 22/22。
+> ⚠️ **踩坑**：rapidocr 依赖带 GUI 的 opencv-python，`python:3.11-slim` 缺 `libxcb.so.1/libgl1` →
+> worker 502；Dockerfile 已补最小 X11/GL 运行库（apt libgl1 libglib2.0-0 libxcb1 libx11-6 等），
+> 重建镜像即恢复。
 
 ## 三、常用运维命令（SSH root@103.11.77.228）
 
