@@ -23,6 +23,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     with SingleTickerProviderStateMixin {
   Timer? _timer;
   bool _jumping = false; // 防重入：连点/定时器竞态只跳一次
+  bool _skipping = false; // 已点击跳过 → 提示文案即时反馈
+  Future<void>? _restoreFuture; // 真实模式会话预恢复（点击/定时器共用，不重复发请求）
   late final AnimationController _c =
       AnimationController(vsync: this, duration: Duration(milliseconds: 900));
   late final Animation<double> _fade =
@@ -31,10 +33,18 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   /// 停留时长：2 秒后自动进入登录页或首页（按登录状态决定）
   static const autoJumpDelay = Duration(seconds: 2);
 
+  /// 点击跳过时等待会话恢复的上限：超时按未登录处理（登录页仍会再校验），
+  /// 弱网下点屏幕也能立刻有响应，不会卡在启动页
+  static const skipRestoreTimeout = Duration(seconds: 3);
+
   @override
   void initState() {
     super.initState();
     _c.forward();
+    // 真实模式：进入启动页就预恢复会话（与点击跳过共用同一 Future）
+    if (!AppConfig.useMock && !ref.read(authProvider).isLoggedIn) {
+      _restoreFuture = ref.read(authProvider.notifier).restore();
+    }
     _timer = Timer(autoJumpDelay, _go);
   }
 
@@ -48,11 +58,19 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   Future<void> _go() async {
     if (!mounted || _jumping) return;
     _jumping = true;
-    // 真实模式：先恢复本地会话（token + /auth/me 校验），避免每次都掉回登录页
-    if (!AppConfig.useMock && !ref.read(authProvider).isLoggedIn) {
-      await ref.read(authProvider.notifier).restore();
-      if (!mounted) return;
+    _timer?.cancel();
+    // 点击即时反馈：提示文案切换为「正在进入…」
+    if (mounted) setState(() => _skipping = true);
+    // 真实模式：等待预恢复结果（设上限，弱网不再卡死跳过）
+    final restore = _restoreFuture;
+    if (restore != null) {
+      try {
+        await restore.timeout(skipRestoreTimeout, onTimeout: () {});
+      } catch (_) {
+        // 恢复失败不阻塞跳转（按未登录处理）
+      }
     }
+    if (!mounted) return;
     final loggedIn = ref.read(authProvider).isLoggedIn;
     context.go(loggedIn ? '/home' : '/login');
   }
@@ -111,9 +129,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                             color: AAColors.inkSoft,
                             letterSpacing: 6)),
                     SizedBox(height: 60),
-                    Text('2 秒后自动进入（点击屏幕可跳过）',
-                        style: TextStyle(
-                            fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft)),
+                    Text(
+                      _skipping ? '正在进入…' : '2 秒后自动进入（点击屏幕可跳过）',
+                      style: TextStyle(
+                          fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft)),
                   ],
                 ),
               ),
