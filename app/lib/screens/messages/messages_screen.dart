@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:aa_design/aa_design.dart';
 
+import '../../core/api/api_client.dart';
 import '../../core/utils/format.dart';
 import '../../models/notification_item.dart';
 import '../../providers/data_providers.dart';
@@ -90,9 +91,13 @@ class MessagesScreen extends ConsumerWidget {
 
   /// 全部已读：当前所有未读消息标记为已读（Mock/真实模式都由仓库落库）
   Future<void> _markAllRead(BuildContext context, WidgetRef ref) async {
-    await ref.read(notificationRepositoryProvider).markAllRead();
-    ref.read(refreshProvider.notifier).bump();
-    if (context.mounted) showAaToast(context, '📮 已全部标记为已读');
+    try {
+      await ref.read(notificationRepositoryProvider).markAllRead();
+      ref.read(refreshProvider.notifier).bump();
+      if (context.mounted) showAaToast(context, '📮 已全部标记为已读');
+    } catch (e) {
+      if (context.mounted) showAaToast(context, '❌ 操作失败：${_friendly(e)}');
+    }
   }
 
   /// 清空全部消息：二次确认后删除当前所有消息（Mock/真实模式都由仓库落库）
@@ -104,10 +109,18 @@ class MessagesScreen extends ConsumerWidget {
       confirmLabel: '清空',
     );
     if (ok != true) return;
-    await ref.read(notificationRepositoryProvider).clearAll();
-    ref.read(refreshProvider.notifier).bump();
-    if (context.mounted) showAaToast(context, '🗑️ 已清空全部消息');
+    try {
+      await ref.read(notificationRepositoryProvider).clearAll();
+      ref.read(refreshProvider.notifier).bump();
+      if (context.mounted) showAaToast(context, '🗑️ 已清空全部消息');
+    } catch (e) {
+      if (context.mounted) showAaToast(context, '❌ 清空失败：${_friendly(e)}');
+    }
   }
+
+  /// 服务端/网络错误的用户可读文案
+  static String _friendly(Object e) =>
+      e is ApiException ? e.message : '网络开小差了，稍后再试';
 }
 
 class _MsgCard extends ConsumerWidget {
@@ -295,9 +308,16 @@ class _MsgCard extends ConsumerWidget {
       confirmLabel: '删除',
     );
     if (ok != true) return;
-    await ref.read(notificationRepositoryProvider).remove(n.id);
-    ref.read(refreshProvider.notifier).bump();
-    if (context.mounted) showAaToast(context, '🗑️ 已删除');
+    try {
+      await ref.read(notificationRepositoryProvider).remove(n.id);
+      ref.read(refreshProvider.notifier).bump();
+      if (context.mounted) showAaToast(context, '🗑️ 已删除');
+    } catch (e) {
+      if (context.mounted) {
+        showAaToast(context,
+            '❌ 删除失败：${e is ApiException ? e.message : '网络开小差了，稍后再试'}');
+      }
+    }
   }
 }
 
@@ -349,9 +369,16 @@ class _SwipeToDelete extends ConsumerWidget {
       confirmLabel: '删除',
     );
     if (ok != true) return false;
-    await ref.read(notificationRepositoryProvider).remove(notification.id);
-    ref.read(refreshProvider.notifier).bump();
-    if (context.mounted) showAaToast(context, '🗑️ 已删除');
+    try {
+      await ref.read(notificationRepositoryProvider).remove(notification.id);
+      ref.read(refreshProvider.notifier).bump();
+      if (context.mounted) showAaToast(context, '🗑️ 已删除');
+    } catch (e) {
+      if (context.mounted) {
+        showAaToast(context,
+            '❌ 删除失败：${e is ApiException ? e.message : '网络开小差了，稍后再试'}');
+      }
+    }
     return false;
   }
 }
