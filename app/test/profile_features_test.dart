@@ -89,15 +89,15 @@ void main() {
     expect(find.text('已拍 1 张：'), findsOneWidget);
     expect(find.text('已拍 1 张'), findsWidgets);
 
-    // 再拍一张 → 2 张
+    // 再拍一张 → 上限 1 张：被拦截，仍为 1 张（不弹模拟拍摄确认）
     await tester.tap(find.text('拍一张'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
-    expect(find.text('模拟拍摄凭证'), findsOneWidget);
-    await tester.tap(find.text('拍摄'));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 400));
-    expect(find.text('已拍 2 张：'), findsOneWidget);
+    expect(find.text('模拟拍摄凭证'), findsNothing,
+        reason: '已达上限，不应再进入拍摄确认');
+    expect(find.textContaining('最多'), findsOneWidget,
+        reason: '应提示每张账单最多 1 张凭证');
+    expect(find.text('已拍 1 张：'), findsOneWidget, reason: '仍为 1 张');
 
     // 等待 toast 定时器结束，避免遗留 Timer
     await tester.pump(const Duration(seconds: 2));

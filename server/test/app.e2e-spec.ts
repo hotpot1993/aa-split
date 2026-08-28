@@ -439,6 +439,13 @@ describe('核心链路 e2e（注册→建群→记账→结算→催款→已付
     expect(up.body.data.id).toBeTruthy();
     expect(up.body.data.url).toContain('/uploads/');
 
+    // 上限 1 张：已有凭证时再上传 → 400
+    await request(server())
+      .post(`/api/v1/bills/${bill.id}/receipts`)
+      .set('Authorization', `Bearer ${alice.token}`)
+      .attach('file', Buffer.from('fake-receipt-3'), 'receipt3.jpg')
+      .expect(400);
+
     const rep = await request(server())
       .post(`/api/v1/bills/${bill.id}/receipts/${up.body.data.id}/replace`)
       .set('Authorization', `Bearer ${alice.token}`)

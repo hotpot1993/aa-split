@@ -816,8 +816,12 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
         imageQuality: 85,
       );
       if (file == null || !mounted) return;
-      final receipt = Receipt(id: 'r${_receipts.length}', billId: '', url: file.path);
-      setState(() => _receipts = [..._receipts, receipt]);
+      // 上限 1 张：已有一张时，再次选择即替换（单张凭证模式）
+      final replace = _receipts.isNotEmpty;
+      final receipt = Receipt(
+          id: 'r${DateTime.now().microsecondsSinceEpoch}', billId: '', url: file.path);
+      setState(() => _receipts = [receipt]);
+      if (replace) showAaToast(context, '已更换小票凭证');
       if (!mounted) return;
       if (AppConfig.useMock) {
         // Demo：1s 后模拟识别结果（与真实 SSE 走同一确认框）

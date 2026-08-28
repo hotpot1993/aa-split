@@ -247,6 +247,13 @@ class _ReceiptScreenState extends ConsumerState<ReceiptScreen> {
   }
 
   Future<void> _capture(Bill bill) async {
+    // 上限 1 张：已有凭证时禁止再拍（替换请到账单详情图库）
+    if (_allReceipts.isNotEmpty) {
+      if (mounted) {
+        showAaToast(context, '每张账单最多 1 张小票凭证；可在详情页图库替换');
+      }
+      return;
+    }
     if (AppConfig.useMock) {
       // 记账页同款「模拟拍摄凭证」提示弹窗（P30/P33 演示行为一致）
       final ok = await showAaConfirm(
@@ -427,7 +434,7 @@ class _CameraFrame extends StatelessWidget {
                       Text('对准小票/截图',
                           style: TextStyle(fontFamily: AAFonts.title, fontSize: 15, color: AAColors.ink)),
                       SizedBox(height: 2),
-                      Text('4:3 · 支持9张 · 自动压缩',
+                      Text('4:3 · 支持1张 · 自动压缩',
                           style: TextStyle(
                               fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft)),
                     ],

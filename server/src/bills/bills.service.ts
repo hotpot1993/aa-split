@@ -319,7 +319,7 @@ export class BillsService {
     return res;
   }
 
-  /** 上传凭证（multipart file；创建者、垫付人或群主） */
+  /** 上传凭证（multipart file；创建者、垫付人或群主）。每张账单上限 1 张。 */
   async uploadReceipt(userId: string, billId: string, file: Express.Multer.File) {
     if (!file) throw new BadRequestException('缺少凭证文件');
     const bill = await this.findBillOrThrow(billId);
@@ -327,6 +327,11 @@ export class BillsService {
     const allowed =
       bill.creatorId === userId || bill.payerId === userId || group?.ownerId === userId;
     if (!allowed) throw new ForbiddenException('无权上传凭证');
+
+    const existing = await this.prisma.receipt.count({ where: { billId } });
+    if (existing >= 1) {
+      throw new BadRequestException('每张账单最多上传 1 张小票凭证；如需更换请使用图库替换');
+    }
 
     const stored = await this.storageService.upload(file);
     const receipt = await this.prisma.receipt.create({

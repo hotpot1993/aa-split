@@ -12,17 +12,18 @@ import 'package:image_picker_platform_interface/image_picker_platform_interface.
 import 'package:aa_design/aa_design.dart';
 import 'package:aa_split_app/screens/add/add_bill_screen.dart';
 
-/// 注入固定路径的相册/相机 → 返回临时小票文件（避免真实 platform channel）
+/// 注入固定路径的相册/相机 → 按序返回临时小票文件（避免真实 platform channel）
 class _FakePicker extends ImagePickerPlatform {
-  _FakePicker(this.path);
-  final String path;
+  _FakePicker(this.paths);
+  final List<String> paths;
+  int _i = 0;
 
   @override
   Future<XFile?> getImageFromSource({
     required ImageSource source,
     ImagePickerOptions options = const ImagePickerOptions(),
   }) async =>
-      XFile(path);
+      XFile(paths[_i++ < paths.length - 1 ? _i - 1 : paths.length - 1]);
 }
 
 /// 1x1 透明 PNG（Image.file/Image.network 可解码，避免 errorBuilder 分支）
@@ -45,7 +46,7 @@ Future<void> _pump(WidgetTester tester, String path) async {
   tester.view.devicePixelRatio = 2.0;
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
-  ImagePickerPlatform.instance = _FakePicker(path);
+  ImagePickerPlatform.instance = _FakePicker([path]);
   await tester.pumpWidget(
     ProviderScope(
       child: MaterialApp(
@@ -119,6 +120,41 @@ void main() {
     // 金额已填入，且币种保持/自动选中为 CNY（仍显示人民币 (CNY)）
     expect(find.text('人民币 (CNY)'), findsOneWidget);
 
+    await tester.pump(const Duration(seconds: 2));
+  });
+
+  testWidgets('上限 1 张：再次选择小票时替换而非追加', (tester) async {
+    final a = _tempImage();
+    final b = _tempImage();
+    tester.view.physicalSize = const Size(1080, 1920);
+    tester.view.devicePixelRatio = 2.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    ImagePickerPlatform.instance = _FakePicker([a.path, b.path]);
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(
+          debugShowCheckedModeBanner: false,
+          theme: buildAaTheme(),
+          home: const AddBillScreen(),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    // 选第一张 → 缩略图 a
+    await _pickReceiptFromGallery(tester);
+    expect(find.byKey(ValueKey('mini-receipt-${a.path}')), findsOneWidget);
+
+    // 再选第二张 → 替换：只剩 b，a 消失
+    await _pickReceiptFromGallery(tester);
+    expect(find.byKey(ValueKey('mini-receipt-${a.path}')), findsNothing,
+        reason: '超过 1 张应替换，而非保留多张');
+    expect(find.byKey(ValueKey('mini-receipt-${b.path}')), findsOneWidget);
+
+    // 冲掉 OCR 模拟确认框计时
     await tester.pump(const Duration(seconds: 2));
   });
 }

@@ -1,6 +1,7 @@
 import { Category, SplitType } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
   ArrayMinSize,
   IsArray,
   IsBoolean,
@@ -66,9 +67,10 @@ export class CreateBillDto {
   @IsUUID()
   payerId!: string;
 
-  /** 草稿预上传的暂存凭证 id（拍/选后经 POST /receipts/pre-upload 获取；创建时绑定转正） */
+  /** 草稿预上传的暂存凭证 id（拍/选后经 POST /receipts/pre-upload 获取；创建时绑定转正）。上限 1 张 */
   @IsOptional()
   @IsArray()
+  @ArrayMaxSize(1)
   @IsUUID(undefined, { each: true })
   receiptUploadIds?: string[];
 }
