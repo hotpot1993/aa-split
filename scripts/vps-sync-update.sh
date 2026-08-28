@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# AA-SPLIT-UPDATE-SCRIPT
 # =============================================================================
 # VPS 更新自动同步（更新源 = VPS 自托管 + GitHub 自动拉取）
 #
@@ -8,12 +9,18 @@
 #       最新 `app-release.apk` 到 nginx `/apk/` 静态目录
 #     → 自动更新 /opt/aa-split/.env 的 APP_VERSION_* 并重建 api 容器
 #     → 客户端「检查更新」从服务端 /app/version 拿到 VPS 下载 URL 后下载安装
+#   v1.0.12 起同时自动同步 server/ocr-worker 源码并重建镜像（此前只更新
+#   安装包与 .env，server 代码靠人工 pscp —— 曾造成 v1.0.11 客户端已带
+#   删除功能而服务端无 DELETE 接口的「半发版」事故）
 #
 # 用法：
 #   /opt/aa-split/scripts/sync-update.sh            # 立即同步一次
 #   DRY_RUN=1 /opt/aa-split/scripts/sync-update.sh  # 只打印计划（不下载/不改 .env/不重建）
+#   SYNC_SERVER=0 …                                 # 关闭 server 源码同步（只更新安装包）
+#   SYNC_OCR=1 …                                    # 同时重建 ocr-worker（OCR 相关发版）
 #
-# 可覆盖环境变量：REPO / ENV_FILE / APK_DIR / COMPOSE_DIR / API_BASE / LOG / KEEP / DRY_RUN
+# 可覆盖环境变量：REPO / ENV_FILE / APK_DIR / COMPOSE_DIR / API_BASE / LOG / KEEP /
+#                DRY_RUN / SYNC_SERVER / SYNC_OCR
 # 依赖：bash + curl + python3（zip 校验用）；可选 jq、flock（建议安装 util-linux flock）
 # =============================================================================
 set -uo pipefail
@@ -28,6 +35,8 @@ LOCK_FILE=${LOCK_FILE:-/var/lock/aa-split-sync.lock}
 DOWNLOAD_URL_PREFIX=${DOWNLOAD_URL_PREFIX:-https://github.com/$REPO/releases/download}
 KEEP=${KEEP:-6}          # 保留最近 N 个带构建号的安装包（aa-split-v*-*.apk）
 DRY_RUN=${DRY_RUN:-0}
+SYNC_SERVER=${SYNC_SERVER:-1}  # 发版时同步 server 源码并预构建镜像
+SYNC_OCR=${SYNC_OCR:-0}        # 同时重建 ocr-worker 镜像（OCR 相关发版时置 1）
 
 mkdir -p "$(dirname "$LOG")" "$APK_DIR" 2>/dev/null || true
 log() { echo "[$(date '+%F %T')] $*" | tee -a "$LOG"; }
@@ -112,7 +121,40 @@ log "下载/校验完成: $FILE ($(du -h "$FILE" | cut -f1))"
 # 兜底同源文件名（客户端 downloadUrl 缺失时 fallback 到 /apk/aa-split-v<版本>.apk）
 ln -f "$FILE" "$APK_DIR/aa-split-v$VER.apk" 2>/dev/null || cp -f "$FILE" "$APK_DIR/aa-split-v$VER.apk"
 
-# ---------- 5. 更新说明：优先取该标签提交信息（习惯写法 = chore(release): 新版本 x（说明）），
+# ---------- 5. 同步 server/ocr-worker 源码 + 预构建镜像（v1.0.12 起） ----------
+# 先构建后写 .env：构建失败则整体中止，/app/version 与线上代码保持一致（都是旧版）
+if [ "$SYNC_SERVER" = "1" ]; then
+  log "同步 server 源码（tag=$TAG）并预构建镜像…"
+  SRC=$(mktemp -d) || fail "创建临时目录失败"
+  curl -fsSL "https://codeload.github.com/$REPO/tar.gz/refs/tags/$TAG" | tar -xz -C "$SRC" --strip-components=1 \
+    || { rm -rf "$SRC"; fail "拉取源码 tarball 失败（tag=$TAG）"; }
+  [ -d "$SRC/server" ] || { rm -rf "$SRC"; fail "源码 tarball 缺 server/ 目录"; }
+  # 原子替换 server/（.env/logs/apk 等运行数据不在其中，不受影响）
+  rm -rf "$COMPOSE_DIR/server.new" "$COMPOSE_DIR/server.old"
+  mv "$SRC/server" "$COMPOSE_DIR/server.new" || { rm -rf "$SRC"; fail "移入 server.new 失败"; }
+  [ -d "$COMPOSE_DIR/server" ] && mv "$COMPOSE_DIR/server" "$COMPOSE_DIR/server.old"
+  mv "$COMPOSE_DIR/server.new" "$COMPOSE_DIR/server"
+  rm -rf "$COMPOSE_DIR/server.old"
+  # ocr-worker/ 一并替换（镜像是否重建由 SYNC_OCR 决定）
+  if [ -d "$SRC/ocr-worker" ]; then
+    rm -rf "$COMPOSE_DIR/ocr-worker.new" "$COMPOSE_DIR/ocr-worker.old"
+    mv "$SRC/ocr-worker" "$COMPOSE_DIR/ocr-worker.new"
+    [ -d "$COMPOSE_DIR/ocr-worker" ] && mv "$COMPOSE_DIR/ocr-worker" "$COMPOSE_DIR/ocr-worker.old"
+    mv "$COMPOSE_DIR/ocr-worker.new" "$COMPOSE_DIR/ocr-worker"
+    rm -rf "$COMPOSE_DIR/ocr-worker.old"
+  fi
+  # docker-compose.yml 同步为发版版（APP_VERSION_* 默认值会被 .env 覆盖，不影响线上配置）
+  [ -f "$SRC/docker-compose.yml" ] && cp -f "$SRC/docker-compose.yml" "$COMPOSE_DIR/docker-compose.yml"
+  rm -rf "$SRC"
+  (cd "$COMPOSE_DIR" && docker compose build api >>"$LOG" 2>&1) || fail "docker compose build api 失败（详见日志）"
+  if [ "$SYNC_OCR" = "1" ] && [ -f "$COMPOSE_DIR/ocr-worker/Dockerfile" ]; then
+    (cd "$COMPOSE_DIR" && docker compose build ocr-worker >>"$LOG" 2>&1) || fail "docker compose build ocr-worker 失败（详见日志）"
+    log "ocr-worker 镜像已重建"
+  fi
+  log "server 源码已同步，api 镜像预构建完成"
+fi
+
+# ---------- 6. 更新说明：优先取该标签提交信息（习惯写法 = chore(release): 新版本 x（说明）），
 #            其次保留 .env 现有 NOTES，最后给默认文案 ----------
 NOTES=$(curl -fsSL "https://api.github.com/repos/$REPO/commits/$TAG" 2>/dev/null | python3 -c '
 import sys, json
@@ -128,7 +170,7 @@ print(line[:200])' 2>/dev/null || true)
 [ -n "$NOTES" ] || NOTES=$(grep -E '^APP_VERSION_NOTES=' "$ENV_FILE" | tail -1 | cut -d= -f2- | tr -d '"' || true)
 [ -n "$NOTES" ] || NOTES="自动同步自 GitHub Release $TAG"
 
-# ---------- 6. 写入 .env（APP_VERSION_LATEST / BUILD / URL / NOTES；缺行则追加）----------
+# ---------- 7. 写入 .env（APP_VERSION_LATEST / BUILD / URL / NOTES；缺行则追加）----------
 set_env() {
   local key=$1 val=$2 esc
   esc=$(printf '%s' "$val" | sed 's/[\\&|]/\\&/g')
@@ -144,11 +186,11 @@ set_env APP_VERSION_URL "$URL"
 set_env APP_VERSION_NOTES "$NOTES"
 log "已更新 $ENV_FILE: $VER+$BUILD → $URL"
 
-# ---------- 7. 重建 api 容器让 .env 生效 ----------
+# ---------- 8. 重建 api 容器让 .env 生效 ----------
 (cd "$COMPOSE_DIR" && docker compose up -d api >>"$LOG" 2>&1) || fail "docker compose up -d api 失败（详见日志）"
 log "api 容器已重建"
 
-# ---------- 8. 验证线上版本接口 ----------
+# ---------- 9. 验证线上版本接口 ----------
 sleep 10
 RESP=$(curl -fsS "$API_BASE/api/v1/app/version" 2>/dev/null || true)
 if printf '%s' "$RESP" | grep -q "\"latestBuild\":$BUILD" && printf '%s' "$RESP" | grep -qF "$URL"; then
@@ -157,7 +199,7 @@ else
   fail "验证未通过（/app/version 未返回 $BUILD/$URL）：${RESP:-（无响应）}"
 fi
 
-# ---------- 9. 清理旧安装包（仅带构建号的文件，保留最近 KEEP 个）----------
+# ---------- 10. 清理旧安装包（仅带构建号的文件，保留最近 KEEP 个）----------
 if [ "$KEEP" -gt 0 ]; then
   ls -1t "$APK_DIR"/aa-split-v*-*.apk 2>/dev/null | tail -n "+$((KEEP + 1))" | xargs -r rm -f -- 2>/dev/null || true
 fi

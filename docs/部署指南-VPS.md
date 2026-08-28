@@ -50,6 +50,11 @@ docker compose up -d --build api           # 改源码后重建上线
 
 升级流程：pscp 上传 `server/` 变更 → `docker compose up -d --build api`（构建含 `npm ci`，本机网络约 10 分钟，请耐心）。
 
+> **v1.0.12 起 server 代码随发版自动部署**：`sync-update.sh` 在拉取新安装包的同时会从 Release 标签下载源码
+> tarball 原子替换 `server/`、`ocr-worker/` 与 `docker-compose.yml`，并**先构建后写 .env**（构建失败则整体中止，
+> 版本接口与线上代码保持一致）。`SYNC_SERVER=0` 可关闭源码同步；OCR 相关发版加 `SYNC_OCR=1` 同时重建 ocr-worker。
+> 背景：v1.0.11 客户端已带消息删除功能，但 server 代码靠人工上传未同步，线上无 DELETE 接口导致删除 404「半发版」事故。
+
 **发版更新「检查更新」版本**（更新源 = VPS 自托管 + **GitHub 自动拉取**，详见 [发版 SOP](./开发进度.md#十发版-sop每次发行照此执行)：GitHub Release 发布新版本 → VPS 定时任务自动从 GitHub 下载安装包到 `/apk/` 并同步更新版本接口 → App 从 VPS 拉取下载安装；**无任何人工上传步骤**）：
 
 **① 一次性安装自动同步任务**（发版后 ≤15 分钟自动生效；支持手动立即执行）：
