@@ -1,0 +1,1 @@
+docker exec aa-postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "SELECT n.id, n.type, left(n.title,20) AS title, u.account_name, n.\"createdAt\" FROM notifications n JOIN users u ON u.id = n.user_id ORDER BY n.\"createdAt\" DESC LIMIT 19;"'
