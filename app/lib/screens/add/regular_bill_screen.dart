@@ -43,7 +43,7 @@ class _RegularBillScreenState extends ConsumerState<RegularBillScreen> {
               child: EmptyState(
                 title: '还没有定期账单',
                 subtitle: '房租、水电、会员费…交给团团记着',
-                tag: 'P34 定期账单',
+                tag: '定期账单',
                 artImage: 'assets/icons/receipt.png',
                 buttonLabel: '＋ 新建定期账单',
                 onButtonTap: _create,

@@ -88,7 +88,7 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
                   EmptyState(
                     title: '安静的一天～ 没有新消息',
                     subtitle: '团团戴着耳机打瞌睡，你不找它它不醒',
-                    tag: 'P40 消息中心',
+                    tag: '消息中心',
                     artImage: 'assets/icons/headphone.png',
                     buttonLabel: '去记一笔',
                     onButtonTap: () => context.push('/add'),

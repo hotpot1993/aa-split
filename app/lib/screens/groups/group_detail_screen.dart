@@ -156,7 +156,7 @@ class GroupDetailScreen extends ConsumerWidget {
             EmptyState(
               title: '记第一笔账，开启AA之旅',
               subtitle: '30秒搞定，以后回头翻账可开心了',
-              tag: 'P23 群组详情',
+              tag: '群组详情',
               artImage: 'assets/icons/edit.png',
               buttonLabel: '✏️ 记一笔',
               onButtonTap: () => context.push('/add?group=$groupId'),
@@ -165,7 +165,7 @@ class GroupDetailScreen extends ConsumerWidget {
             EmptyState(
               title: '本群已清账！两不相欠啦 🎉',
               subtitle: '团团撒花中——钱的事清了，咱们还是好朋友',
-              tag: 'P23/P25 已清账 🎉',
+              tag: '已清账 🎉',
               artImage: 'assets/icons/party.png',
               buttonLabel: '再来一笔 💪',
               onButtonTap: () => context.push('/add?group=$groupId'),

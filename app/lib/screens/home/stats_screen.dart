@@ -174,7 +174,7 @@ class StatsScreen extends ConsumerWidget {
           if (top5(bills).isEmpty)
             EmptyState(
               title: '还没有账单',
-              tag: 'P13 统计',
+              tag: '统计',
               artImage: 'assets/icons/chart.png',
               compact: true,
             )

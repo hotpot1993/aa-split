@@ -105,7 +105,7 @@ class _SettlementScreenState extends ConsumerState<SettlementScreen> {
             EmptyState(
               title: '全群已清账，两不相欠啦 🎉',
               subtitle: '这笔不用再转了',
-              tag: 'P23/P25 已清账 🎉',
+              tag: '已清账 🎉',
               art: '🎉🌸',
             )
           else

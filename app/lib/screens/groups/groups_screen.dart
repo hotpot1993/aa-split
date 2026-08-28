@@ -46,7 +46,7 @@ class GroupsScreen extends ConsumerWidget {
                 EmptyState(
                   title: '还没有群组，拉上小伙伴开个AA局吧～',
                   subtitle: '团团这里只有硬币，快来人多才热闹',
-                  tag: 'P20 群组列表',
+                  tag: '群组列表',
                   artImage: 'assets/icons/bag.png',
                   buttonLabel: '＋ 创建群组',
                   onButtonTap: () => context.push('/groups/create'),

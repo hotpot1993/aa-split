@@ -69,7 +69,7 @@ class _BillsScreenState extends ConsumerState<BillsScreen> {
                 EmptyState(
                   title: '账本空空如也，记一笔吧！',
                   subtitle: '30秒搞定，以后回头翻账可开心了',
-                  tag: 'P11/P12 账单列表',
+                  tag: '账单列表',
                   artImage: 'assets/icons/notebook.png',
                   buttonLabel: '记一笔',
                   buttonImage: 'assets/icons/edit.png',

@@ -69,7 +69,7 @@ class _RemindScreenState extends ConsumerState<RemindScreen> {
           padding: EdgeInsets.all(16),
           child: EmptyState(
             title: '没有欠款要催，大家都超靠谱！',
-            tag: 'P26 催款',
+            tag: '催款',
             art: '✅🍉',
           ),
         ),
