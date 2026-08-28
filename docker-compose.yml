@@ -100,10 +100,10 @@ services:
       # 更新流程：GitHub 发布新版本（打 v* 标签 → Actions 正式签名构建并发布 Release）→
       # VPS 定时任务（scripts/vps-sync-update.sh，cron 每 15 分钟）自动从 GitHub 拉取安装包
       # 到 VPS /apk/（nginx 静态托管）并同步更新本项 + .env 的 APP_VERSION_URL 指向 VPS
-      APP_VERSION_LATEST: ${APP_VERSION_LATEST:-1.0.15}
-      APP_VERSION_BUILD: ${APP_VERSION_BUILD:-5009}
-      APP_VERSION_URL: "${APP_VERSION_URL:-https://api.hotpot1993.top/apk/aa-split-v1.0.15.apk}"
-      APP_VERSION_NOTES: "${APP_VERSION_NOTES:-记一笔三项增强（小票缩略图大图查看 / OCR 自动选币 / 未填标题默认分类名）+ 小票凭证上限 1 张 + P 序号文案清理}"
+      APP_VERSION_LATEST: ${APP_VERSION_LATEST:-1.0.16}
+      APP_VERSION_BUILD: ${APP_VERSION_BUILD:-5010}
+      APP_VERSION_URL: "${APP_VERSION_URL:-https://api.hotpot1993.top/apk/aa-split-v1.0.16.apk}"
+      APP_VERSION_NOTES: "${APP_VERSION_NOTES:-催款页成员选项去除头像，仅保留昵称展示}"
       # 小票 OCR：识别服务地址（ocr-worker）
       OCR_WORKER_URL: ${OCR_WORKER_URL:-http://ocr-worker:8000}
     ports:
