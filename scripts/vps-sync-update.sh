@@ -190,14 +190,20 @@ log "已更新 $ENV_FILE: $VER+$BUILD → $URL"
 (cd "$COMPOSE_DIR" && docker compose up -d api >>"$LOG" 2>&1) || fail "docker compose up -d api 失败（详见日志）"
 log "api 容器已重建"
 
-# ---------- 9. 验证线上版本接口 ----------
-sleep 10
-RESP=$(curl -fsS "$API_BASE/api/v1/app/version" 2>/dev/null || true)
-if printf '%s' "$RESP" | grep -q "\"latestBuild\":$BUILD" && printf '%s' "$RESP" | grep -qF "$URL"; then
-  log "验证通过：$RESP"
-else
-  fail "验证未通过（/app/version 未返回 $BUILD/$URL）：${RESP:-（无响应）}"
-fi
+# ---------- 9. 验证线上版本接口（容器冷启动 npm start + prisma 约 10-30s，轮询重试） ----------
+RESP=""
+for i in 1 2 3 4 5 6; do
+  sleep 10
+  RESP=$(curl -fsS "$API_BASE/api/v1/app/version" 2>/dev/null || true)
+  if printf '%s' "$RESP" | grep -q "\"latestBuild\":$BUILD" && printf '%s' "$RESP" | grep -qF "$URL"; then
+    log "验证通过：$RESP"
+    break
+  fi
+  if [ "$i" = 6 ]; then
+    fail "验证未通过（/app/version 未返回 $BUILD/$URL）：${RESP:-（无响应）}"
+  fi
+  log "验证第 $i 次未通过（容器可能仍在启动），10s 后重试…"
+done
 
 # ---------- 10. 清理旧安装包（仅带构建号的文件，保留最近 KEEP 个）----------
 if [ "$KEEP" -gt 0 ]; then
