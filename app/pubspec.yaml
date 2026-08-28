@@ -57,6 +57,8 @@ dev_dependencies:
     sdk: flutter
   integration_test:
     sdk: flutter
+  # 测试环境注入相册桩（ImagePickerPlatform），供「记一笔」小票缩略图/OCR 用例使用
+  image_picker_platform_interface: ^2.11.1
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is

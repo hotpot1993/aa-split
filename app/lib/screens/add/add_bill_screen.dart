@@ -371,7 +371,10 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
                             SizedBox(width: 8),
                             ..._receipts.map((r) => Padding(
                                   padding: const EdgeInsets.only(right: 4),
-                                  child: _MiniReceipt(url: r.url),
+                                  child: _MiniReceipt(
+                                    url: r.url,
+                                    onTap: () => _viewReceipt(r.url),
+                                  ),
                                 )),
                           ],
                         ],
@@ -650,7 +653,8 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
     await _showOcrConfirm(amountCents: amount, confidence: conf, currency: currency);
   }
 
-  /// 三档确认框（复用记账页手绘风 showAaConfirm）；确认后填入金额输入框，用户可改
+  /// 三档确认框（复用记账页手绘风 showAaConfirm）；确认后填入金额输入框，用户可改。
+  /// 识别出的币种一并自动选中（feature：OCR 成功 → 自动选中货币）。
   Future<void> _showOcrConfirm({
     required int amountCents,
     required double confidence,
@@ -669,12 +673,91 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
     );
     if (ok != true || !mounted) return;
     _fillAmount(amountCents);
+    _applyOcrCurrency(currency);
   }
 
   void _fillAmount(int amountCents) {
     _amountCtrl.text = Fmt.yuanNoSymbol(amountCents);
     _amountCents = amountCents;
     setState(() {});
+  }
+
+  /// OCR 识别成功后自动选中识别出的币种（仅在接受填入时）。
+  /// 未知币种 / 与当前相同不动；币种变更需重置分摊（按金额换算重算）。
+  void _applyOcrCurrency(String code) {
+    final match = matchTravelCurrency(code);
+    if (match == null) return;
+    if (_currency.code == match.code) return;
+    setState(() {
+      _currency = match;
+      _split = null;
+    });
+  }
+
+  /// 点击已上传小票缩略图 → 全屏查看大图（支持双指缩放）
+  Future<void> _viewReceipt(String url) async {
+    await showGeneralDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: '小票大图',
+      barrierColor: const Color(0xCC221E1A),
+      transitionDuration: const Duration(milliseconds: 220),
+      pageBuilder: (_, _, _) {
+        return SafeArea(
+          key: const ValueKey('receipt-viewer'),
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: Center(
+                  child: InteractiveViewer(
+                    minScale: 0.6,
+                    maxScale: 5,
+                    child: _receiptImage(url),
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Material(
+                  color: AAColors.paper,
+                  shape: const CircleBorder(),
+                  child: InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: () => Navigator.of(context).maybePop(),
+                    child: Padding(
+                      padding: const EdgeInsets.all(10),
+                      child: Text('✕',
+                          style: TextStyle(fontSize: 16, color: AAColors.ink)),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+      transitionBuilder: (_, anim, _, child) =>
+          FadeTransition(opacity: anim, child: child),
+    );
+  }
+
+  /// 小票大图渲染：本地文件 / 服务端 URL（相对路径转绝对）/ 占位 emoji
+  Widget _receiptImage(String url) {
+    if (url.isEmpty || url.startsWith('🧾') || url.startsWith('📷')) {
+      return Center(child: Text('🧾', style: TextStyle(fontSize: 90)));
+    }
+    final isLocal = !url.startsWith('http') && File(url).existsSync();
+    return isLocal
+        ? Image.file(File(url), fit: BoxFit.contain)
+        : Image.network(
+            absReceiptUrl(url),
+            fit: BoxFit.contain,
+            loadingBuilder: (_, child, p) =>
+                p == null ? child : const Center(child: AaLoading()),
+            errorBuilder: (_, _, _) =>
+                Center(child: Text('🧾', style: TextStyle(fontSize: 90))),
+          );
   }
 
   /// 草稿凭证的 OCR 状态摘要（真实模式预上传后展示）
@@ -826,7 +909,7 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
       await repo.create(
         groupId: _groupId,
         groupName: group?.name ?? '',
-        title: _titleCtrl.text.trim().isEmpty ? '未命名账单' : _titleCtrl.text.trim(),
+        title: _titleCtrl.text.trim().isEmpty ? Cat.label(_category) : _titleCtrl.text.trim(),
         amountCents: rmbCents,
         billDate: _date,
         category: _category,
@@ -923,35 +1006,40 @@ class _AmountDashPainter extends CustomPainter {
 }
 
 class _MiniReceipt extends StatelessWidget {
-  const _MiniReceipt({required this.url});
+  const _MiniReceipt({required this.url, this.onTap});
   final String url;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final local = !url.startsWith('🧾') &&
         !url.startsWith('http') &&
         File(url).existsSync();
-    return Container(
-      width: 40,
-      height: 40,
-      alignment: Alignment.center,
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: AAColors.paperDeep,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: AAColors.ink, width: 1.2),
+    return GestureDetector(
+      key: ValueKey('mini-receipt-$url'),
+      onTap: onTap,
+      child: Container(
+        width: 40,
+        height: 40,
+        alignment: Alignment.center,
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color: AAColors.paperDeep,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: AAColors.ink, width: 1.2),
+        ),
+        child: local
+            ? Image.file(
+                File(url),
+                width: 40,
+                height: 40,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) =>
+                    Text('🧾', style: TextStyle(fontSize: 18)),
+              )
+            : Text(url.startsWith('🧾') ? '🧾' : '📷',
+                style: TextStyle(fontSize: 18)),
       ),
-      child: local
-          ? Image.file(
-              File(url),
-              width: 40,
-              height: 40,
-              fit: BoxFit.cover,
-              errorBuilder: (_, _, _) =>
-                  Text('🧾', style: TextStyle(fontSize: 18)),
-            )
-          : Text(url.startsWith('🧾') ? '🧾' : '📷',
-              style: TextStyle(fontSize: 18)),
     );
   }
 }

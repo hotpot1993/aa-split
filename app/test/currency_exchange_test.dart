@@ -48,6 +48,15 @@ void main() {
       expect(demoRateOf('XXX'), 1); // 未知币种回退 1
     });
 
+    test('matchTravelCurrency：OCR 币种 → 旅行货币匹配（未知/空返回 null）', () {
+      expect(matchTravelCurrency('USD')?.code, 'USD');
+      expect(matchTravelCurrency('CNY')?.code, 'CNY');
+      expect(matchTravelCurrency('hkd')?.code, isNull); // 大小写敏感，非标准代码不计
+      expect(matchTravelCurrency('XXX'), isNull);
+      expect(matchTravelCurrency(null), isNull);
+      expect(matchTravelCurrency(''), isNull);
+    });
+
     test('外币金额换算为人民币（分）', () {
       // 10.00 USD = 1000 分 × 7.25 = 7250 分
       expect((1000 * demoRateOf('USD')).round(), 7250);

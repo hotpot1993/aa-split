@@ -43,3 +43,13 @@ double demoRateOf(String code) {
   }
   return 1;
 }
+
+/// 按 ISO 代码匹配旅行货币；空/未知返回 null。
+/// 用于「记一笔」OCR 识别成功后自动选中识别出的币种（OCR 币种不在可选表时忽略）。
+TravelCurrency? matchTravelCurrency(String? code) {
+  if (code == null || code.isEmpty) return null;
+  for (final c in travelCurrencies) {
+    if (c.code == code) return c;
+  }
+  return null;
+}

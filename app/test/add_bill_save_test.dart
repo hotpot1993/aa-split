@@ -31,7 +31,7 @@ void main() {
   testWidgets('连点收下小票：仅生成一张账单', (tester) async {
     await _pump(tester, const AddBillScreen());
 
-    // 输入金额（标题留空 → 未命名账单；默认选中首群全体）
+    // 输入金额（标题留空 → 默认用分类名「餐饮」；默认选中首群全体）
     await tester.enterText(find.byType(TextField).first, '100');
     await tester.pump();
 
@@ -49,6 +49,8 @@ void main() {
     expect(MockStore.instance.bills.length, before + 1);
     // 且已进入保存成功庆祝页
     expect(find.text('已保存，等TA们摊钱咯~'), findsOneWidget);
+    // 标题留空 → 默认使用消费分类名称（默认分类 food → 餐饮）
+    expect(MockStore.instance.bills.last.title, '餐饮');
 
     await tester.pump(const Duration(seconds: 2));
   });
