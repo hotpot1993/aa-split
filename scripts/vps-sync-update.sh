@@ -145,6 +145,17 @@ if [ "$SYNC_SERVER" = "1" ]; then
   fi
   # docker-compose.yml 同步为发版版（APP_VERSION_* 默认值会被 .env 覆盖，不影响线上配置）
   [ -f "$SRC/docker-compose.yml" ] && cp -f "$SRC/docker-compose.yml" "$COMPOSE_DIR/docker-compose.yml"
+  # 同步脚本自更新（AA-SPLIT-UPDATE-SCRIPT 标记校验；sed 兜底去 CR，mv 原子替换不伤运行中进程）
+  if [ -f "$SRC/scripts/vps-sync-update.sh" ]; then
+    sed 's/\r$//' "$SRC/scripts/vps-sync-update.sh" > "$COMPOSE_DIR/scripts/sync-update.sh.new" 2>/dev/null || true
+    if [ -s "$COMPOSE_DIR/scripts/sync-update.sh.new" ] && grep -q 'AA-SPLIT-UPDATE-SCRIPT' "$COMPOSE_DIR/scripts/sync-update.sh.new" 2>/dev/null; then
+      mv "$COMPOSE_DIR/scripts/sync-update.sh.new" "$COMPOSE_DIR/scripts/sync-update.sh"
+      chmod +x "$COMPOSE_DIR/scripts/sync-update.sh"
+      log "同步脚本已自更新"
+    else
+      rm -f "$COMPOSE_DIR/scripts/sync-update.sh.new"
+    fi
+  fi
   rm -rf "$SRC"
   (cd "$COMPOSE_DIR" && docker compose build api >>"$LOG" 2>&1) || fail "docker compose build api 失败（详见日志）"
   if [ "$SYNC_OCR" = "1" ] && [ -f "$COMPOSE_DIR/ocr-worker/Dockerfile" ]; then
