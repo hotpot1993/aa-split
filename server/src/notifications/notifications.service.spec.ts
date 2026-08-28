@@ -1,4 +1,3 @@
-import { NotFoundException } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
 
 describe('NotificationsService.pushDataEvent', () => {
@@ -49,7 +48,7 @@ describe('NotificationsService.remove / removeAll（消息中心删除）', () =
     expect(out).toEqual({ success: true });
   });
 
-  it('删除不存在或他人的通知 → 404', async () => {
+  it('删除不存在或他人的通知 → 幂等成功（success:true, alreadyGone），不触发 delete', async () => {
     const prisma = {
       notification: {
         findFirst: jest.fn().mockResolvedValue(null),
@@ -58,7 +57,9 @@ describe('NotificationsService.remove / removeAll（消息中心删除）', () =
     };
     const svc = makeSvc(prisma);
 
-    await expect(svc.remove('u1', 'nope')).rejects.toThrow(NotFoundException);
+    const out = await svc.remove('u1', 'nope');
+
+    expect(out).toEqual({ success: true, alreadyGone: true });
     expect(prisma.notification.delete).not.toHaveBeenCalled();
   });
 

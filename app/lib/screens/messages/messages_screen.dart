@@ -161,7 +161,7 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
     }
   }
 
-  /// 清空全部消息：二次确认 → 本地立即清空 → 服务端落库；失败恢复显示
+  /// 清空全部消息：二次确认 → 本地立即清空 → 服务端落库；异常后复核服务端定去留
   Future<void> _clearAll() async {
     final ok = await showAaConfirm(
       context,
@@ -177,7 +177,13 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
       ref.read(refreshProvider.notifier).bump();
       if (mounted) showAaToast(context, '🗑️ 已清空全部消息');
     } catch (e) {
-      if (mounted) {
+      // 网络层失败 ≠ 清空失败（响应可能只是没送回来）——以服务端列表复核
+      final gone = await _serverConfirmGone(ref);
+      if (!mounted) return;
+      if (gone) {
+        ref.read(refreshProvider.notifier).bump();
+        showAaToast(context, '🗑️ 已清空全部消息');
+      } else {
         setState(() => _clearedAll = false);
         showAaToast(context, '❌ 清空失败：${_friendly(e)}');
       }
@@ -187,6 +193,22 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
   /// 服务端/网络错误的用户可读文案
   static String _friendly(Object e) =>
       e is ApiException ? e.message : '网络开小差了，稍后再试';
+}
+
+/// 删除/清空请求异常后的「服务端复核」（v1.0.14）。
+///
+/// 真机网络偶发丢响应（超时/连接重置/回包未达），此时删除**可能已在服务端生效**；
+/// 旧逻辑一律恢复显示，造成"删掉又复活"。现改为重拉服务端列表：
+/// [id] 不在最新列表（或 [id] 为 null 时列表为空）→ 视为删除成功，保持隐藏；
+/// 复核失败或仍在列表 → 返回 false，由调用方恢复显示并提示。
+Future<bool> _serverConfirmGone(WidgetRef ref, {String? id}) async {
+  ref.invalidate(notificationsProvider);
+  try {
+    final fresh = await ref.read(notificationsProvider.future);
+    return id == null ? fresh.isEmpty : !fresh.any((m) => m.id == id);
+  } catch (_) {
+    return false;
+  }
 }
 
 class _MsgCard extends ConsumerWidget {
@@ -375,7 +397,7 @@ class _MsgCard extends ConsumerWidget {
         NotifyType.member => 'assets/icons/group.png',
       };
 
-  /// 长按删除：二次确认 → 本地立即隐藏 → 服务端落库；失败恢复显示
+  /// 长按删除：二次确认 → 本地立即隐藏 → 服务端落库；异常后复核服务端定去留
   Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
     final ok = await showAaConfirm(
       context,
@@ -390,10 +412,17 @@ class _MsgCard extends ConsumerWidget {
       ref.read(refreshProvider.notifier).bump();
       if (context.mounted) showAaToast(context, '🗑️ 已删除');
     } catch (e) {
-      onLocalRestore();
-      if (context.mounted) {
-        showAaToast(context,
-            '❌ 删除失败：${e is ApiException ? e.message : '网络开小差了，稍后再试'}');
+      // 网络层失败 ≠ 删除失败（v1.0.14）：复核服务端，已不在列表则保持隐藏
+      final gone = await _serverConfirmGone(ref, id: n.id);
+      if (gone) {
+        ref.read(refreshProvider.notifier).bump();
+        if (context.mounted) showAaToast(context, '🗑️ 已删除');
+      } else {
+        onLocalRestore();
+        if (context.mounted) {
+          showAaToast(context,
+              '❌ 删除失败：${e is ApiException ? e.message : '网络开小差了，稍后再试'}');
+        }
       }
     }
   }
@@ -460,10 +489,17 @@ class _SwipeToDelete extends ConsumerWidget {
       ref.read(refreshProvider.notifier).bump();
       if (context.mounted) showAaToast(context, '🗑️ 已删除');
     } catch (e) {
-      onLocalRestore();
-      if (context.mounted) {
-        showAaToast(context,
-            '❌ 删除失败：${e is ApiException ? e.message : '网络开小差了，稍后再试'}');
+      // 网络层失败 ≠ 删除失败（v1.0.14）：复核服务端，已不在列表则保持隐藏
+      final gone = await _serverConfirmGone(ref, id: notification.id);
+      if (gone) {
+        ref.read(refreshProvider.notifier).bump();
+        if (context.mounted) showAaToast(context, '🗑️ 已删除');
+      } else {
+        onLocalRestore();
+        if (context.mounted) {
+          showAaToast(context,
+              '❌ 删除失败：${e is ApiException ? e.message : '网络开小差了，稍后再试'}');
+        }
       }
     }
     return false;

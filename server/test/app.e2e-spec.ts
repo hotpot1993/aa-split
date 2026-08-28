@@ -317,7 +317,7 @@ describe('核心链路 e2e（注册→建群→记账→结算→催款→已付
     expect(settle.body.data.transfers).toEqual([]);
   });
 
-  it('消息删除：单条 DELETE（归属校验 404）+ 清空全部 DELETE', async () => {
+  it('消息删除：单条 DELETE 幂等（他人/重复删除均成功不误伤）+ 清空全部 DELETE', async () => {
     const alice = (globalThis as any).__alice as { token: string };
     const bobToken = (globalThis as any).__bobToken as string;
 
@@ -329,11 +329,20 @@ describe('核心链路 e2e（注册→建群→记账→结算→催款→已付
     const remindNotif = list1.body.data.list[0];
     expect(remindNotif).toBeDefined();
 
-    // 他人（alice）不能删 bob 的通知 → 404
-    await request(server())
+    // 他人（alice）删 bob 的通知 → 幂等成功但已存在标记，且不误伤 bob 的消息
+    const foreign = await request(server())
       .delete(`/api/v1/notifications/${remindNotif.id}`)
       .set('Authorization', `Bearer ${alice.token}`)
-      .expect(404);
+      .expect(200);
+    expect(foreign.body.data.success).toBe(true);
+    expect(foreign.body.data.alreadyGone).toBe(true);
+    const stillThere = await request(server())
+      .get('/api/v1/notifications')
+      .set('Authorization', `Bearer ${bobToken}`)
+      .expect(200);
+    expect(
+      (stillThere.body.data.list as any[]).some((n) => n.id === remindNotif.id),
+    ).toBe(true);
 
     // bob 删除自己的通知 → success:true
     const del = await request(server())
@@ -342,11 +351,13 @@ describe('核心链路 e2e（注册→建群→记账→结算→催款→已付
       .expect(200);
     expect(del.body.data.success).toBe(true);
 
-    // 重复删除同一条 → 404
-    await request(server())
+    // 重复删除同一条 → 仍 success:true（幂等；真机丢包重试场景）
+    const again = await request(server())
       .delete(`/api/v1/notifications/${remindNotif.id}`)
       .set('Authorization', `Bearer ${bobToken}`)
-      .expect(404);
+      .expect(200);
+    expect(again.body.data.success).toBe(true);
+    expect(again.body.data.alreadyGone).toBe(true);
 
     // 清空全部：alice 有成员动态通知 → 返回删除条数，且列表变空
     const aliceList = await request(server())

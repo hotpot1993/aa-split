@@ -232,15 +232,15 @@ await step('statistics', async () => {
   const st = await api('GET', '/me/statistics', { token: at });
   assert(st.billCount >= 1, `billCount=${st.billCount}`);
 });
-// 消息删除（v1.0.11）：DELETE /notifications/:id 归属校验 404 + DELETE /notifications 清空
+// 消息删除（v1.0.11；v1.0.14 起幂等）：DELETE 不存在的 id → 200 {success:true}（旧版服务端为 404，此处兼作部署守卫）
 await step('notification delete endpoints', async () => {
   const res = await fetch(`${base}/notifications/00000000-0000-0000-0000-000000000000`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${at}` },
   });
   const j = await res.json().catch(() => null);
-  assert(res.status === 404, `expected 404 got ${res.status}`);
-  assert(String(j?.message || '').includes('通知不存在'), `message=${j?.message}`);
+  assert(res.status === 200, `expected 200 got ${res.status}`);
+  assert(j?.data?.success === true, `data=${JSON.stringify(j?.data)}`);
   const clear = await api('DELETE', '/notifications', { token: at });
   assert(typeof clear.deleted === 'number', `deleted=${clear.deleted}`);
 });

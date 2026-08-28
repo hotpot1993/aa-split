@@ -43,13 +43,13 @@ abstract final class AppConfig {
 
   /// 版本号（与 pubspec.yaml `version: 1.0.13+5007` 的版本名部分完全一致；
   /// 由 test/version_consistency_test.dart 强制校验，改 pubspec 需同步此处）
-  static const String appVersion = '1.0.13';
+  static const String appVersion = '1.0.14';
 
   /// 构建版本号（与 pubspec.yaml `version: 1.0.13+5007` 的 +build 部分完全一致；
   /// 每次发行 +1 构建号保持 versionCode 单调递增（≥5001 规避真机 -25 降级）；
   /// 实测一台测试机装有仓库外的 1.0.5+4006 构建，5002 及以后均高于其 versionCode）
   /// + 「关于我们」页底新增 versionCode 展示（便于真机排查版本问题）
-  static const String appBuildNumber = '5007';
+  static const String appBuildNumber = '5008';
 
   /// 极光推送 AppKey（客户端公开值；测试包可 --dart-define=AA_JPUSH_APP_KEY= 覆盖）
   static const String jpushAppKey = String.fromEnvironment(

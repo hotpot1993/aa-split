@@ -7,7 +7,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:aa_split_app/core/api/api_client.dart';
 import 'package:aa_split_app/data/mock/mock_store.dart';
+import 'package:aa_split_app/data/repositories/notification_repository.dart';
+import 'package:aa_split_app/models/notification_item.dart';
+import 'package:aa_split_app/providers/repositories.dart';
 import 'package:aa_split_app/screens/messages/messages_screen.dart';
 
 Future<void> _pump(WidgetTester tester) async {
@@ -113,4 +117,124 @@ void main() {
     // 冲掉 Toast 计时器
     await tester.pump(const Duration(seconds: 2));
   });
+
+  testWidgets('v1.0.14 复活回归：服务端已删除但回包丢失 → 复核后保持隐藏', (tester) async {
+    final now = DateTime.now();
+    final a = NotificationItem(
+        id: 'a', type: NotifyType.newBill, title: '账单甲', body: '群A', createdAt: now);
+    final b = NotificationItem(
+        id: 'b', type: NotifyType.newBill, title: '账单乙', body: '群A', createdAt: now);
+    // remove():服务端先删成功，再抛异常（模拟回包在网络上丢失/404 已不存在）
+    final repo = _FakeRepo([a, b])
+      ..throwOnRemove = const ApiException(404, '通知不存在');
+    await _pumpWithRepo(tester, repo);
+
+    await _swipeFirstCard(tester);
+    await tester.tap(find.widgetWithText(DoodleButton, '删除'));
+    await tester.pump();
+    await tester.pump();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text('账单甲'), findsNothing,
+        reason: '服务端复核已不存在 → 不应恢复显示（复活 bug 回归点）');
+    expect(find.text('🗑️ 已删除'), findsOneWidget,
+        reason: '应按删除成功提示，而非删除失败');
+
+    await tester.pump(const Duration(seconds: 2));
+  });
+
+  testWidgets('v1.0.14 复活回归：服务端确实未删除 → 恢复显示并提示失败', (tester) async {
+    final now = DateTime.now();
+    final a = NotificationItem(
+        id: 'a', type: NotifyType.newBill, title: '账单甲', body: '群A', createdAt: now);
+    final b = NotificationItem(
+        id: 'b', type: NotifyType.newBill, title: '账单乙', body: '群A', createdAt: now);
+    // remove():请求未达服务端即抛异常 → 列表里仍在 → 应回显并报错
+    final repo = _FakeRepo([a, b])
+      ..commitOnFailure = false
+      ..throwOnRemove = const ApiException(-1, '网络开小差了…检查一下再试试');
+    await _pumpWithRepo(tester, repo);
+
+    await _swipeFirstCard(tester);
+    await tester.tap(find.widgetWithText(DoodleButton, '删除'));
+    await tester.pump();
+    await tester.pump();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text('账单甲'), findsOneWidget,
+        reason: '服务端仍在 → 恢复显示，不静默吞掉');
+    expect(find.textContaining('删除失败'), findsOneWidget,
+        reason: '应明确提示删除失败');
+
+    await tester.pump(const Duration(seconds: 2));
+  });
+}
+
+/// 注入伪造仓库的泵屏（真实模式删除链路：异常 → 服务端复核）
+Future<void> _pumpWithRepo(WidgetTester tester, NotificationRepository repo) async {
+  tester.view.physicalSize = const Size(1080, 1920);
+  tester.view.devicePixelRatio = 2.0;
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [notificationRepositoryProvider.overrideWithValue(repo)],
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: buildAaTheme(),
+        home: const MessagesScreen(),
+      ),
+    ),
+  );
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 300));
+  await tester.pump(const Duration(milliseconds: 100));
+}
+
+/// 伪造仓库：remove 先按 [commitOnFailure] 决定服务端是否已生效，再按需抛错
+class _FakeRepo extends NotificationRepository {
+  _FakeRepo(this.items);
+
+  final List<NotificationItem> items;
+
+  /// true = 服务端已删除但回包丢失（throwOnRemove 时仍先改列表）；
+  /// false = 请求根本没到服务端（列表保持原样）
+  bool commitOnFailure = true;
+
+  /// 非 null 时 remove/clearAll 抛出（模拟网络层失败）
+  Object? throwOnRemove;
+
+  @override
+  Future<List<NotificationItem>> list() async => List.of(items);
+
+  @override
+  Future<int> unreadCount() async => items.where((n) => !n.isRead).length;
+
+  @override
+  Future<void> remove(String id) async {
+    await Future<void>.delayed(Duration.zero);
+    if (throwOnRemove == null || commitOnFailure) {
+      items.removeWhere((n) => n.id == id);
+    }
+    final err = throwOnRemove;
+    if (err != null) throw err;
+  }
+
+  @override
+  Future<void> clearAll() async {
+    await Future<void>.delayed(Duration.zero);
+    if (throwOnRemove == null || commitOnFailure) items.clear();
+    final err = throwOnRemove;
+    if (err != null) throw err;
+  }
+
+  @override
+  Future<void> markRead(String id) async {}
+
+  @override
+  Future<void> markAllRead() async {}
 }

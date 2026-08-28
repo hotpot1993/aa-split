@@ -118,12 +118,16 @@ export class NotificationsService {
     });
   }
 
-  /** 删除单条通知（仅本人；不存在或他人的通知 → 404） */
+  /** 删除单条通知（仅本人）。
+   *  幂等语义（v1.0.14）：通知已不存在 / 非本人通知 → 一律返回 { success: true }。
+   *  真机网络偶发丢响应会导致客户端对同一条消息重复 DELETE，此前 404 会让
+   *  客户端误判"删除失败"并把已删除的消息重新显示回来（复活），故按 RFC
+   *  对 DELETE 的幂等要求处理：目标已不在即为成功。 */
   async remove(userId: string, id: string) {
     const n = await this.prisma.notification.findFirst({
       where: { id, userId },
     });
-    if (!n) throw new NotFoundException('通知不存在');
+    if (!n) return { success: true, alreadyGone: true };
     await this.prisma.notification.delete({ where: { id } });
     return { success: true };
   }
