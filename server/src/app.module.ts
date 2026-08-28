@@ -18,7 +18,6 @@ import { BillsModule } from './bills/bills.module';
 import { SettlementModule } from './settlement/settlement.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { RegularBillsModule } from './regular-bills/regular-bills.module';
-import { ExportModule } from './export/export.module';
 import { StatisticsModule } from './statistics/statistics.module';
 import { HealthModule } from './health/health.module';
 import { AppVersionModule } from './app-version/app-version.module';
@@ -60,7 +59,6 @@ import { OcrModule } from './ocr/ocr.module';
     SettlementModule,
     NotificationsModule,
     RegularBillsModule,
-    ExportModule,
     StatisticsModule,
     HealthModule,
     AppVersionModule,

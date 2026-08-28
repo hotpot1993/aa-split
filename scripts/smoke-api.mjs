@@ -227,18 +227,22 @@ await step('settlement cleared', async () => {
   assert(s.transferCount === 0, `count=${s.transferCount}`);
 });
 
-console.log('== 9. statistics / export ==');
+console.log('== 9. statistics / notifications delete ==');
 await step('statistics', async () => {
   const st = await api('GET', '/me/statistics', { token: at });
   assert(st.billCount >= 1, `billCount=${st.billCount}`);
 });
-await step('export xlsx', async () => {
-  const res = await fetch(`${base}/me/export?format=xlsx`, {
+// 消息删除（v1.0.11）：DELETE /notifications/:id 归属校验 404 + DELETE /notifications 清空
+await step('notification delete endpoints', async () => {
+  const res = await fetch(`${base}/notifications/00000000-0000-0000-0000-000000000000`, {
+    method: 'DELETE',
     headers: { Authorization: `Bearer ${at}` },
   });
-  const buf = Buffer.from(await res.arrayBuffer());
-  assert(res.status === 200, `status=${res.status}`);
-  assert(buf.length > 500, `len=${buf.length}`);
+  const j = await res.json().catch(() => null);
+  assert(res.status === 404, `expected 404 got ${res.status}`);
+  assert(String(j?.message || '').includes('通知不存在'), `message=${j?.message}`);
+  const clear = await api('DELETE', '/notifications', { token: at });
+  assert(typeof clear.deleted === 'number', `deleted=${clear.deleted}`);
 });
 
 console.log('== 10. forgot-password flow ==');

@@ -245,7 +245,6 @@ body{
   <button data-target="s-me" onclick="go('s-me')">50 · 个人主页 P50</button>
   <button data-target="s-p51" onclick="go('s-p51')">51 · 设置页 P51</button>
   <button data-target="s-p52" onclick="go('s-p52')">52 · 账号安全 P52</button>
-  <button data-target="s-p53" onclick="go('s-p53')">53 · 数据导出 P53</button>
   <button data-target="s-p54" onclick="go('s-p54')">54 · 关于页 P54</button>
   <button data-target="s-p54a" onclick="go('s-p54a')">54a · 用户协议</button>
   <button data-target="s-p54b" onclick="go('s-p54b')">54b · 隐私政策</button>
@@ -1011,7 +1010,6 @@ body{
     <div style="flex:1"><div class="amount" style="font-size:22px;padding-top:2px"><span class="yen">¥</span>8,530</div><div class="mini dim">累计AA</div></div>
   </div>
   <div class="card" style="padding:2px 14px">
-    <div class="line tap" onclick="go('s-p53')"><span>📤 数据导出</span><span class="arrow-r">→</span></div>
     <div class="line tap" onclick="go('s-p52')"><span>🔒 账号安全</span><span class="arrow-r">→</span></div>
     <div class="line tap" onclick="go('s-p51')"><span>⚙️ 设置</span><span class="arrow-r">→</span></div>
     <div class="line tap" style="border-bottom:none" onclick="go('s-p54')"><span>💌 关于我们</span><span class="arrow-r">→</span></div>
@@ -1027,7 +1025,6 @@ body{
     <div class="line"><span>🌗 深色模式</span><b>跟随系统 ▾</b></div>
     <div class="line"><span>🔒 隐私设置</span><b>账单仅参与者可见 ▾</b></div>
     <div class="line tap" onclick="go('s-p52')"><span>🔑 账号安全</span><span class="arrow-r">→</span></div>
-    <div class="line tap" onclick="go('s-p53')"><span>📤 数据导出</span><span class="arrow-r">→</span></div>
     <div class="line tap" style="border-bottom:none" onclick="go('s-p54')"><span>💌 关于我们</span><span class="arrow-r">→</span></div>
   </div>
   <button class="btn danger big" style="margin-top:8px" onclick="go('s-login')">退出登录</button>
@@ -1053,32 +1050,6 @@ body{
   <button class="btn primary big" onclick="toast('🛡 已保存，记得保管好新密码哦');setTimeout(function(){go('s-p51')},800)">保存修改</button>
 </section>
 
-<!-- 53 数据导出 -->
-<section class="screen" id="s-p53">
-  <div class="nav"><span class="back" onclick="go('s-me')">‹ 返回</span><h2>📦 数据导出</h2><span class="ic">📤</span></div>
-  <div class="mini dim" style="margin:4px 0">导出范围：</div>
-  <div style="display:flex;gap:8px;flex-wrap:wrap">
-    <span class="chip">全部</span><span class="chip">按群组</span><span class="chip sel">按月份</span>
-  </div>
-  <div class="mini dim" style="margin:12px 0 4px">文件格式：</div>
-  <div style="display:flex;gap:8px;flex-wrap:wrap">
-    <span class="chip sel">Excel</span><span class="chip">CSV</span><span class="chip">PDF</span>
-  </div>
-  <div class="card" style="text-align:center;margin-top:16px">
-    <div class="tape mint"></div>
-    <div style="font-size:44px">🎒</div>
-    <div class="mini dim" style="margin-top:4px">团团正在打包你的账本…</div>
-    <div style="height:14px;border:2.5px solid var(--ink);border-radius:999px;background:#fff;margin:10px 0;overflow:hidden">
-      <div style="width:72%;height:100%;background:repeating-linear-gradient(90deg,var(--coral) 0 12px,transparent 12px 18px);border-right:2px solid var(--ink)"></div>
-    </div>
-  </div>
-  <button class="btn primary big" onclick="toast('📦 打包好啦！请查收')">开始导出 ✈️</button>
-  <div class="mini dim" style="margin:12px 0 4px">历史记录：</div>
-  <div class="card" style="padding:10px 12px;display:flex;justify-content:space-between;align-items:center">
-    <div class="mini">6月账单.xlsx · 6月1日</div><span class="chip g">已生成</span>
-  </div>
-</section>
-
 <!-- 54 关于页 -->
 <section class="screen" id="s-p54">
   <div class="nav"><span class="back" onclick="go('s-me')">‹ 返回</span><h2>💌 关于我们</h2><span class="ic">🏷</span></div>
@@ -1096,7 +1067,7 @@ body{
       <ellipse cx="67" cy="52" rx="4.5" ry="2.8" fill="#F49CB4" opacity=".75"/>
     </svg>
     <div style="font-size:24px;margin-top:6px">AA分账</div>
-    <div class="mini dim">v1.0.11 · 构建 5005 · 由团团和程序员们一起做 💕</div>
+    <div class="mini dim">v1.0.12 · 构建 5006 · 由团团和程序员们一起做 💕</div>
   </div>
   <div class="card" style="padding:4px 14px;margin-top:20px">
     <div class="line tap" onclick="go('s-p54a')"><span>📜 用户协议</span><span class="arrow-r">→</span></div>
@@ -1119,7 +1090,7 @@ body{
   </div>
   <div class="sect"><span>一、服务描述</span></div>
   <div class="card"><div class="mini" style="line-height:1.85">
-    1. 服务性质：好友间核算与提醒的记账工具，含多群组记账、四种分摊方式（均摊 / 按人数 / 按比例 / 自定义金额）、最少转账笔数结算方案、催款提醒、凭证拍照上传、定期账单、收支统计、数据导出、消息中心与实时推送等功能。<br>
+    1. 服务性质：好友间核算与提醒的记账工具，含多群组记账、四种分摊方式（均摊 / 按人数 / 按比例 / 自定义金额）、最少转账笔数结算方案、催款提醒、凭证拍照上传、定期账单、收支统计、消息中心与实时推送等功能。<br>
     2. 非资金服务：<b>不托管资金、不代收代付</b>，用户之间的真实转账行为应通过微信、支付宝等第三方支付 / 转账工具自行完成。<br>
     3. 服务范围：金额计算、分摊建议、结算方案、统计与提醒均为参考性信息，不构成法律、财务建议，也不作为资金往来的依据。
   </div></div>
@@ -1225,7 +1196,7 @@ body{
   </div></div>
   <div class="sect"><span>八、账号注销</span></div>
   <div class="card"><div class="mini" style="line-height:1.85">
-    「设置 → 账号安全 → 注销」；或通过联系邮箱人工注销。注销为不可逆操作，数据将被删除或匿名化处理，请先导出需要保留的数据。
+    「设置 → 账号安全 → 注销」；或通过联系邮箱人工注销。注销为不可逆操作，数据将被删除或匿名化处理，请先自行截图或拍照保存需要留存的账单信息。
   </div></div>
   <div class="sect"><span>九、未成年人保护</span></div>
   <div class="card"><div class="mini" style="line-height:1.85">

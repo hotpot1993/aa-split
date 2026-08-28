@@ -116,7 +116,7 @@ class ProfileScreen extends ConsumerWidget {
             ),
           ),
           SizedBox(height: 16),
-          // 菜单卡（Demo .line 行）：设置项（字体/通知/安全/导出/关于）直接落在「我的」主页
+          // 菜单卡（Demo .line 行）：设置项（字体/通知/安全/关于）直接落在「我的」主页
           PaperCard(
             padding: const EdgeInsets.fromLTRB(14, 2, 14, 2),
             child: Column(
@@ -139,12 +139,6 @@ class ProfileScreen extends ConsumerWidget {
                       image: 'assets/icons/lock.png',
                       onTap: () => context.push('/security')),
                   onTap: () => context.push('/security'),
-                ),
-                AaLine(
-                  child: _menuRow('数据导出',
-                      image: 'assets/icons/export.png',
-                      onTap: () => context.push('/export')),
-                  onTap: () => context.push('/export'),
                 ),
                 AaLine(
                   showBorder: false,

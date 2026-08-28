@@ -22,7 +22,6 @@ import 'package:aa_split_app/screens/groups/link_join_screen.dart';
 import 'package:aa_split_app/screens/groups/members_screen.dart';
 import 'package:aa_split_app/screens/messages/reminder_settings_screen.dart';
 import 'package:aa_split_app/screens/profile/about_screen.dart';
-import 'package:aa_split_app/screens/profile/export_screen.dart';
 import 'package:aa_split_app/screens/profile/legal_content.dart';
 import 'package:aa_split_app/screens/profile/legal_screen.dart';
 import 'package:aa_split_app/screens/profile/profile_screen.dart';
@@ -106,7 +105,6 @@ void main() {
   // 「设置」已迁入「我的」主页（二级设置页已删除），巡检我的页
   testWidgets('profile', (t) async => pump(t, const ProfileScreen()));
   testWidgets('security', (t) async => pump(t, const SecurityScreen()));
-  testWidgets('export', (t) async => pump(t, const ExportScreen()));
   testWidgets('about', (t) async {
     await pump(t, const AboutScreen());
     // 版本号与 AppConfig 完全一致（单一来源，防硬编码漂移）；

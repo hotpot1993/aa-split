@@ -29,7 +29,6 @@ import '../screens/home/stats_screen.dart';
 import '../screens/messages/messages_screen.dart';
 import '../screens/messages/reminder_settings_screen.dart';
 import '../screens/profile/about_screen.dart';
-import '../screens/profile/export_screen.dart';
 import '../screens/profile/legal_content.dart';
 import '../screens/profile/legal_screen.dart';
 import '../screens/profile/profile_screen.dart';
@@ -183,11 +182,6 @@ GoRouter buildRouter(WidgetRef ref) {
         path: '/security',
         parentNavigatorKey: rootNavigatorKey,
         pageBuilder: (c, s) => aaPage(s, const SecurityScreen()),
-      ),
-      GoRoute(
-        path: '/export',
-        parentNavigatorKey: rootNavigatorKey,
-        pageBuilder: (c, s) => aaPage(s, const ExportScreen()),
       ),
       GoRoute(
         path: '/about',
