@@ -1,0 +1,4 @@
+# Shell 脚本强制 LF：Windows 上 git archive/checkout 产出 CRLF 会让
+# VPS(Linux) 上按 shebang 执行时报 `bash\r: No such file or directory`
+# （2026-08-28 v1.0.12 发版事故：sync-update.sh 带 CRLF 部署后 cron 静默失败）
+*.sh text eol=lf
