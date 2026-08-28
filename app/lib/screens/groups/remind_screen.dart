@@ -101,7 +101,8 @@ class _RemindScreenState extends ConsumerState<RemindScreen> {
                   }
                 }),
                 child: HandTag(
-                  '${t.avatar} ${t.nickname}${on ? ' 💰' : ''}',
+                  // 仅展示昵称：成员改过头像后 avatarUrl 为长图片路径，作文本渲染会难看
+                  '${t.nickname}${on ? ' 💰' : ''}',
                   fontSize: 15,
                   selected: on,
                   vpad: 7,
