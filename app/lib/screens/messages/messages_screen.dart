@@ -14,12 +14,30 @@ import '../../widgets/common.dart';
 import '../../widgets/sheet.dart';
 
 /// P40 消息中心 —— 对齐 docs/ui-demo/index.html
-class MessagesScreen extends ConsumerWidget {
+///
+/// 删除/清空采用「乐观更新」：二次确认后立即从列表消失（本地隐藏集合），
+/// 服务端删除成功后由 refreshProvider 重载兜底；失败自动恢复显示并提示。
+/// 另支持下拉刷新（重置本地隐藏状态并强制重拉列表）。
+class MessagesScreen extends ConsumerStatefulWidget {
   const MessagesScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final items = ref.watch(notificationsProvider).value ?? const <NotificationItem>[];
+  ConsumerState<MessagesScreen> createState() => _MessagesScreenState();
+}
+
+class _MessagesScreenState extends ConsumerState<MessagesScreen> {
+  /// 已确认删除、本地先行隐藏的消息 id（服务端删除成功前不显示，失败即恢复）
+  final Set<String> _hiddenIds = {};
+
+  /// 「清空」确认后的本地清空标记（同上，失败恢复）
+  bool _clearedAll = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final all = ref.watch(notificationsProvider).value ?? const <NotificationItem>[];
+    final items = _clearedAll
+        ? const <NotificationItem>[]
+        : all.where((n) => !_hiddenIds.contains(n.id)).toList();
     final unread = ref.watch(unreadCountProvider).value ?? 0;
     final today = items.where((n) => n.isToday).toList();
     final earlier = items.where((n) => !n.isToday).toList();
@@ -36,7 +54,7 @@ class MessagesScreen extends ConsumerWidget {
         actions: [
           if (unread > 0)
             InkWell(
-              onTap: () => _markAllRead(context, ref),
+              onTap: _markAllRead,
               child: Padding(
                 padding: const EdgeInsets.only(left: 10, top: 8),
                 child: Text('全部已读',
@@ -48,7 +66,7 @@ class MessagesScreen extends ConsumerWidget {
             ),
           if (items.isNotEmpty)
             InkWell(
-              onTap: () => _clearAll(context, ref),
+              onTap: _clearAll,
               child: Padding(
                 padding: const EdgeInsets.only(left: 10, top: 8),
                 child: Text('清空',
@@ -61,47 +79,90 @@ class MessagesScreen extends ConsumerWidget {
         ],
       ),
       body: items.isEmpty
-          ? ListView(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-              children: [
-                EmptyState(
-                  title: '安静的一天～ 没有新消息',
-                  subtitle: '团团戴着耳机打瞌睡，你不找它它不醒',
-                  tag: 'P40 消息中心',
-                  artImage: 'assets/icons/headphone.png',
-                  buttonLabel: '去记一笔',
-                  onButtonTap: () => context.push('/add'),
-                ),
-              ],
+          ? RefreshIndicator(
+              onRefresh: _refresh,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                children: [
+                  EmptyState(
+                    title: '安静的一天～ 没有新消息',
+                    subtitle: '团团戴着耳机打瞌睡，你不找它它不醒',
+                    tag: 'P40 消息中心',
+                    artImage: 'assets/icons/headphone.png',
+                    buttonLabel: '去记一笔',
+                    onButtonTap: () => context.push('/add'),
+                  ),
+                ],
+              ),
             )
-          : ListView(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-              children: [
-                if (today.isNotEmpty)
-                  SectionTitle('今天', emojiImage: 'assets/icons/sun.png'),
-                ...today.map((n) => _MsgCard(n: n)),
-                if (earlier.isNotEmpty)
-                  SectionTitle('更早', emojiImage: 'assets/icons/moon.png'),
-                ...earlier.map((n) => _MsgCard(n: n)),
-                SizedBox(height: 16),
-              ],
+          : RefreshIndicator(
+              onRefresh: _refresh,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                children: [
+                  if (today.isNotEmpty)
+                    SectionTitle('今天', emojiImage: 'assets/icons/sun.png'),
+                  ...today.map((n) => _MsgCard(
+                        n: n,
+                        onLocallyHidden: () => _hideLocally(n.id),
+                        onLocalRestore: () => _restoreLocally(n.id),
+                      )),
+                  if (earlier.isNotEmpty)
+                    SectionTitle('更早', emojiImage: 'assets/icons/moon.png'),
+                  ...earlier.map((n) => _MsgCard(
+                        n: n,
+                        onLocallyHidden: () => _hideLocally(n.id),
+                        onLocalRestore: () => _restoreLocally(n.id),
+                      )),
+                  SizedBox(height: 16),
+                ],
+              ),
             ),
     );
   }
 
-  /// 全部已读：当前所有未读消息标记为已读（Mock/真实模式都由仓库落库）
-  Future<void> _markAllRead(BuildContext context, WidgetRef ref) async {
+  void _hideLocally(String id) {
+    if (!mounted) return;
+    setState(() => _hiddenIds.add(id));
+  }
+
+  void _restoreLocally(String id) {
+    if (!mounted) return;
+    setState(() => _hiddenIds.remove(id));
+  }
+
+  /// 下拉刷新：重置本地乐观状态并强制重拉列表/角标
+  Future<void> _refresh() async {
+    if (!mounted) return;
+    setState(() {
+      _hiddenIds.clear();
+      _clearedAll = false;
+    });
+    ref.invalidate(notificationsProvider);
+    ref.invalidate(unreadCountProvider);
     try {
-      await ref.read(notificationRepositoryProvider).markAllRead();
-      ref.read(refreshProvider.notifier).bump();
-      if (context.mounted) showAaToast(context, '📮 已全部标记为已读');
+      await ref.read(notificationsProvider.future);
     } catch (e) {
-      if (context.mounted) showAaToast(context, '❌ 操作失败：${_friendly(e)}');
+      // 刷新失败保持当前内容，Toast 提示
+      if (mounted) showAaToast(context, '❌ 刷新失败：${_friendly(e)}');
     }
   }
 
-  /// 清空全部消息：二次确认后删除当前所有消息（Mock/真实模式都由仓库落库）
-  Future<void> _clearAll(BuildContext context, WidgetRef ref) async {
+  /// 全部已读：当前所有未读消息标记为已读（Mock/真实模式都由仓库落库）
+  Future<void> _markAllRead() async {
+    try {
+      await ref.read(notificationRepositoryProvider).markAllRead();
+      ref.read(refreshProvider.notifier).bump();
+      if (mounted) showAaToast(context, '📮 已全部标记为已读');
+    } catch (e) {
+      if (mounted) showAaToast(context, '❌ 操作失败：${_friendly(e)}');
+    }
+  }
+
+  /// 清空全部消息：二次确认 → 本地立即清空 → 服务端落库；失败恢复显示
+  Future<void> _clearAll() async {
     final ok = await showAaConfirm(
       context,
       title: '清空全部消息？',
@@ -109,12 +170,17 @@ class MessagesScreen extends ConsumerWidget {
       confirmLabel: '清空',
     );
     if (ok != true) return;
+    if (!mounted) return;
+    setState(() => _clearedAll = true);
     try {
       await ref.read(notificationRepositoryProvider).clearAll();
       ref.read(refreshProvider.notifier).bump();
-      if (context.mounted) showAaToast(context, '🗑️ 已清空全部消息');
+      if (mounted) showAaToast(context, '🗑️ 已清空全部消息');
     } catch (e) {
-      if (context.mounted) showAaToast(context, '❌ 清空失败：${_friendly(e)}');
+      if (mounted) {
+        setState(() => _clearedAll = false);
+        showAaToast(context, '❌ 清空失败：${_friendly(e)}');
+      }
     }
   }
 
@@ -124,14 +190,24 @@ class MessagesScreen extends ConsumerWidget {
 }
 
 class _MsgCard extends ConsumerWidget {
-  const _MsgCard({required this.n});
+  const _MsgCard({
+    required this.n,
+    required this.onLocallyHidden,
+    required this.onLocalRestore,
+  });
   final NotificationItem n;
+
+  /// 确认删除后立即隐藏（不等网络回包）；删除失败恢复显示
+  final VoidCallback onLocallyHidden;
+  final VoidCallback onLocalRestore;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // 左滑删除 + 长按删除（共用同一条二次确认链路）
     return _SwipeToDelete(
       notification: n,
+      onLocallyHidden: onLocallyHidden,
+      onLocalRestore: onLocalRestore,
       child: _buildCard(context, ref),
     );
   }
@@ -299,7 +375,7 @@ class _MsgCard extends ConsumerWidget {
         NotifyType.member => 'assets/icons/group.png',
       };
 
-  /// 长按删除：二次确认后删除当前消息（Mock/真实模式都由仓库落库）
+  /// 长按删除：二次确认 → 本地立即隐藏 → 服务端落库；失败恢复显示
   Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
     final ok = await showAaConfirm(
       context,
@@ -308,11 +384,13 @@ class _MsgCard extends ConsumerWidget {
       confirmLabel: '删除',
     );
     if (ok != true) return;
+    onLocallyHidden();
     try {
       await ref.read(notificationRepositoryProvider).remove(n.id);
       ref.read(refreshProvider.notifier).bump();
       if (context.mounted) showAaToast(context, '🗑️ 已删除');
     } catch (e) {
+      onLocalRestore();
       if (context.mounted) {
         showAaToast(context,
             '❌ 删除失败：${e is ApiException ? e.message : '网络开小差了，稍后再试'}');
@@ -322,13 +400,20 @@ class _MsgCard extends ConsumerWidget {
 }
 
 /// 左滑删除单条消息：露出删除背景，松手弹二次确认。
-/// 确认后走仓库删除 + refreshProvider 刷新移除；confirmDismiss 始终返回 false，
-/// 避免「Dismissible 已确认移除但 widget 仍在树中」断言（移除交给列表刷新）。
+/// 确认后本地乐观隐藏 + 仓库删除；confirmDismiss 始终返回 false，
+/// 避免「Dismissible 已确认移除但 widget 仍在树中」断言（移除交给乐观隐藏 + 列表刷新）。
 class _SwipeToDelete extends ConsumerWidget {
-  const _SwipeToDelete({required this.notification, required this.child});
+  const _SwipeToDelete({
+    required this.notification,
+    required this.child,
+    required this.onLocallyHidden,
+    required this.onLocalRestore,
+  });
 
   final NotificationItem notification;
   final Widget child;
+  final VoidCallback onLocallyHidden;
+  final VoidCallback onLocalRestore;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -369,11 +454,13 @@ class _SwipeToDelete extends ConsumerWidget {
       confirmLabel: '删除',
     );
     if (ok != true) return false;
+    onLocallyHidden();
     try {
       await ref.read(notificationRepositoryProvider).remove(notification.id);
       ref.read(refreshProvider.notifier).bump();
       if (context.mounted) showAaToast(context, '🗑️ 已删除');
     } catch (e) {
+      onLocalRestore();
       if (context.mounted) {
         showAaToast(context,
             '❌ 删除失败：${e is ApiException ? e.message : '网络开小差了，稍后再试'}');
