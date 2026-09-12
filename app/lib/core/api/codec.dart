@@ -89,16 +89,19 @@ Group parseGroup(dynamic data) {
 
 GroupMember parseGroupMember(dynamic data, {bool isOwner = false}) {
   final j = _asMap(data);
+  final isPlaceholder = _safeBool(j, 'isPlaceholder');
   return GroupMember(
     id: _safeStr(j, 'id', _safeStr(j, 'userId')),
     userId: _safeStr(j, 'userId'),
     nickname: _safeStr(j, 'nickname'),
+    // 非注册成员（isPlaceholder）的 accountName 服务端返回空串，界面按占位标记隐藏
     accountName: _safeStr(j, 'accountName'),
     avatarUrl: _safeStr(j, 'avatarUrl', '🐼'),
     isOwner: isOwner || _safeBool(j, 'isOwner'),
     status: _safeStr(j, 'status', 'active'),
     joinedAt: _safeDate(j, 'joinedAt'),
     netBalanceCents: _safeInt(j, 'netBalanceCents'),
+    isPlaceholder: isPlaceholder,
   );
 }
 

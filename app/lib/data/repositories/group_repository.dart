@@ -137,16 +137,26 @@ class GroupRepository {
     await ApiClient.instance.delete('/groups/$id');
   }
 
+  /// 群内 **active** 成员（口径：参与人选择、人均分母、头像行、免分摊名单都用它；
+  /// 已退出成员不出现在这里）
   Future<List<GroupMember>> members(String groupId) async {
+    final all = await allMembers(groupId);
+    return all.where((m) => m.isActive).toList();
+  }
+
+  /// 群内**完整**成员列表（含已退出）—— 仅成员管理页 P24 需要，
+  /// 用来渲染「已退出」状态（服务端详情接口返回完整列表）
+  Future<List<GroupMember>> allMembers(String groupId) async {
     if (AppConfig.useMock) {
       final store = MockStore.instance;
       final net = _netBalances(store, groupId);
-      return store.activeMembersOf(groupId).map((m) {
+      return store.membersOf(groupId).map((m) {
         final balance = net[m.userId] ?? 0;
         // 当前用户资料（昵称/头像）以最新为准：换头像后成员列表即时同步
         final isMe = m.userId == store.currentUser.id;
         final nickname = isMe ? store.currentUser.nickname : m.nickname;
-        final accountName = isMe ? store.currentUser.accountName : m.accountName;
+        final accountName =
+            (isMe && !m.isPlaceholder) ? store.currentUser.accountName : m.accountName;
         final avatarUrl = isMe ? store.currentUser.avatarUrl : m.avatarUrl;
         return GroupMember(
           id: m.id,
@@ -158,6 +168,7 @@ class GroupRepository {
           status: m.status,
           joinedAt: m.joinedAt,
           netBalanceCents: balance,
+          isPlaceholder: m.isPlaceholder,
         );
       }).toList();
     }
@@ -180,6 +191,7 @@ class GroupRepository {
         status: m.status,
         joinedAt: m.joinedAt,
         netBalanceCents: net[m.userId] ?? 0,
+        isPlaceholder: m.isPlaceholder,
       );
     }).toList();
   }
@@ -225,6 +237,89 @@ class GroupRepository {
       return;
     }
     await ApiClient.instance.delete('/groups/$groupId/members/$userId');
+  }
+
+  // ---- 非注册成员（占位账号）：仅群主可调用，见 CONTEXT.md / ADR-0001 ----
+
+  /// 添加非注册成员（方式三：只填名称，无需对方注册）
+  Future<GroupMember> addPlaceholderMember(
+    String groupId,
+    String displayName,
+  ) async {
+    if (AppConfig.useMock) {
+      final store = MockStore.instance;
+      return store.addPlaceholderMember(groupId, displayName);
+    }
+    final res = await ApiClient.instance
+        .post('/groups/$groupId/placeholder-members', body: {
+      'displayName': displayName,
+    });
+    return parseGroupMember(res.data);
+  }
+
+  /// 修改非注册成员名称
+  Future<void> renamePlaceholderMember(
+    String groupId,
+    String userId,
+    String displayName,
+  ) async {
+    if (AppConfig.useMock) {
+      MockStore.instance.renamePlaceholderMember(groupId, userId, displayName);
+      return;
+    }
+    await ApiClient.instance
+        .patch('/groups/$groupId/placeholder-members/$userId', body: {
+      'displayName': displayName,
+    });
+  }
+
+  /// 认领前预览：将合并多少笔账单 / 多少条历史结算
+  Future<ClaimPreview> claimPreview(
+    String groupId,
+    String userId,
+    String targetUserId,
+  ) async {
+    if (AppConfig.useMock) {
+      return MockStore.instance.claimPreview(groupId, userId, targetUserId);
+    }
+    final res = await ApiClient.instance.get(
+      '/groups/$groupId/placeholder-members/$userId/claim-preview',
+      query: {'targetUserId': targetUserId},
+    );
+    final j = (res.data as Map?)?.cast<String, dynamic>() ?? const {};
+    return ClaimPreview(
+      billCount: (j['billCount'] as num?)?.toInt() ?? 0,
+      settlementCount: (j['settlementCount'] as num?)?.toInt() ?? 0,
+      placeholderName: (j['placeholderName'] ?? '').toString(),
+      targetName: (j['targetName'] ?? '').toString(),
+      targetInGroup: j['targetInGroup'] == true,
+    );
+  }
+
+  /// 认领（绑定到账户）：把非注册成员的全部历史合并到真实账号，不可撤销
+  Future<ClaimPreview> claimPlaceholderMember(
+    String groupId,
+    String userId,
+    String targetUserId,
+  ) async {
+    if (AppConfig.useMock) {
+      return MockStore.instance.claimPlaceholderMember(
+        groupId,
+        userId,
+        targetUserId,
+      );
+    }
+    final res = await ApiClient.instance.post(
+      '/groups/$groupId/placeholder-members/$userId/claim',
+      body: {'targetUserId': targetUserId},
+    );
+    final j = (res.data as Map?)?.cast<String, dynamic>() ?? const {};
+    return ClaimPreview(
+      billCount: (j['billCount'] as num?)?.toInt() ?? 0,
+      settlementCount: (j['settlementCount'] as num?)?.toInt() ?? 0,
+      placeholderName: (j['placeholderName'] ?? '').toString(),
+      targetName: (j['targetName'] ?? '').toString(),
+    );
   }
 
   /// 通过邀请码加入群（扫二维码 / 填写邀请链接均走这里；大小写宽容）

@@ -16,10 +16,24 @@ import { UpdateBillDto } from './dto/update-bill.dto';
 import { paginate } from '../common/dto/pagination.dto';
 
 const billInclude = {
-  creator: { select: { id: true, accountName: true, nickname: true, avatarUrl: true } },
-  payer: { select: { id: true, accountName: true, nickname: true, avatarUrl: true } },
+  creator: {
+    select: { id: true, accountName: true, nickname: true, avatarUrl: true, isPlaceholder: true },
+  },
+  payer: {
+    select: { id: true, accountName: true, nickname: true, avatarUrl: true, isPlaceholder: true },
+  },
   participants: {
-    include: { user: { select: { id: true, accountName: true, nickname: true, avatarUrl: true } } },
+    include: {
+      user: {
+        select: {
+          id: true,
+          accountName: true,
+          nickname: true,
+          avatarUrl: true,
+          isPlaceholder: true,
+        },
+      },
+    },
   },
   receipts: { orderBy: { sort: 'asc' } },
 } satisfies Prisma.BillInclude;
@@ -55,6 +69,14 @@ export class BillsService {
     }
   }
 
+  /** 占位账号（非注册成员）不返回账户名：老客户端会直接拼 `@账户名` 展示（ADR-0001） */
+  private maskUser<T extends { accountName: string; isPlaceholder: boolean }>(
+    user: T | null,
+  ): T | null {
+    if (!user) return user;
+    return { ...user, accountName: user.isPlaceholder ? '' : user.accountName };
+  }
+
   private mapBill(bill: BillWithRelations) {
     return {
       id: bill.id,
@@ -68,8 +90,8 @@ export class BillsService {
       settleStatus: bill.settleStatus,
       isRegular: bill.isRegular,
       regularId: bill.regularId,
-      creator: bill.creator,
-      payer: bill.payer,
+      creator: this.maskUser(bill.creator),
+      payer: this.maskUser(bill.payer),
       payerId: bill.payerId,
       participants: bill.participants.map((p) => ({
         userId: p.userId,
@@ -78,7 +100,7 @@ export class BillsService {
         paid: p.paid,
         paidAt: p.paidAt,
         remindCount: p.remindCount,
-        user: p.user,
+        user: this.maskUser(p.user),
       })),
       receipts: bill.receipts.map((r) => ({
         id: r.id,

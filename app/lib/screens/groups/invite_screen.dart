@@ -6,6 +6,8 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import 'package:aa_design/aa_design.dart';
 
+import '../../core/api/api_client.dart';
+import '../../data/mock/mock_store.dart';
 import '../../models/group.dart';
 import '../../providers/data_providers.dart';
 import '../../providers/repositories.dart';
@@ -23,7 +25,9 @@ class InviteScreen extends ConsumerStatefulWidget {
 
 class _InviteScreenState extends ConsumerState<InviteScreen> {
   final _account = TextEditingController();
+  final _guest = TextEditingController();
   final List<String> _added = [];
+  final List<String> _addedGuests = [];
   String _link = '';
 
   @override
@@ -45,6 +49,7 @@ class _InviteScreenState extends ConsumerState<InviteScreen> {
   @override
   void dispose() {
     _account.dispose();
+    _guest.dispose();
     super.dispose();
   }
 
@@ -54,9 +59,12 @@ class _InviteScreenState extends ConsumerState<InviteScreen> {
         (ref.watch(groupMembersProvider).value ?? {})[widget.groupId] ?? [];
     // 展示真实群名（群列表加载完成前兜底「群组」）
     var groupName = '群组';
+    var isOwner = false;
+    final me = ref.watch(currentUserProvider)?.id;
     for (final g in ref.watch(groupsProvider).value ?? const <Group>[]) {
       if (g.id == widget.groupId) {
         groupName = g.name;
+        isOwner = me != null && g.ownerId == me;
         break;
       }
     }
@@ -181,11 +189,11 @@ class _InviteScreenState extends ConsumerState<InviteScreen> {
                       Text('已添加',
                           style: TextStyle(
                               fontFamily: AAFonts.title, fontSize: 15, color: AAColors.inkSoft)),
-                      if (_added.isEmpty)
+                      if (_added.isEmpty && _addedGuests.isEmpty)
                         Text(
                           members.isEmpty
                               ? '暂无'
-                              : members.map((m) => m.nickname).join('、'),
+                              : members.map((m) => m.displayName).join('、'),
                           style: TextStyle(
                               fontFamily: AAFonts.title, fontSize: 15, color: AAColors.ink),
                         )
@@ -193,9 +201,12 @@ class _InviteScreenState extends ConsumerState<InviteScreen> {
                         Wrap(
                           spacing: 8,
                           runSpacing: 6,
-                          children: _added
-                              .map((n) => HandTag.label(label: '$n ✓', color: AAColors.mint))
-                              .toList(),
+                          children: [
+                            for (final n in _added)
+                              HandTag.label(label: '$n ✓', color: AAColors.mint),
+                            for (final n in _addedGuests)
+                              HandTag.label(label: '$n ✓', color: AAColors.lemon),
+                          ],
                         ),
                     ],
                   ),
@@ -203,6 +214,84 @@ class _InviteScreenState extends ConsumerState<InviteScreen> {
               ],
             ),
           ),
+          // 方式三：直接添加非注册成员（只填名称，无需对方注册）—— 仅群主可见
+          if (isOwner) ...[
+            SizedBox(height: 16),
+            PaperCard(
+              padding: const EdgeInsets.fromLTRB(14, 4, 14, 4),
+              child: Column(
+                children: [
+                  AaLine(
+                    showBorder: _addedGuests.isNotEmpty,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('方式三：直接添加（无需注册）',
+                                style: TextStyle(
+                                    fontFamily: AAFonts.title,
+                                    fontSize: 15,
+                                    color: AAColors.inkSoft)),
+                            SizedBox(height: 2),
+                            Text('对方不注册也能参与分摊与结算',
+                                style: TextStyle(
+                                    fontFamily: AAFonts.title,
+                                    fontSize: 11,
+                                    color: AAColors.inkSoft)),
+                          ],
+                        ),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SizedBox(
+                              width: 120,
+                              child: HandTextField(
+                                controller: _guest,
+                                hint: '输入名称',
+                                hintPrefixImage: 'assets/icons/edit.png',
+                                textAlign: TextAlign.end,
+                              ),
+                            ),
+                            SizedBox(width: 6),
+                            DoodleButton(
+                              label: '添加',
+                              mini: true,
+                              onPressed: _addGuest,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (_addedGuests.isNotEmpty)
+                    AaLine(
+                      showBorder: false,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('已添加',
+                              style: TextStyle(
+                                  fontFamily: AAFonts.title,
+                                  fontSize: 15,
+                                  color: AAColors.inkSoft)),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 6,
+                            children: [
+                              for (final n in _addedGuests)
+                                HandTag.label(
+                                    label: '$n ✓', color: AAColors.lemon),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
           SizedBox(height: 16),
           DoodleButton(
             label: '完成，进入群组 →',
@@ -236,6 +325,30 @@ class _InviteScreenState extends ConsumerState<InviteScreen> {
     } catch (_) {
       if (!mounted) return;
       showAaToast(context, '添加失败，检查一下名字');
+    }
+  }
+
+  /// 方式三：添加非注册成员（仅群主；名称 1–32 字符、群内不可重名）
+  Future<void> _addGuest() async {
+    final name = MockStore.sanitizeDisplayName(_guest.text);
+    if (name.isEmpty || name.length > 32) {
+      showAaToast(context, '名称长度需为 1–32 个字符');
+      return;
+    }
+    try {
+      await ref
+          .read(groupRepositoryProvider)
+          .addPlaceholderMember(widget.groupId, name);
+      if (!mounted) return;
+      ref.read(refreshProvider.notifier).bump();
+      setState(() {
+        _addedGuests.add(name);
+        _guest.clear();
+      });
+      showAaToast(context, '已添加非注册成员 $name');
+    } catch (e) {
+      if (!mounted) return;
+      showAaToast(context, e is ApiException ? e.message : '添加失败');
     }
   }
 }

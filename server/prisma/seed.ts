@@ -5,6 +5,7 @@
  */
 import { PrismaClient, SplitType, Category, NotificationType } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
+import { PLACEHOLDER_PREFIX, PLACEHOLDER_SECRET_HASH } from '../src/common/placeholder';
 
 const prisma = new PrismaClient();
 
@@ -30,6 +31,18 @@ async function main() {
     ),
   );
 
+  // 非注册成员（占位账号）：只有群主填的名称，不能登录、不接收通知
+  const guest = await prisma.user.create({
+    data: {
+      accountName: `${PLACEHOLDER_PREFIX}seed0000000000000001`,
+      nickname: '老王',
+      passwordHash: PLACEHOLDER_SECRET_HASH,
+      securityQuestion: '',
+      securityAnswerHash: PLACEHOLDER_SECRET_HASH,
+      isPlaceholder: true,
+    },
+  });
+
   const group = await prisma.group.create({
     data: {
       name: '饭友群',
@@ -37,7 +50,7 @@ async function main() {
       ownerId: users[0].id,
       inviteCode: 'AABBCCDDEEFF',
       members: {
-        create: users.map((u, i) => ({
+        create: [...users, guest].map((u, i) => ({
           userId: u.id,
           status: 'active',
           joinedAt: new Date(Date.now() - i * 3600_000),

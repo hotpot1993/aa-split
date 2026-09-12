@@ -21,11 +21,28 @@ export class NotificationsService {
     private readonly jpush: JpushService,
   ) {}
 
-  /** 写库 + SSE 推送 + 极光离线推送（fire-and-forget，不阻塞） */
+  /** 占位账号（非注册成员）不接收任何通知：统一在此过滤，避免各调用点遗漏。
+   *  占位账号不可登录、无设备，写了通知也只会在库里堆积。 */
+  private async deliverableUserIds(userIds: string[]): Promise<string[]> {
+    const ids = [...new Set(userIds.filter(Boolean))];
+    if (ids.length === 0) return [];
+    const placeholders = await this.prisma.user.findMany({
+      where: { id: { in: ids }, isPlaceholder: true },
+      select: { id: true },
+    });
+    if (placeholders.length === 0) return ids;
+    const skip = new Set(placeholders.map((u) => u.id));
+    return ids.filter((id) => !skip.has(id));
+  }
+
+  /** 写库 + SSE 推送 + 极光离线推送（fire-and-forget，不阻塞）。
+   *  占位账号（非注册成员）直接跳过，返回 null。 */
   async create(userId: string, input: CreateNotificationInput) {
+    const [target] = await this.deliverableUserIds([userId]);
+    if (!target) return null;
     const n = await this.prisma.notification.create({
       data: {
-        userId,
+        userId: target,
         type: input.type,
         title: input.title,
         body: input.body,
@@ -33,7 +50,7 @@ export class NotificationsService {
         refId: input.refId ?? null,
       },
     });
-    this.sse.push(userId, {
+    this.sse.push(target, {
       type: n.type,
       title: n.title,
       body: n.body,
@@ -42,7 +59,7 @@ export class NotificationsService {
       createdAt: n.createdAt.toISOString(),
     });
     // 离线推送（alias=userId）：失败仅告警
-    void this.jpush.notify(userId, {
+    void this.jpush.notify(target, {
       title: n.title,
       alert: n.body,
       refType: n.refType,
@@ -63,10 +80,11 @@ export class NotificationsService {
     });
   }
 
-  /** 批量创建（给多个接收者写同一条通知） */
+  /** 批量创建（给多个接收者写同一条通知；占位账号一律跳过） */
   async createMany(userIds: string[], input: CreateNotificationInput) {
+    const targets = await this.deliverableUserIds(userIds);
     const created = [];
-    for (const userId of userIds) {
+    for (const userId of targets) {
       created.push(await this.create(userId, input));
     }
     return created;

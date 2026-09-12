@@ -7,8 +7,8 @@
 
 | 产物 | 状态 | 验收 |
 |---|---|---|
-| 服务端 `server/`（NestJS 10 + Prisma + PostgreSQL，全模块 + SSE + BullMQ + Swagger） | ✅ | `npm install` / `npx prisma generate` / `npm run build` / `npm test`（**68/68**，含群解散通知成员同步 / 默认免分摊人员校验等 5 例新增）全通过 |
-| 客户端 `app/`（Flutter + Riverpod + go_router，31 页全量 + `aa_design` 手绘设计系统） | ✅ | `flutter analyze` 0 issues / `flutter test` **122/122**（8 张商店截图 golden 回归 + 21 屏视觉冒烟 + 功能回归测试；含本轮 9 项修复的 11 个新用例）/ 真机截屏逐页核对 |
+| 服务端 `server/`（NestJS 10 + Prisma + PostgreSQL，全模块 + SSE + BullMQ + Swagger） | ✅ | `npm install` / `npx prisma generate` / `npm run build` / `npm test`（**83/83**，含非注册成员 14 例：50 人上限 / 认领合并 / 定期账单模板迁移 / 群主交接护栏）全通过；`npm run test:e2e` **24/24** |
+| 客户端 `app/`（Flutter + Riverpod + go_router，31 页全量 + `aa_design` 手绘设计系统） | ✅ | `flutter analyze` 0 issues / `flutter test` **146/146**（8 张商店截图 golden 回归 + 21 屏视觉冒烟 + 功能回归测试；含非注册成员 9 例）/ 真机截屏逐页核对 |
 | **UI 视觉基线**（严格对齐 `docs/ui-demo/index.html`） | ✅ | 组件/圆角/阴影/间距/配色/字体五级/交互逐项照搬；字体包前缀命中修复（见 开发进度 v1.6） |
 | **图标素材系统**（`docs/pic` → `app/assets/icons`，40 枚全接入） | ✅ | `powershell -ExecutionPolicy Bypass -File scripts\process-icons.ps1`（透明度/水印/裁剪/启动图标一键重跑） |
 | 结算算法（`server/src/settlement/`，含"已付份额排除"修复） | ✅ | 13 个金标准单测全绿 |

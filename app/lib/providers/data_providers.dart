@@ -66,6 +66,15 @@ final groupMembersProvider = FutureProvider<Map<String, List<GroupMember>>>(
   return map;
 });
 
+/// 群内**完整**成员列表（含已退出）—— 仅成员管理页 P24 使用：
+/// 它要渲染「已退出」状态与历史成员；其余页面一律用 groupMembersProvider 的
+/// active 口径（参与人选择、人均分母、头像行等）
+final groupAllMembersProvider =
+    FutureProvider.family<List<GroupMember>, String>((ref, groupId) async {
+  ref.watch(refreshProvider);
+  return ref.read(groupRepositoryProvider).allMembers(groupId);
+});
+
 /// 消息列表（按时间倒序）
 final notificationsProvider = FutureProvider<List<NotificationItem>>((ref) async {
   ref.watch(refreshProvider);

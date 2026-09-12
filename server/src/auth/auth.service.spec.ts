@@ -31,6 +31,7 @@ describe('AuthService', () => {
   const prismaMock = {
     user: {
       findUnique: jest.fn(),
+      findFirst: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
       findMany: jest.fn(),
@@ -90,7 +91,7 @@ describe('AuthService', () => {
   });
 
   it('登录：密码错误抛 UnauthorizedException', async () => {
-    prismaMock.user.findUnique.mockResolvedValue({
+    prismaMock.user.findFirst.mockResolvedValue({
       id: 'u1',
       accountName: 'tuanzi_t',
       nickname: '团子酱',
@@ -102,7 +103,7 @@ describe('AuthService', () => {
   });
 
   it('登录：密码正确返回 token', async () => {
-    prismaMock.user.findUnique.mockResolvedValue({
+    prismaMock.user.findFirst.mockResolvedValue({
       id: 'u1',
       accountName: 'tuanzi_t',
       nickname: '团子酱',
@@ -116,6 +117,17 @@ describe('AuthService', () => {
     });
     expect(res.accessToken).toBe('signed-token');
     expect(res.user.id).toBe('u1');
+  });
+
+  it('登录：占位账号（非注册成员）不可登录 —— 查询显式排除 isPlaceholder', async () => {
+    // 服务端永不返回占位账号行，因此与「账户名不存在」同样提示
+    prismaMock.user.findFirst.mockResolvedValue(null);
+    await expect(
+      service.login({ accountName: '~guest_abc123', password: 'whatever' }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(prismaMock.user.findFirst).toHaveBeenCalledWith({
+      where: { accountName: '~guest_abc123', isPlaceholder: false },
+    });
   });
 
   it('找回密码：校验安全问题后返回 resetToken 并落库', async () => {
@@ -148,19 +160,22 @@ describe('AuthService', () => {
   });
 
   it('找回密码：查询安全问题返回问题文本', async () => {
-    prismaMock.user.findUnique.mockResolvedValue({
+    prismaMock.user.findFirst.mockResolvedValue({
       securityQuestion: '你第一个朋友的名字？',
     });
     const res = await service.getSecurityQuestion('tuanzi_t');
     expect(res.question).toBe('你第一个朋友的名字？');
-    // 只 select 问题列，不返回任何敏感字段
-    expect(prismaMock.user.findUnique).toHaveBeenCalledWith(
-      expect.objectContaining({ select: expect.objectContaining({ securityQuestion: true }) }),
+    // 只 select 问题列，不返回任何敏感字段；并显式排除占位账号
+    expect(prismaMock.user.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { accountName: 'tuanzi_t', isPlaceholder: false },
+        select: expect.objectContaining({ securityQuestion: true }),
+      }),
     );
   });
 
   it('找回密码：查询不存在账户抛 BadRequestException（防探测）', async () => {
-    prismaMock.user.findUnique.mockResolvedValue(null);
+    prismaMock.user.findFirst.mockResolvedValue(null);
     await expect(service.getSecurityQuestion('nobody_1')).rejects.toBeInstanceOf(
       BadRequestException,
     );

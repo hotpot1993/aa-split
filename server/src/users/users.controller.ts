@@ -1,8 +1,9 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 import { UsersService } from './users.service';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { Public } from '../common/decorators/public.decorator';
 import { JwtPayload } from '../common/types';
 
 class SearchQueryDto {
@@ -12,11 +13,29 @@ class SearchQueryDto {
   accountName?: string;
 }
 
+class AccountAvailableQueryDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(32)
+  accountName!: string;
+}
+
 @ApiTags('users')
 @ApiBearerAuth()
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
+
+  /**
+   * 账户名可用性（注册实时校验）。
+   * 公开路由：注册流程尚未登录；精确匹配（不是模糊搜索）。
+   */
+  @Public()
+  @Get('account-available')
+  async accountAvailable(@Query() query: AccountAvailableQueryDto) {
+    const taken = await this.usersService.isAccountNameTaken(query.accountName);
+    return { available: !taken };
+  }
 
   /** 搜索账户名（用于添加群成员） */
   @Get('search')

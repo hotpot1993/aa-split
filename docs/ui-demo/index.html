@@ -692,6 +692,10 @@ body{
     <div class="line"><span class="dim">方式二：账户名直加</span><b>🔍 输入对方账户名</b></div>
     <div class="line" style="border-bottom:none"><span class="dim">已添加</span><b>张三 ✓　李四 ✓</b></div>
   </div>
+  <div class="card" style="padding:4px 14px">
+    <div class="line"><span class="dim">方式三：直接添加（无需注册）👑</span><b>✏️ 输入对方名字</b></div>
+    <div class="line" style="border-bottom:none"><span class="dim">已添加</span><b>老王 <span class="mini dim">未注册</span> ✓</b></div>
+  </div>
   <button class="btn primary big" onclick="go('s-group')">完成，进入群组 →</button>
 </section>
 
@@ -745,8 +749,11 @@ body{
     <div class="line"><span>🐶 小明 <span class="mini dim">@xiaoming</span></span><span class="mini"><span class="chip t" style="padding:2px 8px">正常</span> 👑<span class="dim">转让</span></span></div>
     <div class="line"><span>🐱 小红 <span class="mini dim">@xiaohong</span></span><span class="mini"><span class="chip t" style="padding:2px 8px">正常</span> ✗<span class="dim">移除</span></span></div>
     <div class="line"><span>🐰 李四 <span class="mini dim">@lisi</span></span><span class="mini"><span class="chip t" style="padding:2px 8px">正常</span> ✗<span class="dim">移除</span></span></div>
-    <div class="line" style="border-bottom:none"><span>🐻 王五 <span class="mini dim">@wangwu</span></span><span class="mini"><span class="chip t" style="padding:2px 8px">正常</span> ✗<span class="dim">移除</span></span></div>
+    <div class="line"><span>🐻 王五 <span class="mini dim">@wangwu</span></span><span class="mini"><span class="chip t" style="padding:2px 8px">正常</span> ✗<span class="dim">移除</span></span></div>
+    <div class="line"><span>🦊 老王 <span class="chip" style="padding:2px 8px">未注册</span></span><span class="mini">✏️<span class="dim">改名</span> 🔗<span class="dim">绑定到账户</span></span></div>
+    <div class="line" style="border-bottom:none"><span>🦉 老王 <span class="mini dim">@wanglao</span></span><span class="mini"><span class="chip t" style="padding:2px 8px">正常</span> <span class="dim">疑似同一人，去认领</span> ✗<span class="dim">移除</span></span></div>
   </div>
+  <div class="mini dim" style="margin:6px 2px 10px">非注册成员不显示 @账户名（它没有可用的账户名）；可分摊、可垫付、可进免分摊名单与定期账单，计入统计与人均。移除一个还有未结清账单的非注册成员时，二次确认里列出未结清金额</div>
   <button class="btn big" onclick="go('s-p22')">＋ 添加成员</button>
   <button class="btn danger big" style="margin-top:10px" onclick="toast('👋 已退出「饭友群」');setTimeout(function(){go('s-p20')},900)">退出群组（账单仍保留）</button>
 </section>

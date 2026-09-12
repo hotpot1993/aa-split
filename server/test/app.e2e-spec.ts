@@ -716,6 +716,464 @@ describe('核心链路 e2e（注册→建群→记账→结算→催款→已付
     expect(list3.body.data).toHaveLength(0);
   });
 
+  // ---------- 非注册成员（占位账号）----------
+  // 见 CONTEXT.md「非注册成员」/「占位账号」/「认领」、docs/adr/0001、技术方案 §3.4 §4.2
+  describe('非注册成员（占位账号）(e2e)', () => {
+    const PH_PASSWORD = 'abc123ABC';
+    let owner: { token: string; id: string };
+    let member: { token: string; id: string };
+    let released: { token: string; id: string };
+    let groupId = '';
+    /** 占位账号在 users 表里的真实账户名（服务端从不把它下发给客户端） */
+    let placeholderAccountName = '';
+    let placeholderId = '';
+
+    async function registerUser(accountName: string, nickname: string) {
+      const res = await request(server())
+        .post('/api/v1/auth/register')
+        .send({
+          accountName,
+          password: PH_PASSWORD,
+          nickname,
+          securityQuestion: '你最好的朋友？',
+          securityAnswer: '小红',
+        })
+        .expect(201);
+      return {
+        token: res.body.data.accessToken as string,
+        id: res.body.data.user.id as string,
+      };
+    }
+
+    function userRow(id: string) {
+      return fake.rowsOf('user').find((u) => u.id === id)!;
+    }
+
+    it('群主添加：名称净化 + 占位标记 + 群内重名（含已退出成员）+ 权限/长度校验', async () => {
+      owner = await registerUser('ph_owner', '老大');
+      member = await registerUser('ph_member', '鲍勃');
+      released = await registerUser('ph_old', '老四');
+
+      const created = await request(server())
+        .post('/api/v1/groups')
+        .set('Authorization', `Bearer ${owner.token}`)
+        .send({ name: '占位测试群' })
+        .expect(201);
+      groupId = created.body.data.id as string;
+
+      for (const u of [member, released]) {
+        await request(server())
+          .post('/api/v1/groups/join')
+          .set('Authorization', `Bearer ${u.token}`)
+          .send({ inviteCode: created.body.data.inviteCode })
+          .expect(201);
+      }
+
+      // 名称首尾空格与换行被净化；返回体不含可用账户名
+      const added = await request(server())
+        .post(`/api/v1/groups/${groupId}/placeholder-members`)
+        .set('Authorization', `Bearer ${owner.token}`)
+        .send({ displayName: '  老王\n' })
+        .expect(201);
+      expect(added.body.data.nickname).toBe('老王');
+      expect(added.body.data.isPlaceholder).toBe(true);
+      expect(added.body.data.accountName).toBe('');
+      placeholderId = added.body.data.userId as string;
+      placeholderAccountName = userRow(placeholderId).accountName as string;
+      expect(placeholderAccountName).toMatch(/^~guest_/);
+      expect(userRow(placeholderId).isPlaceholder).toBe(true);
+
+      // 群详情：占位账号带 isPlaceholder、accountName 为空；memberCount 计 active
+      const detail = await request(server())
+        .get(`/api/v1/groups/${groupId}`)
+        .set('Authorization', `Bearer ${owner.token}`)
+        .expect(200);
+      expect(detail.body.data.memberCount).toBe(4);
+      const guestRow = (detail.body.data.members as any[]).find(
+        (m) => m.userId === placeholderId,
+      );
+      expect(guestRow).toMatchObject({
+        nickname: '老王',
+        accountName: '',
+        isPlaceholder: true,
+        status: 'active',
+      });
+
+      // 其他成员收到「新成员加入」播报；占位账号自己不产生任何通知
+      const memberNotifs = await request(server())
+        .get('/api/v1/notifications')
+        .set('Authorization', `Bearer ${member.token}`)
+        .expect(200);
+      expect(
+        (memberNotifs.body.data.list as any[]).some(
+          (n) => n.type === 'member' && n.body.includes('老王'),
+        ),
+      ).toBe(true);
+      expect(
+        fake.rowsOf('notification').filter((n) => n.userId === placeholderId),
+      ).toHaveLength(0);
+
+      // 非群主添加 → 403
+      await request(server())
+        .post(`/api/v1/groups/${groupId}/placeholder-members`)
+        .set('Authorization', `Bearer ${member.token}`)
+        .send({ displayName: '小李' })
+        .expect(403);
+
+      // 与其他占位账号重名 → 409
+      await request(server())
+        .post(`/api/v1/groups/${groupId}/placeholder-members`)
+        .set('Authorization', `Bearer ${owner.token}`)
+        .send({ displayName: '老王' })
+        .expect(409);
+
+      // 与注册成员昵称重名 → 409
+      await request(server())
+        .post(`/api/v1/groups/${groupId}/placeholder-members`)
+        .set('Authorization', `Bearer ${owner.token}`)
+        .send({ displayName: '鲍勃' })
+        .expect(409);
+
+      // 已退出成员的显示名同样占用：老四退群后仍不可重名
+      await request(server())
+        .delete(`/api/v1/groups/${groupId}/members/${released.id}`)
+        .set('Authorization', `Bearer ${owner.token}`)
+        .expect(200);
+      const afterLeave = await request(server())
+        .get(`/api/v1/groups/${groupId}`)
+        .set('Authorization', `Bearer ${owner.token}`)
+        .expect(200);
+      expect(afterLeave.body.data.memberCount).toBe(3); // left 不计入
+      await request(server())
+        .post(`/api/v1/groups/${groupId}/placeholder-members`)
+        .set('Authorization', `Bearer ${owner.token}`)
+        .send({ displayName: '老四' })
+        .expect(409);
+
+      // 名称长度 1–32：空 / 超长 → 400
+      await request(server())
+        .post(`/api/v1/groups/${groupId}/placeholder-members`)
+        .set('Authorization', `Bearer ${owner.token}`)
+        .send({ displayName: '   ' })
+        .expect(400);
+      await request(server())
+        .post(`/api/v1/groups/${groupId}/placeholder-members`)
+        .set('Authorization', `Bearer ${owner.token}`)
+        .send({ displayName: '名'.repeat(33) })
+        .expect(400);
+    });
+
+    it('改名：仅群主，群内不可重名；占位账号对搜索/账户名可用性/登录/找回密码不可见', async () => {
+      // 改名
+      await request(server())
+        .patch(`/api/v1/groups/${groupId}/placeholder-members/${placeholderId}`)
+        .set('Authorization', `Bearer ${owner.token}`)
+        .send({ displayName: ' 王大爷 ' })
+        .expect(200);
+      const detail = await request(server())
+        .get(`/api/v1/groups/${groupId}`)
+        .set('Authorization', `Bearer ${owner.token}`)
+        .expect(200);
+      expect(
+        (detail.body.data.members as any[]).find((m) => m.userId === placeholderId)
+          .nickname,
+      ).toBe('王大爷');
+
+      // 非群主改名 → 403
+      await request(server())
+        .patch(`/api/v1/groups/${groupId}/placeholder-members/${placeholderId}`)
+        .set('Authorization', `Bearer ${member.token}`)
+        .send({ displayName: '乱改' })
+        .expect(403);
+
+      // 改成与注册成员同名 → 409
+      await request(server())
+        .patch(`/api/v1/groups/${groupId}/placeholder-members/${placeholderId}`)
+        .set('Authorization', `Bearer ${owner.token}`)
+        .send({ displayName: '鲍勃' })
+        .expect(409);
+
+      // 对真实账号不能走改名接口 → 404（不是占位账号）
+      await request(server())
+        .patch(`/api/v1/groups/${groupId}/placeholder-members/${member.id}`)
+        .set('Authorization', `Bearer ${owner.token}`)
+        .send({ displayName: '鲍勃' })
+        .expect(404);
+
+      // 搜索真实账号仍可用，但搜不到占位账号（含子串 guest）
+      const found = await request(server())
+        .get('/api/v1/users/search?accountName=ph_member')
+        .set('Authorization', `Bearer ${owner.token}`)
+        .expect(200);
+      expect((found.body.data as any[]).some((u) => u.id === member.id)).toBe(true);
+      const guestSearch = await request(server())
+        .get('/api/v1/users/search?accountName=guest')
+        .set('Authorization', `Bearer ${owner.token}`)
+        .expect(200);
+      expect(guestSearch.body.data).toEqual([]);
+
+      // 账户名可用性：公开接口 + 精确匹配（不再把「已有 zhangsan」误报成「zhang 被占用」）
+      const taken = await request(server())
+        .get('/api/v1/users/account-available?accountName=ph_owner')
+        .expect(200);
+      expect(taken.body.data.available).toBe(false);
+      const partial = await request(server())
+        .get('/api/v1/users/account-available?accountName=ph_ow')
+        .expect(200);
+      expect(partial.body.data.available).toBe(true);
+      // 占位账号的 ~guest_ 账户名不占用真实账户名空间
+      const guestName = await request(server())
+        .get(
+          `/api/v1/users/account-available?accountName=${encodeURIComponent(
+            placeholderAccountName,
+          )}`,
+        )
+        .expect(200);
+      expect(guestName.body.data.available).toBe(true);
+
+      // 占位账号不进入找回密码链路（登录接口被 5 次/10 分钟限流，其隔离由
+      // auth.service.spec 的单测覆盖：登录查询显式带 isPlaceholder: false）
+      await request(server())
+        .get(
+          `/api/v1/auth/security-question?accountName=${encodeURIComponent(
+            placeholderAccountName,
+          )}`,
+        )
+        .expect(400);
+    });
+
+    it('认领：预览合并范围 → 合并账单/垫付/免分摊/结算 → 不可重复', async () => {
+      // 4 笔账单：3 笔与占位账号有关（含 1 笔冲突、1 笔由其垫付）
+      const makeBill = async (body: Record<string, unknown>) => {
+        const res = await request(server())
+          .post('/api/v1/bills')
+          .set('Authorization', `Bearer ${owner.token}`)
+          .send({
+            groupId,
+            billDate: '2026-09-01',
+            category: 'food',
+            splitType: 'even',
+            ...body,
+          })
+          .expect(201);
+        return res.body.data;
+      };
+      const billA = await makeBill({
+        title: 'A 两人',
+        amountCents: 10000,
+        payerId: owner.id,
+        participants: [{ userId: owner.id }, { userId: placeholderId }],
+      });
+      const billB = await makeBill({
+        title: 'B 与占位账号无关',
+        amountCents: 20000,
+        payerId: owner.id,
+        participants: [{ userId: owner.id }, { userId: member.id }],
+      });
+      const billC = await makeBill({
+        title: 'C 三人冲突',
+        amountCents: 30000,
+        payerId: owner.id,
+        participants: [
+          { userId: owner.id },
+          { userId: placeholderId },
+          { userId: member.id },
+        ],
+      });
+      const billD = await makeBill({
+        title: 'D 占位账号垫付',
+        amountCents: 10000,
+        payerId: placeholderId,
+        participants: [{ userId: placeholderId }, { userId: owner.id }],
+      });
+      expect(billA.participants).toHaveLength(2);
+
+      // 占位账号参与人：账户名不下发（服务端拼 @账户名 的老客户端不会露馅）
+      const guestPart = (billA.participants as any[]).find(
+        (p) => p.userId === placeholderId,
+      );
+      expect(guestPart.user).toMatchObject({
+        nickname: '王大爷',
+        accountName: '',
+        isPlaceholder: true,
+      });
+
+      // 占位账号可参与结算（垫付人身份生效）
+      const settle = await request(server())
+        .get(`/api/v1/groups/${groupId}/settlement`)
+        .set('Authorization', `Bearer ${owner.token}`)
+        .expect(200);
+      expect(settle.body.data.transferCount).toBeGreaterThan(0);
+
+      // 免分摊名单含占位账号（认领后必须替换为真实账号）
+      await request(server())
+        .patch(`/api/v1/groups/${groupId}`)
+        .set('Authorization', `Bearer ${owner.token}`)
+        .send({ defaultExemptUserIds: [placeholderId] })
+        .expect(200);
+
+      // 预览：账单数 = 3（A/C/D），结算数 = 库中涉及该占位账号的行数
+      const preview = await request(server())
+        .get(
+          `/api/v1/groups/${groupId}/placeholder-members/${placeholderId}/claim-preview?targetUserId=${member.id}`,
+        )
+        .set('Authorization', `Bearer ${owner.token}`)
+        .expect(200);
+      const expectedSettlements = fake
+        .rowsOf('settlement')
+        .filter(
+          (s) =>
+            s.groupId === groupId &&
+            (s.fromUserId === placeholderId || s.toUserId === placeholderId),
+        ).length;
+      expect(preview.body.data).toMatchObject({
+        billCount: 3,
+        settlementCount: expectedSettlements,
+        placeholderName: '王大爷',
+        targetName: '鲍勃',
+        targetInGroup: true,
+      });
+
+      // 非群主认领 → 403
+      await request(server())
+        .post(
+          `/api/v1/groups/${groupId}/placeholder-members/${placeholderId}/claim`,
+        )
+        .set('Authorization', `Bearer ${member.token}`)
+        .send({ targetUserId: owner.id })
+        .expect(403);
+      // 目标必须是真实账号：目标是占位账号 → 404
+      await request(server())
+        .post(
+          `/api/v1/groups/${groupId}/placeholder-members/${placeholderId}/claim`,
+        )
+        .set('Authorization', `Bearer ${owner.token}`)
+        .send({ targetUserId: placeholderId })
+        .expect(404);
+
+      const claimed = await request(server())
+        .post(
+          `/api/v1/groups/${groupId}/placeholder-members/${placeholderId}/claim`,
+        )
+        .set('Authorization', `Bearer ${owner.token}`)
+        .send({ targetUserId: member.id })
+        .expect(200);
+      expect(claimed.body.data).toMatchObject({
+        success: true,
+        placeholderUserId: placeholderId,
+        targetUserId: member.id,
+        billCount: 3,
+        settlementCount: expectedSettlements,
+      });
+
+      // ① 成员关系：占位行删除、真人成员工龄取更早、无重复成员
+      const detail = await request(server())
+        .get(`/api/v1/groups/${groupId}`)
+        .set('Authorization', `Bearer ${owner.token}`)
+        .expect(200);
+      const memberRows = (detail.body.data.members as any[]).filter(
+        (m) => m.userId === member.id,
+      );
+      expect(memberRows).toHaveLength(1);
+      expect(
+        (detail.body.data.members as any[]).some((m) => m.userId === placeholderId),
+      ).toBe(false);
+      expect(detail.body.data.memberCount).toBe(2);
+
+      // ② 账单参与人：冲突行金额相加（总额不变），无冲突行改挂
+      const getBill = async (id: string) => {
+        const res = await request(server())
+          .get(`/api/v1/bills/${id}`)
+          .set('Authorization', `Bearer ${owner.token}`)
+          .expect(200);
+        return res.body.data;
+      };
+      const a = await getBill(billA.id);
+      expect(a.participants).toHaveLength(2);
+      expect(
+        (a.participants as any[]).find((p) => p.userId === member.id)
+          .shareAmountCents,
+      ).toBe(5000);
+      const b = await getBill(billB.id);
+      expect(b.participants).toHaveLength(2);
+      const c = await getBill(billC.id);
+      expect(c.participants).toHaveLength(2);
+      expect(
+        (c.participants as any[]).find((p) => p.userId === member.id)
+          .shareAmountCents,
+      ).toBe(20000);
+      expect(
+        (c.participants as any[]).reduce(
+          (s: number, p: any) => s + p.shareAmountCents,
+          0,
+        ),
+      ).toBe(30000); // 分摊合计仍等于账单金额
+      const d = await getBill(billD.id);
+      expect(d.payerId).toBe(member.id); // ③ 垫付人改挂
+      expect(d.participants).toHaveLength(2);
+
+      // ⑤ 免分摊名单替换（TEXT[]，无外键保护）
+      expect(detail.body.data.defaultExemptUserIds).toEqual([member.id]);
+
+      // ④ 结算记录：不再引用占位账号，且该群 pending 方案已清空
+      const settlementRows = fake.rowsOf('settlement').filter(
+        (s) => s.groupId === groupId,
+      );
+      expect(
+        settlementRows.some(
+          (s) => s.fromUserId === placeholderId || s.toUserId === placeholderId,
+        ),
+      ).toBe(false);
+      expect(settlementRows.some((s) => s.status === 'pending')).toBe(false);
+
+      // ⑦ 占位账号行保留并记录合并去向（不删除，避免遗漏引用导致外键悬空）
+      expect(userRow(placeholderId).mergedIntoUserId).toBe(member.id);
+      expect(userRow(placeholderId).deletedAt).toBeInstanceOf(Date);
+
+      // 重复认领 → 409
+      await request(server())
+        .post(
+          `/api/v1/groups/${groupId}/placeholder-members/${placeholderId}/claim`,
+        )
+        .set('Authorization', `Bearer ${owner.token}`)
+        .send({ targetUserId: owner.id })
+        .expect(409);
+    });
+
+    it('非注册成员不能接手群主：显式转让被拒；群主注销时群软删除而非交给占位账号', async () => {
+      const solo = await registerUser('ph_solo', '独苗');
+      const created = await request(server())
+        .post('/api/v1/groups')
+        .set('Authorization', `Bearer ${solo.token}`)
+        .send({ name: '占位专属群' })
+        .expect(201);
+      const soloGroupId = created.body.data.id as string;
+
+      const guest = await request(server())
+        .post(`/api/v1/groups/${soloGroupId}/placeholder-members`)
+        .set('Authorization', `Bearer ${solo.token}`)
+        .send({ displayName: '阿飘' })
+        .expect(201);
+      const guestId = guest.body.data.userId as string;
+
+      // 显式转让给非注册成员 → 400（它无法登录，群将无人可管理）
+      await request(server())
+        .post(`/api/v1/groups/${soloGroupId}/transfer`)
+        .set('Authorization', `Bearer ${solo.token}`)
+        .send({ newOwnerId: guestId })
+        .expect(400);
+
+      // 群主注销：群里只剩不能登录的占位账号 → 群落到软删除，不会交给占位账号
+      await request(server())
+        .delete('/api/v1/auth/me')
+        .set('Authorization', `Bearer ${solo.token}`)
+        .expect(200);
+      const row = fake.rowsOf('group').find((g) => g.id === soloGroupId)!;
+      expect(row.deletedAt).toBeInstanceOf(Date);
+      expect(row.ownerId).toBe(solo.id);
+    });
+  });
+
   describe('App 版本信息（检查更新）(e2e)', () => {
     it('公开访问 GET /api/v1/app/version 返回最新版本信息', async () => {
       const res = await request(server()).get('/api/v1/app/version').expect(200);

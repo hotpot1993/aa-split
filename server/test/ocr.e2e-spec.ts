@@ -226,9 +226,8 @@ describe('小票 OCR 链路 e2e（预上传→绑定→P33 识别→重试权限
   });
 
   it('D5 P33 上传：POST /bills/:id/receipts → 凭证落库 + 入队 p33 识别', async () => {
-    const bill = fake
-      .rowsOf('bill')
-      .find((b) => b.title === '小票记账');
+    // 目标账单必须还没有凭证：每张账单上限 1 张（见下一个用例）
+    const bill = fake.rowsOf('bill').find((b) => b.title === '无凭证账单');
     expect(bill).toBeDefined();
 
     const res = await request(server())
@@ -244,6 +243,18 @@ describe('小票 OCR 链路 e2e（预上传→绑定→P33 识别→重试权限
       expect.objectContaining({ kind: 'p33', billId: bill!.id }),
       expect.anything(),
     );
+  });
+
+  it('D5+ 已有凭证的账单再上传 → 400（每张账单最多 1 张小票凭证）', async () => {
+    const bill = fake.rowsOf('bill').find((b) => b.title === '小票记账');
+    expect(bill).toBeDefined();
+
+    const res = await request(server())
+      .post(`/api/v1/bills/${bill!.id}/receipts`)
+      .set('Authorization', `Bearer ${alice.token}`)
+      .attach('file', Buffer.from('fake-image-3'), 'receipt3.jpg')
+      .expect(400);
+    expect(res.body.message).toContain('最多上传 1 张');
   });
 
   it('重试识别：越权 404（不暴露存在性）/ 创建者成功', async () => {

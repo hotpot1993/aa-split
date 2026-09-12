@@ -1,3 +1,4 @@
+import '../../core/api/api_client.dart';
 import '../../core/utils/format.dart';
 import '../../models/bill.dart';
 import '../../models/bill_participant.dart';
@@ -92,6 +93,236 @@ class MockStore {
 
   /// 成员头像（emoji）
   String avatarFor(String userId) => _avatarOf(userId);
+
+  // ---------- 非注册成员（占位账号）----------
+  // 语义与服务端一致（见 CONTEXT.md / docs/adr/0001）：不可登录、不接收通知、
+  // 群内不可重名（含已退出成员）、单群上限 50 人、认领后合并历史且不可撤销。
+
+  /// 名称净化：去除换行与控制字符后 trim（服务端同规则）
+  static String sanitizeDisplayName(String raw) =>
+      raw.replaceAll(RegExp(r'[\u0000-\u001f\u007f]'), '').trim();
+
+  /// 群内重名校验（含已退出成员）
+  void _assertNameFree(String groupId, String name, {String? exceptUserId}) {
+    final dup = membersOf(groupId).any(
+      (m) => m.userId != exceptUserId && m.displayName == name,
+    );
+    if (dup) throw const ApiException(409, '群内已有同名成员，换个名字吧');
+  }
+
+  /// 添加非注册成员（仅群主，由界面保证入口可见性）
+  GroupMember addPlaceholderMember(String groupId, String displayName) {
+    final list = members[groupId];
+    if (list == null) throw const ApiException(404, '群组不存在');
+    final name = sanitizeDisplayName(displayName);
+    if (name.isEmpty || name.length > 32) {
+      throw const ApiException(400, '名称长度需为 1–32 个字符');
+    }
+    _assertNameFree(groupId, name);
+    if (list.where((m) => m.isActive).length >= 50) {
+      throw const ApiException(409, '群成员已达上限 50 人');
+    }
+    final stamp = DateTime.now().microsecondsSinceEpoch;
+    final member = GroupMember(
+      id: 'ph_$stamp',
+      userId: 'ph_$stamp',
+      nickname: name,
+      accountName: '', // 占位账号没有可用账户名
+      avatarUrl: '🐼',
+      isOwner: false,
+      status: 'active',
+      joinedAt: Fmt.clock(),
+      isPlaceholder: true,
+    );
+    list.add(member);
+    refreshGroup(groupId);
+    // 其他成员照常收到「新成员加入」播报（占位账号本人不接收任何通知）
+    final group = groupById(groupId);
+    notifications.add(NotificationItem(
+      id: 'n_ph_$stamp',
+      type: NotifyType.member,
+      title: '新成员加入',
+      body: '$name 加入了「${group?.name ?? '群组'}」',
+      createdAt: Fmt.clock(),
+      isRead: false,
+      refType: 'group',
+      refId: groupId,
+    ));
+    return member;
+  }
+
+  /// 修改非注册成员名称
+  void renamePlaceholderMember(
+    String groupId,
+    String userId,
+    String displayName,
+  ) {
+    final list = members[groupId];
+    if (list == null) throw const ApiException(404, '群组不存在');
+    final idx = list.indexWhere((m) => m.userId == userId);
+    if (idx < 0 || !list[idx].isPlaceholder) {
+      throw const ApiException(404, '非注册成员不存在');
+    }
+    final name = sanitizeDisplayName(displayName);
+    if (name.isEmpty || name.length > 32) {
+      throw const ApiException(400, '名称长度需为 1–32 个字符');
+    }
+    _assertNameFree(groupId, name, exceptUserId: userId);
+    list[idx] = list[idx].copyWith(nickname: name);
+    refreshGroup(groupId);
+  }
+
+  /// 认领前的合法性校验（服务端同规则）
+  ({GroupMember placeholder, GroupMember target}) _assertClaimable(
+    String groupId,
+    String userId,
+    String targetUserId,
+  ) {
+    final placeholder = memberOf(groupId, userId);
+    if (placeholder == null || !placeholder.isPlaceholder) {
+      throw const ApiException(404, '非注册成员不存在');
+    }
+    final target = memberOf(groupId, targetUserId);
+    if (target == null || target.isPlaceholder) {
+      throw const ApiException(404, '目标账号不存在');
+    }
+    if (target.userId == placeholder.userId) {
+      throw const ApiException(400, '不能认领到本人');
+    }
+    return (placeholder: placeholder, target: target);
+  }
+
+  ClaimPreview claimPreview(
+    String groupId,
+    String userId,
+    String targetUserId,
+  ) {
+    final v = _assertClaimable(groupId, userId, targetUserId);
+    final billCount = billsForGroup(groupId)
+        .where((b) =>
+            b.payerId == userId ||
+            b.participants.any((p) => p.userId == userId))
+        .length;
+    return ClaimPreview(
+      billCount: billCount,
+      // Demo 模式的结算方案是即时算出来的，没有落库的历史记录
+      settlementCount: 0,
+      placeholderName: v.placeholder.nickname,
+      targetName: v.target.nickname,
+      targetInGroup: v.target.isActive,
+    );
+  }
+
+  /// 认领：把非注册成员的全部历史合并到真实账号（不可撤销）
+  ClaimPreview claimPlaceholderMember(
+    String groupId,
+    String userId,
+    String targetUserId,
+  ) {
+    final v = _assertClaimable(groupId, userId, targetUserId);
+    final preview = claimPreview(groupId, userId, targetUserId);
+    final list = members[groupId]!;
+
+    // ① 成员关系：目标已在群 → 加入时间取更早、删除占位行；否则占位行改挂目标（自动入群）
+    final tIndex = list.indexWhere((m) => m.userId == targetUserId);
+    final pIndex = list.indexWhere((m) => m.userId == userId);
+    if (tIndex >= 0) {
+      final t = list[tIndex];
+      final p = list[pIndex];
+      final joinedAt =
+          (p.joinedAt != null && t.joinedAt != null && p.joinedAt!.isBefore(t.joinedAt!))
+              ? p.joinedAt
+              : t.joinedAt;
+      list[tIndex] = GroupMember(
+        id: t.id,
+        userId: t.userId,
+        nickname: t.nickname,
+        accountName: t.accountName,
+        avatarUrl: t.avatarUrl,
+        isOwner: t.isOwner,
+        status: t.status,
+        joinedAt: joinedAt,
+        netBalanceCents: t.netBalanceCents,
+      );
+      list.removeAt(pIndex);
+    } else {
+      final p = list[pIndex];
+      list[pIndex] = GroupMember(
+        id: v.target.id,
+        userId: v.target.userId,
+        nickname: v.target.nickname,
+        accountName: v.target.accountName,
+        avatarUrl: v.target.avatarUrl,
+        isOwner: v.target.isOwner,
+        status: 'active',
+        joinedAt: p.joinedAt,
+        netBalanceCents: v.target.netBalanceCents,
+      );
+    }
+
+    // ② 账单参与人：冲突行金额相加（保住账单总额）、paid/exempt 取 AND；无冲突行改挂
+    for (var i = 0; i < bills.length; i++) {
+      final b = bills[i];
+      if (b.groupId != groupId) continue;
+      final hasPlaceholder = b.participants.any((p) => p.userId == userId);
+      final isPayer = b.payerId == userId;
+      if (!hasPlaceholder && !isPayer) continue;
+
+      final next = <BillParticipant>[];
+      for (final p in b.participants) {
+        if (p.userId != userId) {
+          next.add(p);
+          continue;
+        }
+        final ti = next.indexWhere((x) => x.userId == targetUserId);
+        if (ti >= 0) {
+          final t = next[ti];
+          final bothPaid = t.paid && p.paid;
+          next[ti] = BillParticipant(
+            userId: t.userId,
+            nickname: t.nickname,
+            avatarUrl: t.avatarUrl,
+            shareAmountCents: t.shareAmountCents + p.shareAmountCents,
+            paid: bothPaid,
+            exempt: t.exempt && p.exempt,
+            remindCount: t.remindCount,
+          );
+        } else {
+          next.add(BillParticipant(
+            userId: targetUserId,
+            nickname: v.target.nickname,
+            avatarUrl: v.target.avatarUrl,
+            shareAmountCents: p.shareAmountCents,
+            paid: p.paid,
+            exempt: p.exempt,
+            remindCount: p.remindCount,
+          ));
+        }
+      }
+      bills[i] = b.copyWith(
+        payerId: isPayer ? targetUserId : null,
+        payerName: isPayer ? v.target.nickname : null,
+        participants: next,
+      );
+    }
+
+    // ③ 免分摊名单替换（与服务端 default_exempt_user_ids 同语义）
+    final gIndex = groups.indexWhere((g) => g.id == groupId);
+    if (gIndex >= 0) {
+      final g = groups[gIndex];
+      if (g.defaultExemptUserIds.contains(userId)) {
+        groups[gIndex] = g.copyWith(
+          defaultExemptUserIds: {
+            for (final id in g.defaultExemptUserIds)
+              id == userId ? targetUserId : id,
+          }.toList(),
+        );
+      }
+    }
+
+    refreshGroup(groupId);
+    return preview;
+  }
 
   /// 重新计算群组的成员数/未结清笔数/总额，并写回（供增删成员/账单后刷新）
   void refreshGroup(String groupId) {

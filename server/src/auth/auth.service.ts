@@ -103,8 +103,9 @@ export class AuthService {
   }
 
   async login(dto: LoginDto, ip?: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { accountName: dto.accountName },
+    // 占位账号（非注册成员）不可登录：直接排除，与「账户名不存在/密码错误」同一提示
+    const user = await this.prisma.user.findFirst({
+      where: { accountName: dto.accountName, isPlaceholder: false },
     });
     // 账户名不存在、已注销与密码错误统一提示，防探测
     if (
@@ -279,8 +280,9 @@ export class AuthService {
 
   /** P04：按账户名查询安全问题（仅返回问题文本，供忘记密码答题提示） */
   async getSecurityQuestion(accountName: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { accountName },
+    // 占位账号（非注册成员）没有可用的安全问题，也不该出现在找回密码链路里
+    const user = await this.prisma.user.findFirst({
+      where: { accountName, isPlaceholder: false },
       select: { securityQuestion: true },
     });
     // 与 forgotVerify 保持同一提示，避免账户是否存在被探测
@@ -414,10 +416,23 @@ export class AuthService {
         where: { ownerId: userId, deletedAt: null },
       });
       for (const g of ownedGroups) {
-        const nextOwner = await tx.groupMember.findFirst({
+        const candidates = await tx.groupMember.findMany({
           where: { groupId: g.id, status: 'active', userId: { not: userId } },
           orderBy: { joinedAt: 'asc' },
         });
+        // 非注册成员（占位账号）不能接手群主：它无法登录，群会变成无人可管理
+        const candidateIds = candidates.map((c) => c.userId);
+        const realIds = candidateIds.length
+          ? new Set(
+              (
+                await tx.user.findMany({
+                  where: { id: { in: candidateIds }, isPlaceholder: false },
+                  select: { id: true },
+                })
+              ).map((u) => u.id),
+            )
+          : new Set<string>();
+        const nextOwner = candidates.find((c) => realIds.has(c.userId));
         if (nextOwner) {
           await tx.group.update({
             where: { id: g.id },

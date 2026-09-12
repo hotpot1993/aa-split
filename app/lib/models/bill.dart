@@ -58,6 +58,31 @@ class Bill {
 
   bool get hasUnpaid => !fullySettled;
 
+  Bill copyWith({
+    String? payerId,
+    String? payerName,
+    List<BillParticipant>? participants,
+    BillSettleStatus? settleStatus,
+  }) =>
+      Bill(
+        id: id,
+        groupId: groupId,
+        groupName: groupName,
+        title: title,
+        amountCents: amountCents,
+        billDate: billDate,
+        location: location,
+        category: category,
+        payerId: payerId ?? this.payerId,
+        payerName: payerName ?? this.payerName,
+        participants: participants ?? this.participants,
+        splitType: splitType,
+        receipts: receipts,
+        isRegular: isRegular,
+        settleStatus: settleStatus ?? this.settleStatus,
+        createdAt: createdAt,
+      );
+
   factory Bill.fromJson(Map<String, dynamic> json) => Bill(
         id: json['id'] as String? ?? '',
         groupId: json['groupId'] as String? ?? '',

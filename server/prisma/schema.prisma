@@ -88,17 +88,23 @@ enum ReceiptUploadStatus {
 }
 
 // -------- 用户 --------
+// 说明：isPlaceholder = true 的行是「占位账号」——它不代表真人，只是让
+// 「非注册成员」能出现在账单与结算里的身份锚点（见 CONTEXT.md / ADR-0001）。
+// 占位账号不可登录、不接收通知、不被用户搜索返回；其 accountName 使用注册规则
+// （^[a-zA-Z0-9_]+$）之外的字符作前缀（~guest_），真人从结构上无法注册出同名账户。
 model User {
   id                  String    @id @default(uuid()) @db.Uuid
   accountName         String    @unique @map("account_name") @db.VarChar(32) // 登录账户名，唯一
-  nickname            String    @default("") @map("nickname") @db.VarChar(32) // 默认=账户名
+  nickname            String    @default("") @map("nickname") @db.VarChar(32) // 默认=账户名；占位账号存群主填写的显示名
   avatarUrl           String?   @map("avatar_url") @db.Text
   bio                 String?   @db.VarChar(50) // 个性签名
-  passwordHash        String    @map("password_hash") @db.VarChar(100) // bcrypt(12)
+  passwordHash        String    @map("password_hash") @db.VarChar(100) // bcrypt(12)；占位账号存不可用占位值
   securityQuestion    String    @map("security_question") @db.VarChar(100)
   securityAnswerHash  String    @map("security_answer_hash") @db.VarChar(100) // bcrypt
   resetTokenHash      String?   @map("reset_token_hash") @db.VarChar(100) // 找回密码 token 哈希
   resetTokenExpiresAt DateTime? @map("reset_token_expires_at") @db.Timestamptz
+  isPlaceholder       Boolean   @default(false) @map("is_placeholder") // 占位账号标记（非注册成员）
+  mergedIntoUserId    String?   @map("merged_into_user_id") @db.Uuid // 被认领后的合并去向（认领不可撤销）
   createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt           DateTime? @map("deleted_at") @db.Timestamptz
@@ -114,6 +120,8 @@ model User {
   settlementsTo    Settlement[]     @relation("SettlementTo")
   devices          UserDevice[]
   receiptUploads   ReceiptUpload[]
+  mergedInto       User?            @relation("UserMerge", fields: [mergedIntoUserId], references: [id])
+  mergedFrom       User[]           @relation("UserMerge")
 
   @@map("users")
 }

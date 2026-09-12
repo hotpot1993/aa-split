@@ -23,8 +23,10 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
 
     // 2. 方式二：添加一个 g1 中原本没有的成员「小明」（mock 字典 xiaoming）
+    // 页面新增了「方式三：直接添加（无需注册）」，同样有一个「添加」按钮，
+    // 方式二在前，故取第一个
     await tester.enterText(find.byType(TextField).first, 'xiaoming');
-    await tester.tap(find.text('添加'));
+    await tester.tap(find.text('添加').first);
     await tester.pump(const Duration(milliseconds: 300));
     await tester.pump(const Duration(milliseconds: 500));
 

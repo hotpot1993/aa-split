@@ -125,8 +125,20 @@ class Model {
     const row: Row = { ...data, id: data.id ?? randomUUID() };
     // 模型级默认值（对应 schema.prisma 的 @default）
     const defaults: Record<string, Row> = {
-      user: { createdAt: new Date(), updatedAt: new Date() },
-      group: { createdAt: new Date(), updatedAt: new Date(), defaultSplitType: 'even' },
+      // isPlaceholder / mergedIntoUserId 必须显式给默认值：schema 里有 @default(false)，
+      // 而 where 过滤 { isPlaceholder: false } 对 undefined 不成立（见 matches）
+      user: {
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        isPlaceholder: false,
+        mergedIntoUserId: null,
+      },
+      group: {
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        defaultSplitType: 'even',
+        defaultExemptUserIds: [],
+      },
       groupMember: { joinedAt: new Date(), status: 'active' },
       bill: { createdAt: new Date(), updatedAt: new Date() },
       billParticipant: { paidAt: null, remindCount: 0 },

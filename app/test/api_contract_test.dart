@@ -318,6 +318,148 @@ void main() {
       expect(groups.first.totalCents, 22000);
       expect(groups.first.recentBillTitle, '火锅');
     });
+
+    test('members/allMembers：占位账号解析 isPlaceholder；members 只返回 active', () async {
+      adapter = MockAdapter((options) async {
+        if (options.path == '/groups/g1') {
+          return json(ok({
+            'id': 'g1',
+            'name': '饭友群',
+            'ownerId': 'u1',
+            'members': [
+              {
+                'userId': 'u1',
+                'accountName': 'tuanzi',
+                'nickname': '团子酱',
+                'avatarUrl': null,
+                'isPlaceholder': false,
+                'status': 'active',
+                'joinedAt': '2026-08-01T00:00:00.000Z',
+              },
+              {
+                'userId': 'u9',
+                'accountName': '',
+                'nickname': '老王',
+                'avatarUrl': null,
+                'isPlaceholder': true,
+                'status': 'active',
+                'joinedAt': '2026-08-02T00:00:00.000Z',
+              },
+              {
+                'userId': 'u8',
+                'accountName': 'lisi',
+                'nickname': '李四',
+                'avatarUrl': null,
+                'isPlaceholder': false,
+                'status': 'left',
+                'joinedAt': '2026-07-01T00:00:00.000Z',
+              },
+            ],
+          }));
+        }
+        if (options.path == '/groups/g1/bills') {
+          return json(ok({
+            'list': const <Object>[],
+            'total': 0,
+            'page': 1,
+            'pageSize': 100,
+          }));
+        }
+        fail('意外请求: ${options.method} ${options.path}');
+      });
+      dio.httpClientAdapter = adapter;
+
+      final repo = GroupRepository();
+      final all = await repo.allMembers('g1');
+      expect(all, hasLength(3)); // 完整列表：含已退出成员（成员管理页 P24 需要）
+      final guest = all.firstWhere((m) => m.userId == 'u9');
+      expect(guest.isPlaceholder, isTrue);
+      expect(guest.accountName, isEmpty);
+      expect(guest.displayName, '老王');
+      expect(all.firstWhere((m) => m.userId == 'u1').isOwner, isTrue);
+
+      final active = await repo.members('g1');
+      expect(active.map((m) => m.userId).toList(), ['u1', 'u9']); // left 不计入
+    });
+
+    test('非注册成员：添加 / 改名 / 认领预览 / 认领 的路径与载荷', () async {
+      final calls = <String>[];
+      adapter = MockAdapter((options) async {
+        calls.add('${options.method} ${options.path}');
+        if (options.path == '/groups/g1/placeholder-members') {
+          expect(options.method, 'POST');
+          expect(options.data, {'displayName': '老王'});
+          return json(ok({
+            'userId': 'u9',
+            'accountName': '',
+            'nickname': '老王',
+            'avatarUrl': null,
+            'isPlaceholder': true,
+            'status': 'active',
+          }));
+        }
+        if (options.path == '/groups/g1/placeholder-members/u9') {
+          expect(options.method, 'PATCH');
+          expect(options.data, {'displayName': '王大爷'});
+          return json(ok({
+            'userId': 'u9',
+            'nickname': '王大爷',
+            'isPlaceholder': true,
+          }));
+        }
+        if (options.path ==
+            '/groups/g1/placeholder-members/u9/claim-preview') {
+          expect(options.method, 'GET');
+          expect(options.queryParameters['targetUserId'], 'u2');
+          return json(ok({
+            'billCount': 3,
+            'settlementCount': 2,
+            'placeholderName': '王大爷',
+            'targetName': '阿虎',
+            'targetInGroup': true,
+          }));
+        }
+        if (options.path == '/groups/g1/placeholder-members/u9/claim') {
+          expect(options.method, 'POST');
+          expect(options.data, {'targetUserId': 'u2'});
+          return json(ok({
+            'success': true,
+            'billCount': 3,
+            'settlementCount': 2,
+            'placeholderName': '王大爷',
+            'targetName': '阿虎',
+          }));
+        }
+        fail('意外请求: ${options.method} ${options.path}');
+      });
+      dio.httpClientAdapter = adapter;
+
+      final repo = GroupRepository();
+      final added = await repo.addPlaceholderMember('g1', '老王');
+      expect(added.isPlaceholder, isTrue);
+      expect(added.accountName, isEmpty);
+      expect(added.nickname, '老王');
+
+      await repo.renamePlaceholderMember('g1', 'u9', '王大爷');
+
+      final preview = await repo.claimPreview('g1', 'u9', 'u2');
+      expect(preview.billCount, 3);
+      expect(preview.settlementCount, 2);
+      expect(preview.placeholderName, '王大爷');
+      expect(preview.targetName, '阿虎');
+      expect(preview.targetInGroup, isTrue);
+
+      final claimed = await repo.claimPlaceholderMember('g1', 'u9', 'u2');
+      expect(claimed.billCount, 3);
+      expect(claimed.settlementCount, 2);
+
+      expect(calls, [
+        'POST /groups/g1/placeholder-members',
+        'PATCH /groups/g1/placeholder-members/u9',
+        'GET /groups/g1/placeholder-members/u9/claim-preview',
+        'POST /groups/g1/placeholder-members/u9/claim',
+      ]);
+    });
   });
 
   group('BillRepository（真实模式）', () {

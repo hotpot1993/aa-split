@@ -113,12 +113,18 @@ groups 1─N settlements (结算方案记录)
 |---|---|---|
 | id | uuid PK | |
 | account_name | varchar(32) **UNIQUE** | 登录账户名（昵称可重复，账户名唯一） |
-| nickname | varchar(24) | 默认=账户名 |
+| nickname | varchar(32) | 默认=账户名 |
 | avatar_url | text | |
 | bio | varchar(50) | |
 | password_hash | varchar(100) | bcrypt(12) |
+| is_placeholder | boolean，默认 false | **占位账号**标记：为「非注册成员」保留的身份锚点 |
+| merged_into_user_id | uuid → users，可空 | 占位账号被**认领**后，记录合并去向 |
 | security_question | varchar(50) / security_answer_hash | 找回密码 |
 | created_at / updated_at | timestamptz | |
+
+> **占位账号**：`is_placeholder = true` 的行不代表真人，它只是让「非注册成员」能出现在账单与结算里。它不可登录、不接收通知、不被用户搜索返回，其 `account_name` 使用注册规则（`^[a-zA-Z0-9_]+$`）之外的字符作前缀（如 `~guest_`），因此真人从结构上无法注册出同名账户。该设计及其取舍见 [ADR-0001](./adr/0001-占位账号承载非注册成员.md)。
+>
+> ⚠️ 凡「查真实账号」的查询都必须显式排除占位账号（当前已确认需要处理 `users.service.ts` 的搜索，它同时服务于「按账户名添加成员」与注册时的账户名唯一性校验）。字符前缀只能防撞名，**防不住该搜索使用的 `contains` 子串匹配**。
 
 **groups（群组）**
 
@@ -128,8 +134,11 @@ groups 1─N settlements (结算方案记录)
 | name / avatar_url / intro | | |
 | owner_id | uuid → users | 群主 |
 | default_split_type | enum(`even`/`custom`/`ratio`) | |
+| default_exempt_user_ids | text[]，默认 `{}` | 默认免分摊人员（userId 列表，仅 active 成员） |
 | invite_code | varchar(12) **UNIQUE** | 邀请码（链接/二维码） |
 | created_at / deleted_at | | 软删除 |
+
+> ⚠️ `default_exempt_user_ids` **没有外键保护**。它是纯文本数组，认领一个非注册成员时必须一并替换其中的旧 userId，否则会残留失效引用（同样无外键保护的还有 `regular_bills.participants_template`）。
 
 **group_members（成员）**
 
@@ -139,6 +148,10 @@ groups 1─N settlements (结算方案记录)
 | group_id / user_id | | 联合 UNIQUE(group_id,user_id) |
 | status | enum(`active`/`left`) | 退群保留历史 |
 | joined_at | | |
+
+> `user_id` 既可以指向真实用户，也可以指向**占位账号**（即非注册成员）。字段本身无需任何改动。
+>
+> **成员查询口径**：`memberCount` 只计 `active` 成员（人均分母同此口径）；但群详情接口仍需返回**完整**成员列表（含 `left`），因为产品原型 P24 要求展示「已退出」状态。
 
 **bills（账单）** ★核心
 
@@ -179,6 +192,94 @@ groups 1─N settlements (结算方案记录)
 - `groups.invite_code` 唯一索引（深链查找）
 - 金额字段使用 `CHECK (amount_cents >= 0)`
 
+### 3.4 认领合并：占位账号 → 真实账号 的迁移步骤
+
+「认领」是把一个非注册成员（占位账号）的全部历史归到一个真实账号名下。以下步骤**必须在单个事务内完成**，任一步失败整体回滚。
+
+记 `P` = 占位账号 userId，`T` = 目标真实账号 userId，`G` = 群组 id。
+
+**前置校验（不满足则拒绝）**
+
+```sql
+SELECT id, is_placeholder, merged_into_user_id FROM users WHERE id IN (P, T);
+-- 要求：P.is_placeholder = true 且 P.merged_into_user_id IS NULL（未被认领过）
+--       T.is_placeholder = false（目标必须是真实账号）
+```
+
+**① 群成员关系（必然冲突：T 可能已在群内）**
+
+```sql
+-- T 已在群内：删除 P 的成员行，加入时间取两者更早的
+UPDATE group_members SET joined_at = LEAST(joined_at, <P 原 joined_at>)
+ WHERE group_id = G AND user_id = T;
+DELETE FROM group_members WHERE group_id = G AND user_id = P;
+
+-- T 不在群内：把 P 的成员行直接改挂到 T（即自动入群）
+UPDATE group_members SET user_id = T WHERE group_id = G AND user_id = P;
+```
+
+**② 账单参与人（必然冲突：`UNIQUE(bill_id, user_id)`）**
+
+```sql
+-- 先合并冲突行：同一账单里 P、T 各有份额
+UPDATE bill_participants tp
+   SET share_amount_cents = tp.share_amount_cents + pp.share_amount_cents,
+       paid    = tp.paid   AND pp.paid,
+       exempt  = tp.exempt AND pp.exempt,
+       paid_at = CASE WHEN tp.paid AND pp.paid
+                      THEN COALESCE(tp.paid_at, pp.paid_at) END
+  FROM bill_participants pp
+ WHERE pp.user_id = P AND tp.user_id = T AND tp.bill_id = pp.bill_id;
+
+-- 再改挂剩余的无冲突行
+UPDATE bill_participants SET user_id = T WHERE user_id = P;
+```
+
+> 份额相加是唯一能保持 `sum(share_amount_cents) = amount_cents` 的做法，**不可丢弃任一行**。
+> `paid` 取「两行都已付」、`exempt` 取「两行都已免」，是不偏袒欠款方的保守口径。
+
+**③ 垫付人**
+
+```sql
+UPDATE bills SET payer_id = T WHERE payer_id = P;
+```
+
+> `bills.creator_id` 无需处理：创建账单必须登录，占位账号不可能成为创建者。
+
+**④ 结算记录（含已结清历史）**
+
+```sql
+UPDATE settlements SET from_user_id = T WHERE from_user_id = P;
+UPDATE settlements SET to_user_id   = T WHERE to_user_id   = P;
+-- 该群 pending 方案是派生数据（getSettlement 每次先删后重建），直接清掉即可
+DELETE FROM settlements WHERE group_id = G AND status = 'pending';
+```
+
+**⑤ 免分摊名单（`TEXT[]`，无外键保护，最易漏）**
+
+```sql
+UPDATE groups
+   SET default_exempt_user_ids = (
+     SELECT ARRAY(SELECT DISTINCT unnest(array_replace(default_exempt_user_ids, P, T)))
+   )
+ WHERE id = G AND P = ANY(default_exempt_user_ids);
+```
+
+**⑥ 定期账单模板（`JSON`，无外键保护，最易漏）**
+
+`regular_bills.participants_template` 是 JSON，无法用纯 SQL 可靠处理：逐行读出，在应用层把 `userId = P` 替换为 `T`；若替换后同一模板内出现重复 `userId`，则 `shareAmountCents` 相加、`exempt` 取 AND，再写回。
+
+**⑦ 占位账号行本身**
+
+```sql
+UPDATE users SET deleted_at = now(), merged_into_user_id = T WHERE id = P;
+```
+
+> **保留该行、不删除**。迁移是手写 SQL，一旦漏掉某处引用，保留行可避免外键悬空，同时留下可追溯的合并去向。
+> 认领是否已执行过：`users.merged_into_user_id IS NOT NULL` 即为已认领，接口应拒绝重复认领。
+
+**不需要迁移的位置**：`user_devices`、`notifications`、`receipt_uploads`、`bills.creator_id`、`regular_bills.creator_id` —— 占位账号无登录设备、不接收通知、不上传凭证、也不能创建账单或定期账单。
+
 ---
 
 ## 4. API 设计
@@ -204,11 +305,25 @@ groups 1─N settlements (结算方案记录)
 |---|---|---|
 | GET/POST | /groups | 列表 / 创建 |
 | GET/PATCH/DELETE | /groups/:id | 详情/修改/解散（仅群主） |
-| POST | /groups/:id/members | 添加（账户名搜索） |
+| POST | /groups/:id/members | 添加成员（按账户名搜索，**仅能添加已注册用户**；任一在群成员可调用） |
 | DELETE | /groups/:id/members/:userId | 移除 |
+| POST | /groups/:id/placeholder-members | **仅群主**：添加非注册成员，`{displayName}` |
+| PATCH | /groups/:id/placeholder-members/:userId | **仅群主**：修改非注册成员名称 |
+| GET | /groups/:id/placeholder-members/:userId/claim-preview?targetUserId= | **仅群主**：认领前预览（只读）→ `{billCount, settlementCount, placeholderName, targetName, targetInGroup}` |
+| POST | /groups/:id/placeholder-members/:userId/claim | **仅群主**：认领，`{targetUserId}` |
 | POST | /groups/:id/transfer | 转让群主 |
 | POST | /groups/join | `{inviteCode}` 加入 |
 | GET | /groups/:id/invite | 邀请码+二维码 |
+
+> **新增非注册成员接口的校验规则**：仅群主可调用；`displayName` 长度 1–32、服务端 `trim` 并去除换行与控制字符；名称需与群内全体成员的显示名比对（**含已退出成员**），重名则报错；单群上限 50 人。
+>
+> **认领应用层额外约定**：
+> - 客户端「绑定到账户」的目标**只列本群注册成员**（含已退出）—— 认领不可撤销，避免手打账户名认错人；服务端仍接受任意真实账号（不在群内则自动入群）。
+> - 重复认领（`users.merged_into_user_id IS NOT NULL`）返回 409，不是 404：认领后群成员行可能已被删除，但占位账号行保留，必须能被识别为「已认领」。
+> - **非注册成员不能成为群主**：`POST /groups/:id/transfer` 对占位账号返回 400；`DELETE /auth/me`（注销）的所有者自动转移也会跳过占位账号，群内没有其他真实成员时落到软删除。占位账号无法登录，转让后群会无人可管理。
+> - **注册实时唯一性校验**改用 `GET /users/account-available?accountName=`（公开、**精确匹配**、排除占位账号）。此前客户端复用 `/users/search` 的 `contains` 模糊搜索，导致「已有 `zhangsan` 时想注册 `zhang` 会误报已被占用」，且该接口需登录（注册流程尚未登录，实际永远放行）。
+>
+> ⚠️ `docs/api-endpoints.generated.md` 由 `scripts/sync-docs.mjs` 扫描控制器自动生成、**不可手改**，上述端点会随下一次 `docs-sync.yml` 自动出现（本轮已本地重新生成）。
 
 ### 4.3 账单
 

@@ -285,13 +285,20 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                HighlightPartText(m.nickname, parts: [q],
+                HighlightPartText(m.displayName, parts: [q],
                     style:
                         TextStyle(fontFamily: AAFonts.title, fontSize: 15, color: AAColors.ink)),
                 SizedBox(height: 2),
-                Text('@${m.accountName}',
-                    style: TextStyle(
-                        fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft)),
+                // 非注册成员（占位账号）没有可用账户名，不显示 @账户名
+                if (m.isPlaceholder)
+                  HandTag('未注册',
+                      dense: true,
+                      variant: ChipVariant.plain,
+                      textColor: AAColors.inkSoft)
+                else
+                  Text('@${m.accountName}',
+                      style: TextStyle(
+                          fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft)),
               ],
             ),
           ),

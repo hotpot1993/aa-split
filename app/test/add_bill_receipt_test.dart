@@ -31,9 +31,13 @@ final _pngBytes = base64Decode(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
 );
 
+/// 临时小票文件序号：单靠 microsecondsSinceEpoch 在同一毫秒内会重名，
+/// 导致「替换而非追加」用例里两张图被识别为同一张（Windows 时钟粒度足够粗）
+int _tempSeq = 0;
+
 File _tempImage() {
   final f = File(
-      '${Directory.systemTemp.path}/aa_rcpt_${DateTime.now().microsecondsSinceEpoch}.png');
+      '${Directory.systemTemp.path}/aa_rcpt_${DateTime.now().microsecondsSinceEpoch}_${_tempSeq++}.png');
   f.writeAsBytesSync(_pngBytes);
   addTearDown(() {
     if (f.existsSync()) f.deleteSync();
