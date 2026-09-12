@@ -128,12 +128,14 @@ class _RegularCard extends StatelessWidget {
             ],
           ),
           SizedBox(height: 6),
-          Row(
+          // Wrap：金额 + 分类/周期标签在 360dp 窄屏会溢出被裁（实测 14px）
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               HandAmount(amountCents: regular.amountCents, color: AAColors.ink, size: 22),
-              SizedBox(width: 10),
               HandTag.label(label: Cat.label(regular.category)),
-              SizedBox(width: 6),
               HandTag.label(label: _cycleText(regular), color: AAColors.lilac),
             ],
           ),

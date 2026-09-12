@@ -245,11 +245,13 @@ class _NetCard extends StatelessWidget {
               SizedBox(height: 4),
               HandAmount(amountCents: net, color: color, size: 42),
               SizedBox(height: 6),
-              Row(
+              // Wrap 而非 Row：金额较大时两枚胶囊在 360dp 窄屏会超出卡片被裁（实测 17px）
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
                 children: [
                   HandTag('应收 +¥${(balance.receivableCents / 100).toStringAsFixed(2)}',
                       variant: ChipVariant.green, fontSize: 12),
-                  SizedBox(width: 8),
                   HandTag('应付 -¥${(balance.payableCents / 100).toStringAsFixed(2)}',
                       variant: ChipVariant.orange, fontSize: 12),
                 ],

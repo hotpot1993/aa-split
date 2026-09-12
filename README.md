@@ -8,12 +8,12 @@
 | 产物 | 状态 | 验收 |
 |---|---|---|
 | 服务端 `server/`（NestJS 10 + Prisma + PostgreSQL，全模块 + SSE + BullMQ + Swagger） | ✅ | `npm install` / `npx prisma generate` / `npm run build` / `npm test`（**83/83**，含非注册成员 14 例：50 人上限 / 认领合并 / 定期账单模板迁移 / 群主交接护栏）全通过；`npm run test:e2e` **24/24** |
-| 客户端 `app/`（Flutter + Riverpod + go_router，31 页全量 + `aa_design` 手绘设计系统） | ✅ | `flutter analyze` 0 issues / `flutter test` **146/146**（8 张商店截图 golden 回归 + 21 屏视觉冒烟 + 功能回归测试；含非注册成员 9 例）/ 真机截屏逐页核对 |
+| 客户端 `app/`（Flutter + Riverpod + go_router，31 页全量 + `aa_design` 手绘设计系统） | ✅ | `flutter analyze` 0 issues / `flutter test` **163/163**（8 张商店截图 golden 回归 + 21 屏视觉冒烟 + 功能回归测试；含非注册成员 9 例、**窄屏 360dp 布局守卫 17 例**）/ 真机截屏逐页核对 |
 | **非注册成员（占位账号）**（群主可直接添加不注册的朋友，与注册成员同权分摊/垫付/结算；支持改名与「认领」绑定到真实账号） | ✅ | server 单测 **14 例** + e2e **4 例** · 客户端 **9 例** + 契约测试 **2 例**；迁移 `20260912000000_placeholder_member` 已在真实 PostgreSQL 应用；设计见 [CONTEXT.md](CONTEXT.md) 与 [ADR-0001](docs/adr/0001-占位账号承载非注册成员.md) |
 | **UI 视觉基线**（严格对齐 `docs/ui-demo/index.html`） | ✅ | 组件/圆角/阴影/间距/配色/字体五级/交互逐项照搬；字体包前缀命中修复（见 开发进度 v1.6） |
 | **图标素材系统**（`docs/pic` → `app/assets/icons`，40 枚全接入） | ✅ | `powershell -ExecutionPolicy Bypass -File scripts\process-icons.ps1`（透明度/水印/裁剪/启动图标一键重跑） |
 | 结算算法（`server/src/settlement/`，含"已付份额排除"修复） | ✅ | 13 个金标准单测全绿 |
-| **小票 OCR 识别金额回填**（拍照/相册 → 服务端识别 → 确认回填；草稿预填 + P33 二次确认） | ✅ 代码完成 | `ocr-worker` pytest **27/27** · server 单测 **83/83** + e2e **24/24** · App 测试 **146/146** · 合成语料真实 OCR 验收 **10/10 PASS** · 迁移 `20260902000000_receipt_ocr` 已在真实 PostgreSQL 应用（见 [docs/AA分账App-小票OCR识别.md](docs/AA分账App-小票OCR识别.md)）；⚠️ M4 待真实小票样本验收（≥90%） |
+| **小票 OCR 识别金额回填**（拍照/相册 → 服务端识别 → 确认回填；草稿预填 + P33 二次确认） | ✅ 代码完成 | `ocr-worker` pytest **27/27** · server 单测 **83/83** + e2e **24/24** · App 测试 **163/163** · 合成语料真实 OCR 验收 **10/10 PASS** · 迁移 `20260902000000_receipt_ocr` 已在真实 PostgreSQL 应用（见 [docs/AA分账App-小票OCR识别.md](docs/AA分账App-小票OCR识别.md)）；⚠️ M4 待真实小票样本验收（≥90%） |
 | 基础设施（docker-compose / Makefile / CI / 字体 asset） | ✅ | — |
 | **真实联调**（线上 API smoke + SSE） | ✅ | `node scripts/smoke-api.mjs` **22/22** · `node scripts/sse-check.mjs` SSE 实时事件 ✅；CI [smoke.yml](.github/workflows/smoke.yml) 每次 `master` 推送在真实 PostgreSQL 16 上自动复跑（迁移 + 22 步全链路 + SSE），v1.0.17 起恢复全绿 |
 | **发行**（v1.0.17+5011，GitHub Actions 正式签名构建） | ✅ | [GitHub Release](https://github.com/hotpot1993/aa-split/releases/tag/v1.0.17)：AAB + 通用 APK + arm64 APK + **aa-version.txt**；`Verify release signing` 校验正式 keystore 指纹；versionCode 单调递增（5011）不触发系统降级；**VPS 自动同步已生效**：线上 `/app/version` 返回 1.0.17+5011 与 VPS 下载 URL，迁移 `20260912000000_placeholder_member` 随容器 `prisma migrate deploy` 自动应用（2026-09-12 线上校验通过） |

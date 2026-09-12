@@ -84,18 +84,17 @@ class GroupDetailScreen extends ConsumerWidget {
                   ],
                 ),
                 SizedBox(height: 4),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.baseline,
-                  textBaseline: TextBaseline.alphabetic,
+                // Wrap 而非 Row：金额较大时「人均 …」在 360dp 窄屏会自动换行，
+                // 不会被挤出卡片右侧裁掉（实测溢出 82px）
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8,
+                  runSpacing: 2,
                   children: [
                     HandAmount(amountCents: total, color: AAColors.ink, size: 34),
-                    SizedBox(width: 8),
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: Text('人均 ${Fmt.yuan(perPerson, trimZero: true)} / ${members.length}人',
-                          style: TextStyle(
-                              fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft)),
-                    ),
+                    Text('人均 ${Fmt.yuan(perPerson, trimZero: true)} / ${members.length}人',
+                        style: TextStyle(
+                            fontFamily: AAFonts.title, fontSize: 12, color: AAColors.inkSoft)),
                   ],
                 ),
                 SizedBox(height: 8),

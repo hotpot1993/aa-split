@@ -30,6 +30,15 @@ class _InviteScreenState extends ConsumerState<InviteScreen> {
   final List<String> _addedGuests = [];
   String _link = '';
 
+  /// 方式二 / 方式三 的标签样式（同 Demo `.line span`：淡墨 15px）
+  /// 注意：字体家族随「字体风格」设置动态解析（AAFonts.title 是 getter），
+  /// 因此每次 build 重新构造，不能缓存为 const/final
+  TextStyle get _methodLabel => TextStyle(
+        fontFamily: AAFonts.title,
+        fontSize: 15,
+        color: AAColors.inkSoft,
+      );
+
   @override
   void initState() {
     super.initState();
@@ -152,25 +161,23 @@ class _InviteScreenState extends ConsumerState<InviteScreen> {
             child: Column(
               children: [
                 AaLine(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('方式二：账户名直加',
-                          style: TextStyle(
-                              fontFamily: AAFonts.title, fontSize: 15, color: AAColors.inkSoft)),
+                      Text('方式二：账户名直加', style: _methodLabel),
+                      SizedBox(height: 8),
+                      // 标签独占一行、输入框自适应剩余宽度：
+                      // 单行铺排（标签+固定宽输入框+按钮）在 360dp 窄屏上会把按钮挤出屏幕
                       Row(
-                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          SizedBox(
-                            width: 130,
+                          Expanded(
                             child: HandTextField(
                               controller: _account,
                               hint: '输入账户名',
                               hintPrefixImage: 'assets/icons/search.png',
-                              textAlign: TextAlign.end,
                             ),
                           ),
-                          SizedBox(width: 6),
+                          SizedBox(width: 8),
                           DoodleButton(
                             label: '添加',
                             mini: true,
@@ -223,38 +230,28 @@ class _InviteScreenState extends ConsumerState<InviteScreen> {
                 children: [
                   AaLine(
                     showBorder: _addedGuests.isNotEmpty,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('方式三：直接添加（无需注册）',
-                                style: TextStyle(
-                                    fontFamily: AAFonts.title,
-                                    fontSize: 15,
-                                    color: AAColors.inkSoft)),
-                            SizedBox(height: 2),
-                            Text('对方不注册也能参与分摊与结算',
-                                style: TextStyle(
-                                    fontFamily: AAFonts.title,
-                                    fontSize: 11,
-                                    color: AAColors.inkSoft)),
-                          ],
-                        ),
+                        Text('方式三：直接添加（无需注册）', style: _methodLabel),
+                        SizedBox(height: 2),
+                        Text('对方不注册也能参与分摊与结算',
+                            style: TextStyle(
+                                fontFamily: AAFonts.title,
+                                fontSize: 11,
+                                color: AAColors.inkSoft)),
+                        SizedBox(height: 8),
+                        // 与方式二同构：标签在上、输入框自适应、按钮始终留在屏内
                         Row(
-                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            SizedBox(
-                              width: 120,
+                            Expanded(
                               child: HandTextField(
                                 controller: _guest,
-                                hint: '输入名称',
+                                hint: '输入对方名字',
                                 hintPrefixImage: 'assets/icons/edit.png',
-                                textAlign: TextAlign.end,
                               ),
                             ),
-                            SizedBox(width: 6),
+                            SizedBox(width: 8),
                             DoodleButton(
                               label: '添加',
                               mini: true,

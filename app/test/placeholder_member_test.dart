@@ -18,8 +18,10 @@ import 'package:aa_split_app/screens/groups/invite_screen.dart';
 import 'package:aa_split_app/screens/groups/members_screen.dart';
 
 Future<void> _pump(WidgetTester tester, Widget screen) async {
-  tester.view.physicalSize = const Size(1080, 1920);
-  tester.view.devicePixelRatio = 2.0;
+  // 用真机常见的窄屏逻辑宽度（1080/3.0 = 360dp）：v1.0.17 的「方式三」按钮
+  // 就是在这里被单行布局挤出屏幕导致点击无响应，测试必须覆盖这个宽度
+  tester.view.physicalSize = const Size(1080, 2340);
+  tester.view.devicePixelRatio = 3.0;
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
   await tester.pumpWidget(
@@ -72,6 +74,20 @@ void main() {
     await _pump(tester, InviteScreen(groupId: g.id));
 
     expect(find.text('方式三：直接添加（无需注册）'), findsOneWidget);
+    // 回归（v1.0.17 真机 bug）：方式三的「添加」按钮必须完整落在屏内。
+    // 此前它沿用「标签+固定宽输入框+按钮」单行布局，360dp 窄屏下按钮被挤到
+    // 屏幕外（实测 x 383.5→410 / 屏宽 360），用户点击无任何响应
+    final screenW = tester.view.physicalSize.width / tester.view.devicePixelRatio;
+    final guestAddBtn = find.ancestor(
+      of: find.text('添加').last,
+      matching: find.byType(DoodleButton),
+    );
+    final btnRect = tester.getRect(guestAddBtn);
+    expect(btnRect.left, greaterThanOrEqualTo(0));
+    expect(btnRect.right, lessThanOrEqualTo(screenW),
+        reason: '「添加」按钮被挤出屏幕（屏宽 $screenW，按钮右边界 ${btnRect.right}）');
+    expect(tester.takeException(), isNull, reason: '方式三卡片不得有布局溢出');
+
     // 方式三的输入框在最后一个
     await tester.enterText(find.byType(TextField).last, '老王');
     await tester.tap(find.text('添加').last);

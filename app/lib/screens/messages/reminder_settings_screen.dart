@@ -103,17 +103,26 @@ class _ReminderSettingsScreenState extends ConsumerState<ReminderSettingsScreen>
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  if (leadImage != null) ...[
-                    AaIconImage(leadImage, size: 16),
-                    SizedBox(width: 6),
+              // 标签可收缩 + 省略号：否则「免打扰时段 22:00 - 08:00 ▾」在 360dp
+              // 窄屏（实测溢出 92px）会把右侧开关整个挤出屏幕，用户点不到
+              Expanded(
+                child: Row(
+                  children: [
+                    if (leadImage != null) ...[
+                      AaIconImage(leadImage, size: 16),
+                      SizedBox(width: 6),
+                    ],
+                    Expanded(
+                      child: Text(label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              fontFamily: AAFonts.title, fontSize: 15, color: AAColors.inkSoft)),
+                    ),
                   ],
-                  Text(label,
-                      style: TextStyle(
-                          fontFamily: AAFonts.title, fontSize: 15, color: AAColors.inkSoft)),
-                ],
+                ),
               ),
+              SizedBox(width: 8),
               HandToggle(value: value, activeColor: AAColors.mint, onChanged: onChanged),
             ],
           ),
