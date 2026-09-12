@@ -3,20 +3,21 @@
 > 和朋友 AA 分账的手机 App：自定义账户名 + 密码登录，不碰真实资金。
 > 风格：手绘风 · 可爱轻松（吉祥物：团团 🐼）
 
-## ✅ 当前状态（代码已生成 · 最新版本 v1.0.5 已发布）
+## ✅ 当前状态（代码已生成 · 最新版本 v1.0.17 已发布）
 
 | 产物 | 状态 | 验收 |
 |---|---|---|
 | 服务端 `server/`（NestJS 10 + Prisma + PostgreSQL，全模块 + SSE + BullMQ + Swagger） | ✅ | `npm install` / `npx prisma generate` / `npm run build` / `npm test`（**83/83**，含非注册成员 14 例：50 人上限 / 认领合并 / 定期账单模板迁移 / 群主交接护栏）全通过；`npm run test:e2e` **24/24** |
 | 客户端 `app/`（Flutter + Riverpod + go_router，31 页全量 + `aa_design` 手绘设计系统） | ✅ | `flutter analyze` 0 issues / `flutter test` **146/146**（8 张商店截图 golden 回归 + 21 屏视觉冒烟 + 功能回归测试；含非注册成员 9 例）/ 真机截屏逐页核对 |
+| **非注册成员（占位账号）**（群主可直接添加不注册的朋友，与注册成员同权分摊/垫付/结算；支持改名与「认领」绑定到真实账号） | ✅ | server 单测 **14 例** + e2e **4 例** · 客户端 **9 例** + 契约测试 **2 例**；迁移 `20260912000000_placeholder_member` 已在真实 PostgreSQL 应用；设计见 [CONTEXT.md](CONTEXT.md) 与 [ADR-0001](docs/adr/0001-占位账号承载非注册成员.md) |
 | **UI 视觉基线**（严格对齐 `docs/ui-demo/index.html`） | ✅ | 组件/圆角/阴影/间距/配色/字体五级/交互逐项照搬；字体包前缀命中修复（见 开发进度 v1.6） |
 | **图标素材系统**（`docs/pic` → `app/assets/icons`，40 枚全接入） | ✅ | `powershell -ExecutionPolicy Bypass -File scripts\process-icons.ps1`（透明度/水印/裁剪/启动图标一键重跑） |
 | 结算算法（`server/src/settlement/`，含"已付份额排除"修复） | ✅ | 13 个金标准单测全绿 |
-| **小票 OCR 识别金额回填**（拍照/相册 → 服务端识别 → 确认回填；草稿预填 + P33 二次确认） | ✅ 代码完成 | `ocr-worker` pytest **27/27** · server 单测 **63/63** + e2e **18/18** · App 测试 **126/126** · 合成语料真实 OCR 验收 **10/10 PASS** · 迁移 `20260902000000_receipt_ocr` 已在真实 PostgreSQL 应用（见 [docs/AA分账App-小票OCR识别.md](docs/AA分账App-小票OCR识别.md)）；⚠️ M4 待真实小票样本验收（≥90%） |
+| **小票 OCR 识别金额回填**（拍照/相册 → 服务端识别 → 确认回填；草稿预填 + P33 二次确认） | ✅ 代码完成 | `ocr-worker` pytest **27/27** · server 单测 **83/83** + e2e **24/24** · App 测试 **146/146** · 合成语料真实 OCR 验收 **10/10 PASS** · 迁移 `20260902000000_receipt_ocr` 已在真实 PostgreSQL 应用（见 [docs/AA分账App-小票OCR识别.md](docs/AA分账App-小票OCR识别.md)）；⚠️ M4 待真实小票样本验收（≥90%） |
 | 基础设施（docker-compose / Makefile / CI / 字体 asset） | ✅ | — |
-| **真实联调**（线上 API smoke + SSE） | ✅ | `node scripts/smoke-api.mjs` **22/22** · `node scripts/sse-check.mjs` SSE 实时事件 ✅（v1.0.5 部署后 2026-08-26 复跑通过） |
-| **发行**（v1.0.7+5000，GitHub Actions 正式签名；v1.0.7 标签重打为 +5000，versionCode 高于实测已装 4006，彻底规避 -25 降级） | ✅ | [GitHub Release](https://github.com/hotpot1993/aa-split/releases/tag/v1.0.7)：AAB + 通用 APK + arm64 APK + **aa-version.txt**；**VPS 自动同步已启用**（`scripts/vps-sync-update.sh`，cron 每 15 分钟）：首次运行已把 VPS 从 +4000 对齐到 +5000，`/app/version` 返回 VPS 下载 URL（1.0.7+5000）；VPS 已部署：迁移 `20260901000000` 已应用、线上 smoke **22/22** |
-| **更新源（VPS 自托管 + GitHub 自动拉取）** | ✅ | 更新流程：GitHub 发布新版本（Actions 正式签名构建）→ **VPS 定时任务自动从 GitHub Release 拉取**安装包至 `/apk/`（nginx 静态托管）并自动同步服务端 `/app/version` → 客户端从 VPS 拉取安装；**全程无需人工上传**；客户端兜底 = API 同源 `/apk/`。Gitee 代码/发行版自动同步（mirror-gitee.yml / release-gitee.yml 及本地自托管 Runner）已移除 |
+| **真实联调**（线上 API smoke + SSE） | ✅ | `node scripts/smoke-api.mjs` **22/22** · `node scripts/sse-check.mjs` SSE 实时事件 ✅；CI [smoke.yml](.github/workflows/smoke.yml) 每次 `master` 推送在真实 PostgreSQL 16 上自动复跑（迁移 + 22 步全链路 + SSE），v1.0.17 起恢复全绿 |
+| **发行**（v1.0.17+5011，GitHub Actions 正式签名构建） | ✅ | [GitHub Release](https://github.com/hotpot1993/aa-split/releases/tag/v1.0.17)：AAB + 通用 APK + arm64 APK + **aa-version.txt**；`Verify release signing` 校验正式 keystore 指纹；versionCode 单调递增（5011）不触发系统降级；**VPS 自动同步已生效**：线上 `/app/version` 返回 1.0.17+5011 与 VPS 下载 URL，迁移 `20260912000000_placeholder_member` 随容器 `prisma migrate deploy` 自动应用（2026-09-12 线上校验通过） |
+| **更新源（VPS 自托管 + GitHub 自动拉取）** | ✅ | 更新流程：GitHub 发布新版本（Actions 正式签名构建）→ **VPS 定时任务自动从 GitHub Release 拉取**安装包至 `/apk/`（nginx 静态托管）并自动同步服务端 `/app/version` → 客户端从 VPS 拉取安装；**全程无需人工上传**；客户端兜底 = API 同源 `/apk/`。⚠️ 同步窗口内 api 容器因镜像重建会短暂不可用（v1.0.17 实测约 7 分钟）。Gitee 代码/发行版自动同步（mirror-gitee.yml / release-gitee.yml 及本地自托管 Runner）已移除 |
 
 **说明**：客户端默认 **Demo 模式**（`--dart-define=AA_USE_MOCK=false` 切真实后端，见
 [app/README.md](app/README.md) 联调清单）；服务端运行需要一个 PostgreSQL 实例
@@ -26,21 +27,25 @@
 
 ```
 aa-dsh/
-├── docs/                     # 产品原型 / UI设计规范 / 技术方案 / 可交互Demo / 图标素材库(pic/)
+├── CONTEXT.md                # 领域词汇表（术语的标准叫法，产品讨论/代码注释/文档共用）
+├── docs/                     # 产品原型 / UI设计规范 / 技术方案 / 可交互Demo / ADR / 图标素材库(pic/)
 ├── scripts/                  # vps-sync-update.sh（VPS 更新自动同步，见「更新源」列）/ build-release.ps1 / process-icons.ps1（图标素材流水线）/ sync-docs.mjs（文档自动同步）/ smoke 等
 ├── server/                   # NestJS 10 + Prisma + PostgreSQL（REST + SSE）
 │   ├── prisma/schema.prisma  # 数据库模型（金额一律以分存储）
 │   └── src/
-│       ├── auth/             # 注册/登录/JWT/找回/改密
-│       ├── users/            # 用户资料
-│       ├── groups/           # 群组/成员/邀请码
+│       ├── auth/             # 注册/登录/JWT/找回密码/改密/登录设备
+│       ├── users/            # 用户资料 + 账户名可用性（注册实时校验，精确匹配）
+│       ├── groups/           # 群组/成员/邀请码 + 非注册成员（占位账号：添加/改名/认领）
 │       ├── bills/            # 账单/分摊/凭证/催款
 │       ├── settlement/       # 最少转账笔数结算算法 + 单测
-│       ├── notifications/    # 消息中心 + SSE
+│       ├── notifications/    # 消息中心 + SSE（占位账号不接收通知）
 │       ├── regular-bills/    # 定期账单（BullMQ 调度）
 │       ├── ocr/              # 小票 OCR：预上传/识别队列/SSE（见 docs/AA分账App-小票OCR识别.md）
-│       ├── export/           # 数据导出（xlsx/csv）
-│       └── statistics/       # 统计聚合
+│       ├── statistics/       # 统计聚合
+│       ├── storage/          # 对象存储（MinIO / 本地）
+│       ├── app-version/      # 检查更新（/app/version）
+│       ├── health/           # 健康检查
+│       └── common/           # 守卫/拦截器/装饰器 + 占位账号共用常量
 ├── ocr-worker/               # 小票识别微服务（FastAPI + RapidOCR PP-OCRv5 mobile；Apache-2.0）
 └── app/                      # Flutter 客户端
     ├── lib/                  # 主工程（Riverpod + go_router）
@@ -103,7 +108,9 @@ flutter test                 # 组件/单元测试
 - 🎨 [UI 设计规范（含图标素材系统 §6.3）](docs/AA分账App-UI设计规范.md)
 - ⚙️ [技术方案（数据库/API/算法/排期）](docs/AA分账App-技术方案.md)
 - 🖥️ [手绘风高保真 Demo（浏览器打开）](docs/ui-demo/index.html)
-- 📈 [开发进度存档](docs/开发进度.md)（UI 对齐 / 字体 / 图标系统 / 9 项需求修复轮 / 发版 SOP / v1.0.6 修复轮）
+- 📈 [开发进度存档](docs/开发进度.md)（UI 对齐 / 字体 / 图标系统 / 9 项需求修复轮 / **非注册成员全链路实现（第二十节）** / 发版 SOP）
+- 📚 [领域词汇表 CONTEXT.md](CONTEXT.md) · [架构决策记录 docs/adr](docs/adr/)（如 `0001-占位账号承载非注册成员`）
+- 🧾 [API 端点清单（自动生成）](docs/api-endpoints.generated.md)（当前 49 个端点）
 - 🔄 **文档自动同步**：每次 `master` 推送后由 [docs-sync.yml](.github/workflows/docs-sync.yml) 自动完成——用真实测试数刷新 README 状态表计数、同步版本串（pubspec → ui-demo）、重新生成 [API 端点清单](docs/api-endpoints.generated.md)；本地可 `node scripts/sync-docs.mjs` 手动执行
 - 🖼️ [自定义图标素材库 docs/pic](docs/pic/)（**文件名 = 对应 emoji** → `app/assets/icons`，脚本：`powershell -ExecutionPolicy Bypass -File scripts\process-icons.ps1`）
 - 🏪 [商店上架准备（素材/文案/法务/手册）](docs/store/上架手册.md)
