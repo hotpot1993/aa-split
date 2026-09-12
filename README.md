@@ -3,7 +3,7 @@
 > 和朋友 AA 分账的手机 App：自定义账户名 + 密码登录，不碰真实资金。
 > 风格：手绘风 · 可爱轻松（吉祥物：团团 🐼）
 
-## ✅ 当前状态（代码已生成 · 最新版本 v1.0.17 已发布）
+## ✅ 当前状态（代码已生成 · 最新版本 v1.0.18 已发布）
 
 | 产物 | 状态 | 验收 |
 |---|---|---|
@@ -16,7 +16,7 @@
 | **小票 OCR 识别金额回填**（拍照/相册 → 服务端识别 → 确认回填；草稿预填 + P33 二次确认） | ✅ 代码完成 | `ocr-worker` pytest **27/27** · server 单测 **83/83** + e2e **24/24** · App 测试 **163/163** · 合成语料真实 OCR 验收 **10/10 PASS** · 迁移 `20260902000000_receipt_ocr` 已在真实 PostgreSQL 应用（见 [docs/AA分账App-小票OCR识别.md](docs/AA分账App-小票OCR识别.md)）；⚠️ M4 待真实小票样本验收（≥90%） |
 | 基础设施（docker-compose / Makefile / CI / 字体 asset） | ✅ | — |
 | **真实联调**（线上 API smoke + SSE） | ✅ | `node scripts/smoke-api.mjs` **22/22** · `node scripts/sse-check.mjs` SSE 实时事件 ✅；CI [smoke.yml](.github/workflows/smoke.yml) 每次 `master` 推送在真实 PostgreSQL 16 上自动复跑（迁移 + 22 步全链路 + SSE），v1.0.17 起恢复全绿 |
-| **发行**（v1.0.17+5011，GitHub Actions 正式签名构建） | ✅ | [GitHub Release](https://github.com/hotpot1993/aa-split/releases/tag/v1.0.17)：AAB + 通用 APK + arm64 APK + **aa-version.txt**；`Verify release signing` 校验正式 keystore 指纹；versionCode 单调递增（5011）不触发系统降级；**VPS 自动同步已生效**：线上 `/app/version` 返回 1.0.17+5011 与 VPS 下载 URL，迁移 `20260912000000_placeholder_member` 随容器 `prisma migrate deploy` 自动应用（2026-09-12 线上校验通过） |
+| **发行**（v1.0.18+5012，GitHub Actions 正式签名构建） | ✅ | [GitHub Release](https://github.com/hotpot1993/aa-split/releases/tag/v1.0.18)：AAB + 通用 APK + arm64 APK + **aa-version.txt**；`Verify release signing` 校验正式 keystore 指纹；versionCode 单调递增（5012）不触发系统降级；**VPS 自动同步已生效**：线上 `/app/version` 返回 1.0.18+5012 与 VPS 下载 URL，迁移 `20260912000000_placeholder_member` 随容器 `prisma migrate deploy` 自动应用（v1.0.17 已于 2026-09-12 线上校验通过） |
 | **更新源（VPS 自托管 + GitHub 自动拉取）** | ✅ | 更新流程：GitHub 发布新版本（Actions 正式签名构建）→ **VPS 定时任务自动从 GitHub Release 拉取**安装包至 `/apk/`（nginx 静态托管）并自动同步服务端 `/app/version` → 客户端从 VPS 拉取安装；**全程无需人工上传**；客户端兜底 = API 同源 `/apk/`。⚠️ 同步窗口内 api 容器因镜像重建会短暂不可用（v1.0.17 实测约 7 分钟）。Gitee 代码/发行版自动同步（mirror-gitee.yml / release-gitee.yml 及本地自托管 Runner）已移除 |
 
 **说明**：客户端默认 **Demo 模式**（`--dart-define=AA_USE_MOCK=false` 切真实后端，见
